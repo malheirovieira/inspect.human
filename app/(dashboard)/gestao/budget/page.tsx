@@ -69,39 +69,34 @@ export default async function BudgetPage({
     <>
       <Header eyebrow="GESTÃO" title="Budget" />
       <div className="fin-content">
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+          <NewBudgetToggle departments={departments} categories={categories} />
+          <NewExpenseToggle departments={departments} categories={categories} />
+        </div>
+
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            flexWrap: "wrap",
+            gap: 4,
             borderBottom: "1px solid var(--border)",
           }}
         >
-          <div style={{ display: "flex", gap: 4 }}>
-            {TABS.map((t) => (
-              <Link
-                key={t.key}
-                href={`/gestao/budget?tab=${t.key}`}
-                style={{
-                  padding: "10px 16px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  color: activeTab === t.key ? "var(--action-primary-text)" : "var(--text-muted)",
-                  borderBottom: activeTab === t.key ? "2px solid var(--action-primary)" : "2px solid transparent",
-                }}
-              >
-                {t.label}
-              </Link>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-            <NewBudgetToggle departments={departments} categories={categories} />
-            <NewExpenseToggle departments={departments} categories={categories} />
-          </div>
+          {TABS.map((t) => (
+            <Link
+              key={t.key}
+              href={`/gestao/budget?tab=${t.key}`}
+              style={{
+                padding: "10px 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                textDecoration: "none",
+                color: activeTab === t.key ? "var(--action-primary-text)" : "var(--text-muted)",
+                borderBottom: activeTab === t.key ? "2px solid var(--action-primary)" : "2px solid transparent",
+              }}
+            >
+              {t.label}
+            </Link>
+          ))}
         </div>
 
         {activeTab === "resumo" && (

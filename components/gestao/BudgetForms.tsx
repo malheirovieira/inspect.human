@@ -76,10 +76,10 @@ export function BudgetAllocationForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ height: "100%" }}>
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", minHeight: 300 }}>
+    <form onSubmit={handleSubmit}>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <span className="fin-eyebrow">ALOCAR ORÇAMENTO</span>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           <FieldLabel label="Departamento" required>
             <Select required value={department} onChange={(e) => setDepartment(e.target.value)}>
               {departments.length === 0 && <option value="">Cadastre um setor em Configurações</option>}
@@ -119,9 +119,11 @@ export function BudgetAllocationForm({
         <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
           Pode ser uma data futura — o orçamento passa a valer automaticamente a partir dela.
         </p>
+
         <Feedback error={error} />
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "auto" }}>
-          <Button type="submit" variant={submitting || !department ? "disabled" : "primary"}>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
             {submitting ? "Salvando..." : "Salvar orçamento"}
           </Button>
         </div>
@@ -183,10 +185,10 @@ export function BudgetExpenseForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ height: "100%" }}>
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%", minHeight: 300 }}>
+    <form onSubmit={handleSubmit}>
+      <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <span className="fin-eyebrow">LANÇAR GASTO</span>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
           <FieldLabel label="Departamento" required>
             <Select required value={department} onChange={(e) => setDepartment(e.target.value)}>
               {departments.length === 0 && <option value="">Cadastre um setor em Configurações</option>}
@@ -223,9 +225,11 @@ export function BudgetExpenseForm({
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: Workshop de vendas" />
           </FieldLabel>
         </div>
+
         <Feedback error={error} />
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "auto" }}>
-          <Button type="submit" variant={submitting || !department ? "disabled" : "primary"}>
+
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
             {submitting ? "Salvando..." : "Lançar gasto"}
           </Button>
         </div>
