@@ -88,8 +88,8 @@ body {
   flex-shrink: 0;
 }
 .fin-sidebar__name {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -185,28 +185,6 @@ body {
   gap: 20px;
 }
 
-/* Animação de entrada leve em toda navegação — o Next remonta o header e o
-   conteúdo a cada troca de página, então isso já roda sozinho sem JS extra. */
-@keyframes fin-page-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.fin-header,
-.fin-content {
-  animation: fin-page-in 0.32s ease-out;
-}
-@media (prefers-reduced-motion: reduce) {
-  .fin-header,
-  .fin-content {
-    animation: none;
-  }
-}
 .fin-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -274,7 +252,7 @@ body {
   align-items: center;
   height: 22px;
   padding: 0 12px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
 }
@@ -287,6 +265,7 @@ body {
   color: var(--on-action-primary);
 }
 .fin-statcard {
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 16px 20px;
@@ -294,9 +273,6 @@ body {
 }
 .fin-statcard--selected {
   border-color: var(--green-900);
-}
-.fin-statcard--muted {
-  background: var(--surface-muted);
 }
 .fin-statcard--selected {
   background: var(--green-900);
@@ -410,7 +386,7 @@ body {
   display: flex;
   width: min(1040px, 100%);
   min-height: 600px;
-  border-radius: 28px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: 0 24px 60px rgba(5, 19, 42, 0.14);
   background: var(--surface);
@@ -436,17 +412,10 @@ body {
   background: linear-gradient(150deg, var(--green-900) 0%, var(--green-700) 100%);
   overflow: hidden;
 }
-.auth-shell__panel svg.auth-shell__wave {
-  position: absolute;
-  top: 0;
-  right: -1px;
-  height: 100%;
-  width: 90px;
-}
 .auth-shell__title {
-  font-family: var(--font-sans);
+  font-family: var(--font-heading), var(--font-sans);
   font-size: 30px;
-  font-weight: 700;
+  font-weight: 800;
   margin: 0;
   max-width: 320px;
 }
@@ -502,9 +471,6 @@ body {
   }
   .auth-shell__panel {
     padding: 40px 28px;
-  }
-  .auth-shell__panel svg.auth-shell__wave {
-    display: none;
   }
   .auth-shell__form-area {
     padding: 32px 24px;

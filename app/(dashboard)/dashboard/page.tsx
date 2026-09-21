@@ -24,7 +24,7 @@ export default function DashboardPage() {
       <Header title="Dashboard" />
       <div className="fin-content">
         <div className="fin-row">
-          <StatCard label="Colaboradores" value="24" selected />
+          <StatCard label="Colaboradores" value="24" />
           <StatCard label="Vagas abertas" value="4" />
           <StatCard label="Candidatos" value="38" />
           <StatCard label="Treinamentos em andamento" value="12" />

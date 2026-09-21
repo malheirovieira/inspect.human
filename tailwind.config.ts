@@ -35,9 +35,10 @@ const config: Config = {
         accent: "#EEF7F0",
       },
       borderRadius: {
-        sm: "8px",
-        md: "12px",
-        lg: "20px",
+        sm: "4px",
+        md: "6px",
+        lg: "8px",
+        xl: "8px",
       },
       boxShadow: {
         sm: "0 1px 2px rgba(5,19,42,0.06), 0 1px 1px rgba(5,19,42,0.04)",
