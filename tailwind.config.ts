@@ -28,6 +28,11 @@ const config: Config = {
         ink: "#1C1B17",
         success: { DEFAULT: "#1E7A4C", surface: "#E4F3EA" },
         danger: { DEFAULT: "#A23B2E", surface: "#F6E7E3" },
+        // Tokens semânticos genéricos (shadcn-style) mapeados para a paleta
+        // verde do produto — usados por componentes que trabalham em
+        // utilitários Tailwind puros em vez das classes fin-* legadas.
+        primary: "#2E6F40",
+        accent: "#EEF7F0",
       },
       borderRadius: {
         sm: "8px",
@@ -47,6 +52,18 @@ const config: Config = {
           "Arial",
           "sans-serif",
         ],
+      },
+      keyframes: {
+        fadeIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+      },
+      animation: {
+        "fade-in": "fadeIn 550ms cubic-bezier(0.22,1,0.36,1)",
+      },
+      transitionDuration: {
+        "800": "800ms",
       },
     },
   },

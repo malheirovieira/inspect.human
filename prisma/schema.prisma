@@ -40,8 +40,32 @@ model Company {
   trainingProgress    TrainingProgress[]
   timeClocks          TimeClock[]
   payrollVariables    PayrollVariable[]
+  companyOptions      CompanyOption[]
+  budgets             Budget[]
+  budgetExpenses      BudgetExpense[]
+  employeeExits       EmployeeExit[]
+  kanbanStageLabels   KanbanStageLabel[]
 
   @@map("companies")
+  @@schema("public")
+}
+
+// Listas configuráveis pela empresa (Configurações): setor, horário de
+// trabalho, modalidade de contratação. Um único modelo genérico em vez de
+// uma tabela por categoria — mesma forma, mais simples de manter.
+model CompanyOption {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  category  String
+  label     String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, category, label])
+  @@index([companyId, category])
+  @@map("company_options")
   @@schema("public")
 }
 
@@ -57,6 +81,57 @@ model User {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
+  // ---- Ficha de colaborador (cadastro RH) — todos opcionais no banco;
+  // obrigatoriedade é decidida no schema de validação (schemas/colaborador.ts).
+  // 1. Dados pessoais básicos
+  birthDate           DateTime? @map("birth_date") @db.Date
+  sex                 String?   @map("sex")
+  nationality         String?   @map("nationality")
+  birthplace          String?   @map("birthplace")
+  maritalStatus       String?   @map("marital_status")
+  motherName          String?   @map("mother_name")
+  fatherName          String?   @map("father_name")
+  addressZip          String?   @map("address_zip")
+  addressStreet       String?   @map("address_street")
+  addressNumber       String?   @map("address_number")
+  addressComplement   String?   @map("address_complement")
+  addressNeighborhood String?   @map("address_neighborhood")
+  addressCity         String?   @map("address_city")
+  addressState        String?   @map("address_state")
+  phone               String?   @map("phone")
+  educationLevel      String?   @map("education_level")
+  raceColor           String?   @map("race_color")
+
+  // 2. Documentos de identificação
+  cpf                  String? @map("cpf")
+  idDocumentType       String? @map("id_document_type")
+  idDocumentNumber     String? @map("id_document_number")
+  ctpsNumber           String? @map("ctps_number")
+  pisNumber            String? @map("pis_number")
+  voterTitleNumber     String? @map("voter_title_number")
+  reservistCertificate String? @map("reservist_certificate")
+  civilRegistryType    String? @map("civil_registry_type")
+  civilRegistryNumber  String? @map("civil_registry_number")
+
+  // 3. Dados profissionais e contratuais
+  department         String?   @map("department")
+  position           String?   @map("position")
+  admissionDate      DateTime? @map("admission_date") @db.Date
+  salary             Decimal?  @map("salary") @db.Decimal(12, 2)
+  workSchedule       String?   @map("work_schedule")
+  registrationNumber String?   @map("registration_number")
+
+  // 4. Dados bancários e benefícios
+  bankName               String?  @map("bank_name")
+  bankAgency             String?  @map("bank_agency")
+  bankAccount            String?  @map("bank_account")
+  transportVoucherOptIn  Boolean? @map("transport_voucher_opt_in")
+  dependents             Json?    @map("dependents")
+
+  // 5. Saúde ocupacional
+  admissionExamDate   DateTime? @map("admission_exam_date") @db.Date
+  admissionExamResult String?   @map("admission_exam_result")
+
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdJobs         Job[]                @relation("JobCreatedBy")
@@ -64,8 +139,11 @@ model User {
   timeClocks          TimeClock[]
   payrollVariables    PayrollVariable[]    @relation("PayrollUser")
   createdPayroll      PayrollVariable[]    @relation("PayrollCreatedBy")
+  exit                EmployeeExit?        @relation("ExitUser")
+  processedExits      EmployeeExit[]       @relation("ExitCreatedBy")
 
   @@unique([companyId, email])
+  @@unique([companyId, cpf])
   @@index([companyId])
   @@index([companyId, active])
   @@map("users")
@@ -77,10 +155,20 @@ model Job {
   companyId      String   @map("company_id") @db.Uuid
   title          String
   description    String
+  department     String?
   location       String?
   workMode       String   @map("work_mode")
   employmentType String?  @map("employment_type")
   status         String   @default("DRAFT")
+  // Primeira vez que a vaga virou OPEN — usado pro KPI de time-to-hire.
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(6)
+  // Cronograma planejado da vaga — datas de referência, nada é fechado
+  // automaticamente quando elas passam (é só informativo pro RH por
+  // enquanto).
+  resumeDeadline    DateTime? @map("resume_deadline") @db.Date
+  interviewDeadline DateTime? @map("interview_deadline") @db.Date
+  hiringDeadline    DateTime? @map("hiring_deadline") @db.Date
+  expectedStartDate DateTime? @map("expected_start_date") @db.Date
   createdById    String?  @map("created_by") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -103,8 +191,23 @@ model Candidate {
   email       String
   phone       String?
   linkedinUrl String?  @map("linkedin_url")
-  resumePath  String   @map("resume_path")
+  // Nullable por enquanto: candidatura pública ainda não faz upload pro
+  // Storage (fase futura). Preenchido quando o upload de currículo existir.
+  resumePath  String?  @map("resume_path")
   stage       String   @default("TRIAGE")
+  // Posição manual dentro da coluna do Kanban (etapa) — usada no modo de
+  // ordenação "Manual" pra saber quem fica em cima/embaixo.
+  position    Int      @default(0)
+  // Tag manual de qualificação (GREEN/YELLOW/BLUE/RED/GRAY) — independente
+  // da etapa do pipeline, ver schemas/candidate.ts.
+  qualificationTag String? @map("qualification_tag")
+  // Preenchido só na primeira vez que o estágio vira HIRED — usado pro KPI
+  // de time-to-hire (não usar updatedAt, que muda a cada edição qualquer).
+  hiredAt     DateTime? @map("hired_at") @db.Timestamptz(6)
+  // Linha do tempo granular do processo (aba Processo) — mapa
+  // { chave_da_etapa: timestamp ISO | null }, ver PROCESS_STEPS em
+  // schemas/candidate.ts. Independente do "stage" grosso usado no Kanban.
+  processSteps Json?   @map("process_steps")
   notes       String?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -233,5 +336,98 @@ model PayrollVariable {
   @@index([companyId, competence])
   @@index([companyId, userId, competence])
   @@map("payroll_variables")
+  @@schema("public")
+}
+
+// Orçamento alocado por departamento + categoria, por mês (competência).
+// "department" guarda o mesmo texto usado em users.department/company_options
+// (categoria SETOR) — sem FK, mesma convenção de texto livre já usada ali.
+// Orçamento com vigência (não mais "um valor por mês exato"): entra em
+// vigor em startDate e vale até endDate (ou indefinidamente, se null).
+// Pode existir mais de um registro por departamento/categoria ao longo do
+// tempo — services/budget.ts escolhe o vigente pra cada competência.
+model Budget {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String    @map("company_id") @db.Uuid
+  department String
+  category   String
+  amount     Decimal   @db.Decimal(12, 2)
+  startDate  DateTime  @map("start_date") @db.Date
+  endDate    DateTime? @map("end_date") @db.Date
+  status     String    @default("ATIVO")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, department, category])
+  @@index([companyId, status])
+  @@map("budgets")
+  @@schema("public")
+}
+
+// Gasto lançado manualmente (Treinamento/Confraternizações). A categoria
+// Salário não usa esta tabela — o consumo é calculado a partir da soma dos
+// salários dos colaboradores ativos do departamento (services/budget.ts).
+model BudgetExpense {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  department  String
+  category    String
+  description String?
+  amount      Decimal  @db.Decimal(12, 2)
+  expenseDate DateTime @map("expense_date") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, department, category])
+  @@index([companyId, expenseDate])
+  @@map("budget_expenses")
+  @@schema("public")
+}
+
+// Registro de desligamento. Guarda uma "foto" do colaborador (nome, cargo,
+// departamento, data de admissão) porque o cadastro pode ser excluído de
+// verdade depois (users.id → on delete set null) e o histórico de turnover
+// precisa sobreviver a isso pros KPIs de Gestão.
+model EmployeeExit {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  userId         String?   @unique @map("user_id") @db.Uuid
+  userName       String    @map("user_name")
+  department     String?
+  position       String?
+  admissionDate  DateTime? @map("admission_date") @db.Date
+  exitDate       DateTime  @map("exit_date") @db.Date
+  exitType       String    @map("exit_type")
+  reason         String
+  notes          String?
+  rehireEligible Boolean?  @map("rehire_eligible")
+  createdById    String?   @map("created_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User?   @relation("ExitUser", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy User?   @relation("ExitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([companyId, exitDate])
+  @@map("employee_exits")
+  @@schema("public")
+}
+
+// Título customizado de uma coluna do Kanban de candidatos (a chave do
+// estágio — TRIAGE/INTERVIEW/PROPOSAL/HIRED — continua fixa em todo o
+// sistema; só o rótulo exibido muda por empresa).
+model KanbanStageLabel {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String @map("company_id") @db.Uuid
+  stage     String
+  label     String
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, stage])
+  @@map("kanban_stage_labels")
   @@schema("public")
 }

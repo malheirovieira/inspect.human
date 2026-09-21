@@ -1,0 +1,326 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  DndContext,
+  pointerWithin,
+  rectIntersection,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragOverEvent,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Field";
+import { TagDot } from "@/components/recrutamento/TagDot";
+import { Pencil, GripVertical } from "lucide-react";
+import {
+  moveCandidateInKanban,
+  setKanbanStageLabel,
+} from "@/app/(dashboard)/recrutamento/candidatos/actions";
+import { CANDIDATE_STAGES, type CANDIDATE_TAGS } from "@/schemas/candidate";
+
+type Stage = (typeof CANDIDATE_STAGES)[number];
+type SortMode = "manual" | "name" | "tag";
+
+export type KanbanCandidate = {
+  id: string;
+  name: string;
+  email: string;
+  stage: string;
+  qualificationTag: string | null;
+  position: number;
+  job: { title: string };
+};
+
+const TAG_ORDER: Record<string, number> = { GREEN: 0, YELLOW: 1, BLUE: 2, RED: 3, GRAY: 4 };
+
+function groupAndSort(candidates: KanbanCandidate[], mode: SortMode): Record<Stage, KanbanCandidate[]> {
+  const columns = {} as Record<Stage, KanbanCandidate[]>;
+  for (const stage of CANDIDATE_STAGES) columns[stage] = [];
+  for (const candidate of candidates) {
+    if (columns[candidate.stage as Stage]) columns[candidate.stage as Stage].push(candidate);
+  }
+  for (const stage of CANDIDATE_STAGES) {
+    if (mode === "name") {
+      columns[stage].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    } else if (mode === "tag") {
+      columns[stage].sort(
+        (a, b) => (TAG_ORDER[a.qualificationTag ?? ""] ?? 99) - (TAG_ORDER[b.qualificationTag ?? ""] ?? 99)
+      );
+    } else {
+      columns[stage].sort((a, b) => a.position - b.position);
+    }
+  }
+  return columns;
+}
+
+function CandidateCard({ candidate, showJob }: { candidate: KanbanCandidate; showJob: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: candidate.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card style={{ padding: 12, boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "flex-start", gap: 6 }}>
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="Arrastar candidato"
+          style={{ background: "none", border: "none", padding: 0, cursor: "grab", color: "var(--text-muted)", marginTop: 2 }}
+        >
+          <GripVertical size={14} />
+        </button>
+        <Link href={`/recrutamento/candidatos/${candidate.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {candidate.qualificationTag && candidate.stage === "TRIAGE" && (
+              <TagDot tag={candidate.qualificationTag as (typeof CANDIDATE_TAGS)[number]} interactive={false} />
+            )}
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{candidate.name}</div>
+          </div>
+          {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{candidate.job.title}</div>}
+        </Link>
+      </Card>
+    </div>
+  );
+}
+
+function StageColumn({
+  stage,
+  label,
+  candidates,
+  showJob,
+  editing,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+}: {
+  stage: Stage;
+  label: string;
+  candidates: KanbanCandidate[];
+  showJob: boolean;
+  editing: boolean;
+  onStartEdit: () => void;
+  onSaveEdit: (value: string) => void;
+  onCancelEdit: () => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage });
+  const [value, setValue] = useState(label);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        width: 280,
+        flexShrink: 0,
+        background: isOver ? "var(--surface-selected)" : "var(--surface-muted)",
+        borderRadius: "var(--radius-lg)",
+        padding: 10,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        transition: "background 0.15s ease",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 6px 2px", gap: 6 }}>
+        {editing ? (
+          <input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={() => onSaveEdit(value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSaveEdit(value);
+              if (e.key === "Escape") onCancelEdit();
+            }}
+            className="fin-input"
+            style={{ height: 28, fontSize: 13, padding: "0 8px" }}
+          />
+        ) : (
+          <span
+            style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {label}
+          </span>
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--text-secondary)",
+              background: "var(--surface)",
+              borderRadius: "var(--radius-full)",
+              padding: "1px 9px",
+            }}
+          >
+            {candidates.length}
+          </span>
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => {
+                setValue(label);
+                onStartEdit();
+              }}
+              aria-label="Renomear etapa"
+              style={{ background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--text-muted)", display: "flex" }}
+            >
+              <Pencil size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <SortableContext items={candidates.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 40 }}>
+          {candidates.length === 0 ? (
+            <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 6px", margin: 0 }}>Nenhum candidato</p>
+          ) : (
+            candidates.map((candidate) => <CandidateCard key={candidate.id} candidate={candidate} showJob={showJob} />)
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
+export function KanbanBoard({
+  candidates,
+  stageLabels,
+  showJob = true,
+}: {
+  candidates: KanbanCandidate[];
+  stageLabels: Record<Stage, string>;
+  showJob?: boolean;
+}) {
+  const router = useRouter();
+  const [sortMode, setSortMode] = useState<SortMode>("manual");
+  const [columns, setColumns] = useState(() => groupAndSort(candidates, "manual"));
+  const [labels, setLabels] = useState(stageLabels);
+  const [editingStage, setEditingStage] = useState<Stage | null>(null);
+
+  useEffect(() => {
+    setColumns(groupAndSort(candidates, sortMode));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidates, sortMode]);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  // closestCorners falha em boards com colunas de tamanhos desiguais
+  // (coluna grande contendo cards pequenos) — o card acaba "vencendo" a
+  // coluna vizinha mesmo quando o ponteiro já está sobre ela, e o drag
+  // parece só funcionar dentro do mesmo container. pointerWithin (o
+  // ponteiro está literalmente dentro da área) resolve isso; caímos pra
+  // rectIntersection só quando o ponteiro sai de toda área arrastável
+  // (ex.: soltando bem na borda).
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+    return rectIntersection(args);
+  };
+
+  function findContainer(id: string): Stage | undefined {
+    if (CANDIDATE_STAGES.includes(id as Stage)) return id as Stage;
+    return CANDIDATE_STAGES.find((stage) => columns[stage].some((c) => c.id === id));
+  }
+
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+    const activeContainer = findContainer(active.id as string);
+    const overContainer = findContainer(over.id as string);
+    if (!activeContainer || !overContainer || activeContainer === overContainer) return;
+
+    setColumns((prev) => {
+      const activeItems = prev[activeContainer];
+      const overItems = prev[overContainer];
+      const activeIndex = activeItems.findIndex((c) => c.id === active.id);
+      if (activeIndex === -1) return prev;
+      const movingItem = activeItems[activeIndex];
+      const overIndex = overItems.findIndex((c) => c.id === over.id);
+      const insertIndex = overIndex >= 0 ? overIndex : overItems.length;
+
+      return {
+        ...prev,
+        [activeContainer]: activeItems.filter((c) => c.id !== active.id),
+        [overContainer]: [...overItems.slice(0, insertIndex), movingItem, ...overItems.slice(insertIndex)],
+      };
+    });
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over) return;
+
+    const targetStage = findContainer(active.id as string);
+    if (!targetStage) return;
+
+    let finalItems = columns[targetStage];
+    const oldIndex = finalItems.findIndex((c) => c.id === active.id);
+    const overContainer = findContainer(over.id as string);
+
+    if (overContainer === targetStage && active.id !== over.id) {
+      const newIndex = finalItems.findIndex((c) => c.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+        finalItems = arrayMove(finalItems, oldIndex, newIndex);
+        setColumns((prev) => ({ ...prev, [targetStage]: finalItems }));
+      }
+    }
+
+    const orderedIds = finalItems.map((c) => c.id);
+    await moveCandidateInKanban(active.id as string, targetStage, orderedIds);
+    router.refresh();
+  }
+
+  async function handleSaveLabel(stage: Stage, value: string) {
+    setEditingStage(null);
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === labels[stage]) return;
+    setLabels((prev) => ({ ...prev, [stage]: trimmed }));
+    await setKanbanStageLabel(stage, trimmed);
+    router.refresh();
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Ordenar por</span>
+        <Select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)} style={{ maxWidth: 200 }}>
+          <option value="manual">Manual (arrastar)</option>
+          <option value="name">Nome (A-Z)</option>
+          <option value="tag">Cor da tag</option>
+        </Select>
+      </div>
+
+      <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start", overflowX: "auto", paddingBottom: 8 }}>
+          {CANDIDATE_STAGES.map((stage) => (
+            <StageColumn
+              key={stage}
+              stage={stage}
+              label={labels[stage]}
+              candidates={columns[stage]}
+              showJob={showJob}
+              editing={editingStage === stage}
+              onStartEdit={() => setEditingStage(stage)}
+              onSaveEdit={(value) => handleSaveLabel(stage, value)}
+              onCancelEdit={() => setEditingStage(null)}
+            />
+          ))}
+        </div>
+      </DndContext>
+    </div>
+  );
+}

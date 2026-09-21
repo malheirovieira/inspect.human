@@ -40,8 +40,53 @@ create table users (
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+
+  -- Ficha de colaborador (cadastro RH) — ver migrations/0001_colaborador_hr_fields.sql
+  -- para o detalhe de quando cada bloco foi adicionado. Tudo opcional aqui;
+  -- obrigatoriedade é validada na aplicação (schemas/colaborador.ts).
+  birth_date date,
+  sex text,
+  nationality text,
+  birthplace text,
+  marital_status text,
+  mother_name text,
+  father_name text,
+  address_zip text,
+  address_street text,
+  address_number text,
+  address_complement text,
+  address_neighborhood text,
+  address_city text,
+  address_state text,
+  phone text,
+  education_level text,
+  race_color text,
+  cpf text,
+  id_document_type text,
+  id_document_number text,
+  ctps_number text,
+  pis_number text,
+  voter_title_number text,
+  reservist_certificate text,
+  civil_registry_type text,
+  civil_registry_number text,
+  department text,
+  position text,
+  admission_date date,
+  salary numeric(12, 2),
+  work_schedule text,
+  registration_number text,
+  bank_name text,
+  bank_agency text,
+  bank_account text,
+  transport_voucher_opt_in boolean,
+  dependents jsonb,
+  admission_exam_date date,
+  admission_exam_result text,
+
   constraint users_role_check check (role in ('ADMIN', 'HR', 'EMPLOYEE')),
-  constraint users_company_email_unique unique (company_id, email)
+  constraint users_company_email_unique unique (company_id, email),
+  constraint users_company_cpf_unique unique (company_id, cpf)
 );
 create index idx_users_company on users (company_id);
 create index idx_users_company_active on users (company_id, active);
@@ -54,10 +99,16 @@ create table jobs (
   company_id uuid not null references companies (id) on delete cascade,
   title text not null,
   description text not null,
+  department text,
   location text,
   work_mode text not null,
   employment_type text,
   status text not null default 'DRAFT',
+  published_at timestamptz,
+  resume_deadline date,
+  interview_deadline date,
+  hiring_deadline date,
+  expected_start_date date,
   created_by uuid references users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -82,12 +133,17 @@ create table candidates (
   email text not null,
   phone text,
   linkedin_url text,
-  resume_path text not null,
+  resume_path text,
   stage text not null default 'TRIAGE',
+  position integer not null default 0,
+  qualification_tag text,
+  hired_at timestamptz,
+  process_steps jsonb,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint candidates_stage_check check (stage in ('TRIAGE', 'INTERVIEW', 'PROPOSAL', 'HIRED'))
+  constraint candidates_stage_check check (stage in ('TRIAGE', 'INTERVIEW', 'PROPOSAL', 'HIRED')),
+  constraint candidates_qualification_tag_check check (qualification_tag in ('GREEN', 'YELLOW', 'BLUE', 'RED', 'GRAY'))
 );
 create index idx_candidates_company on candidates (company_id);
 create index idx_candidates_job on candidates (company_id, job_id);
@@ -254,6 +310,102 @@ create table payroll_variables (
 );
 create index idx_payroll_variables_company_competence on payroll_variables (company_id, competence);
 create index idx_payroll_variables_company_user on payroll_variables (company_id, user_id, competence);
+
+-- ----------------------------------------------------------------------------
+-- company_options — listas configuráveis pela empresa (Configurações):
+-- setor, horário de trabalho, modalidade de contratação.
+-- ----------------------------------------------------------------------------
+create table company_options (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  category text not null,
+  label text not null,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  constraint company_options_category_check
+    check (category in ('SETOR', 'HORARIO_TRABALHO', 'MODALIDADE_CONTRATACAO', 'CATEGORIA_BUDGET')),
+  constraint company_options_unique unique (company_id, category, label)
+);
+create index idx_company_options_company_category on company_options (company_id, category);
+
+-- ----------------------------------------------------------------------------
+-- budgets / budget_expenses — orçamento por departamento/categoria
+-- (Gestão > Budget). "department" é texto livre, mesma convenção de
+-- users.department (sem FK pra company_options).
+-- ----------------------------------------------------------------------------
+-- Orçamento com vigência: entra em vigor em start_date e vale até end_date
+-- (ou indefinidamente, se null). status ATIVO/SUSPENSO. Pode existir mais
+-- de um registro por departamento/categoria ao longo do tempo.
+create table budgets (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  department text not null,
+  category text not null,
+  amount numeric(12, 2) not null,
+  start_date date not null,
+  end_date date,
+  status text not null default 'ATIVO',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint budgets_category_check check (category in ('SALARIO', 'TREINAMENTO', 'CONFRATERNIZACOES')),
+  constraint budgets_status_check check (status in ('ATIVO', 'SUSPENSO'))
+);
+create index idx_budgets_company_department on budgets (company_id, department, category);
+create index idx_budgets_company_status on budgets (company_id, status);
+
+create table budget_expenses (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  department text not null,
+  category text not null,
+  description text,
+  amount numeric(12, 2) not null,
+  expense_date date not null,
+  created_at timestamptz not null default now(),
+  constraint budget_expenses_category_check check (category in ('SALARIO', 'TREINAMENTO', 'CONFRATERNIZACOES'))
+);
+create index idx_budget_expenses_company_dept_cat on budget_expenses (company_id, department, category);
+create index idx_budget_expenses_company_date on budget_expenses (company_id, expense_date);
+
+-- ----------------------------------------------------------------------------
+-- employee_exits — registro de desligamento (Pessoas > Desligamentos),
+-- alimenta os KPIs de turnover em Gestão > KPIs. Guarda uma "foto" dos
+-- dados do colaborador porque o cadastro pode ser excluído depois.
+-- ----------------------------------------------------------------------------
+create table employee_exits (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  user_id uuid unique references users (id) on delete set null,
+  user_name text not null,
+  department text,
+  position text,
+  admission_date date,
+  exit_date date not null,
+  exit_type text not null,
+  reason text not null,
+  notes text,
+  rehire_eligible boolean,
+  created_by uuid references users (id) on delete set null,
+  created_at timestamptz not null default now(),
+  constraint employee_exits_exit_type_check check (exit_type in ('VOLUNTARIA', 'INVOLUNTARIA')),
+  constraint employee_exits_reason_check check (
+    reason in ('PEDIU_DEMISSAO', 'SEM_JUSTA_CAUSA', 'JUSTA_CAUSA', 'FIM_DE_CONTRATO', 'APOSENTADORIA', 'OUTRO')
+  )
+);
+create index idx_employee_exits_company_date on employee_exits (company_id, exit_date);
+
+-- ----------------------------------------------------------------------------
+-- kanban_stage_labels — título customizado de cada coluna do Kanban de
+-- candidatos, por empresa. A chave do estágio (TRIAGE/INTERVIEW/PROPOSAL/
+-- HIRED) continua fixa no sistema todo; só o rótulo exibido muda.
+-- ----------------------------------------------------------------------------
+create table kanban_stage_labels (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  stage text not null,
+  label text not null,
+  constraint kanban_stage_labels_unique unique (company_id, stage)
+);
 
 -- ----------------------------------------------------------------------------
 -- updated_at automático
