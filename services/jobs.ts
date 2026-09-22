@@ -22,7 +22,13 @@ export async function listJobs(filters: JobFilters = {}) {
         : {}),
     },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { candidates: true } } },
+    include: {
+      _count: { select: { candidates: true } },
+      // Só pra saber se a vaga tem alguém contratado (tag "Vaga Preenchida"
+      // na listagem) — não é a lista de candidatos da vaga, por isso o
+      // select mínimo e o take: 1.
+      candidates: { where: { stage: "HIRED" }, select: { id: true }, take: 1 },
+    },
   });
 }
 

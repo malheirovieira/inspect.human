@@ -28,6 +28,12 @@ export default function Home() {
       <Link href="/dashboard" className="fin-btn fin-btn--primary">
         Ver dashboard (placeholder)
       </Link>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+        Desenvolvido por{" "}
+        <a href="https://github.com/malheirovieira" target="_blank" rel="noreferrer" className="fin-link">
+          Gabriel Malheiro
+        </a>
+      </p>
     </main>
   );
 }

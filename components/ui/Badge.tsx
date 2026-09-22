@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { HTMLAttributes } from "react";
 
-type Tone = "success" | "primary";
+type Tone = "success" | "primary" | "danger";
 
 export function Badge({
   tone = "success",
@@ -14,6 +14,7 @@ export function Badge({
         "fin-badge",
         tone === "success" && "fin-badge--success",
         tone === "primary" && "fin-badge--primary",
+        tone === "danger" && "fin-badge--danger",
         className
       )}
       {...props}

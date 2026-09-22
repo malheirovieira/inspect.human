@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { JobForm } from "@/components/recrutamento/JobForm";
 import { CopyLinkButton } from "@/components/recrutamento/CopyLinkButton";
+import { JobDeleteButton } from "@/components/recrutamento/JobDeleteButton";
 import { CandidatesBoard } from "@/components/recrutamento/CandidatesBoard";
 import { KanbanBoard } from "@/components/recrutamento/KanbanBoard";
 import { getJob } from "@/services/jobs";
@@ -83,6 +84,7 @@ export default async function VagaDetalhePage({
                 </Button>
               </form>
             )}
+            {job.status === "CLOSED" && <JobDeleteButton jobId={job.id} title={job.title} />}
             {job.status !== "CLOSED" && (
               <form
                 action={async () => {

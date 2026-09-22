@@ -69,6 +69,22 @@ export async function updateJob(jobId: string, input: JobInput): Promise<ActionR
   return { success: true };
 }
 
+// Exclui a vaga de verdade — como candidates.job_id referencia jobs com
+// "on delete cascade", apagar a vaga apaga junto todos os candidatos
+// recebidos por ela. Só faz sentido pra vaga já encerrada (ver page.tsx,
+// que só mostra o botão de excluir quando status === "CLOSED").
+export async function deleteJob(jobId: string): Promise<ActionResult> {
+  const session = await requireRole(["ADMIN", "HR"]);
+
+  const job = await prisma.job.findFirst({ where: { id: jobId, companyId: session.companyId } });
+  if (!job) return { error: "Vaga não encontrada." };
+
+  await prisma.job.delete({ where: { id: jobId } });
+
+  revalidatePath("/recrutamento/vagas");
+  return { success: true };
+}
+
 export async function setJobStatus(jobId: string, status: (typeof JOB_STATUSES)[number]): Promise<ActionResult> {
   const session = await requireRole(["ADMIN", "HR"]);
 

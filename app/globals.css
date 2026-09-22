@@ -332,6 +332,10 @@ body {
   background: var(--action-primary);
   color: var(--on-action-primary);
 }
+.fin-badge--danger {
+  background: var(--danger-surface);
+  color: var(--danger);
+}
 .fin-statcard {
   background: var(--surface);
   border: 1px solid var(--border);
