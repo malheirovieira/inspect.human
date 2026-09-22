@@ -7,7 +7,10 @@ import type { Dependent } from "@/schemas/colaborador";
 import type { CompanyOption } from "@prisma/client";
 
 function toDateInput(date: Date | null): string {
-  if (!date) return "";
+  // Guarda contra "Invalid Date" (não só null) — já achamos um caso real de
+  // data corrompida no banco (ano com dígitos a mais, ex.: "123123-03-12")
+  // que passa por !date (o objeto existe) e só quebra no toISOString().
+  if (!date || Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
 }
 
