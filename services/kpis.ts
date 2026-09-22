@@ -1,7 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
-import { getBudgetSummary } from "@/services/budget";
 
 function periodFromCompetence(competence: string) {
   const [year, month] = competence.split("-").map(Number);
@@ -19,7 +18,7 @@ export async function getHrKpis(competence: string) {
   const { companyId } = session;
   const { start, end } = periodFromCompetence(competence);
 
-  const [hiredCandidates, allUsers, allExits, exitsInPeriod, admissionsInPeriod, candidatesInPeriod, budgetSummary] =
+  const [hiredCandidates, allUsers, allExits, exitsInPeriod, admissionsInPeriod, candidatesInPeriod] =
     await Promise.all([
       prisma.candidate.findMany({
         where: { companyId, hiredAt: { gte: start, lt: end } },
@@ -33,7 +32,6 @@ export async function getHrKpis(competence: string) {
       prisma.employeeExit.findMany({ where: { companyId, exitDate: { gte: start, lt: end } } }),
       prisma.user.count({ where: { companyId, admissionDate: { gte: start, lt: end } } }),
       prisma.candidate.findMany({ where: { companyId, createdAt: { gte: start, lt: end } }, select: { stage: true } }),
-      getBudgetSummary(competence),
     ]);
 
   // ---- 1. Time-to-hire: média de dias entre a vaga ser publicada e o
@@ -45,19 +43,7 @@ export async function getHrKpis(competence: string) {
     ? timeToHireSamples.reduce((a, b) => a + b, 0) / timeToHireSamples.length
     : null;
 
-  // ---- 2. Desvio de budget: total consumido / total orçado no mês, somando
-  // todos os departamentos e categorias.
-  let totalAllocated = 0;
-  let totalConsumed = 0;
-  for (const dept of budgetSummary) {
-    for (const category of Object.keys(dept.categories)) {
-      totalAllocated += dept.categories[category].allocated;
-      totalConsumed += dept.categories[category].consumed;
-    }
-  }
-  const budgetDeviationPercent = totalAllocated > 0 ? (totalConsumed / totalAllocated) * 100 : null;
-
-  // ---- 3. Turnover: [(demissões + admissões) / 2] / ativos no início do
+  // ---- 2. Turnover: [(demissões + admissões) / 2] / ativos no início do
   // mês. "Ativos no início do mês" = ativos hoje admitidos antes do início,
   // mais quem saiu neste mês ou depois (ainda estava ativo no início dele).
   const exitByUserId = new Map(allExits.filter((e) => e.userId).map((e) => [e.userId as string, e]));
@@ -70,20 +56,20 @@ export async function getHrKpis(competence: string) {
   const turnoverRate =
     activeAtStart > 0 ? (((exitsInPeriod.length + admissionsInPeriod) / 2) / activeAtStart) * 100 : null;
 
-  // ---- 4. Turnover dos primeiros 90 dias: entre quem saiu neste mês,
+  // ---- 3. Turnover dos primeiros 90 dias: entre quem saiu neste mês,
   // quantos tinham menos de 90 dias de casa.
   const earlyExits = exitsInPeriod.filter(
     (e) => e.admissionDate && daysBetween(e.admissionDate, e.exitDate) <= 90
   );
   const earlyTurnoverPercent = exitsInPeriod.length > 0 ? (earlyExits.length / exitsInPeriod.length) * 100 : null;
 
-  // ---- 5. Custo médio por colaborador (base salarial — impostos e
+  // ---- 4. Custo médio por colaborador (base salarial — impostos e
   // benefícios ainda não são lançados como valor no sistema).
   const activeUsers = allUsers.filter((u) => u.active);
   const totalSalary = activeUsers.reduce((sum, u) => sum + Number(u.salary ?? 0), 0);
   const avgCostPerEmployee = activeUsers.length > 0 ? totalSalary / activeUsers.length : null;
 
-  // ---- 6. Funil de recrutamento: candidatos inscritos no mês, por estágio
+  // ---- 5. Funil de recrutamento: candidatos inscritos no mês, por estágio
   // mais avançado já alcançado.
   const funnel = {
     total: candidatesInPeriod.length,
@@ -95,7 +81,6 @@ export async function getHrKpis(competence: string) {
   return {
     competence,
     timeToHire: { avgDays: timeToHireAvgDays, sampleSize: timeToHireSamples.length },
-    budgetDeviation: { percent: budgetDeviationPercent, allocated: totalAllocated, consumed: totalConsumed },
     turnover: { rate: turnoverRate, exits: exitsInPeriod.length, admissions: admissionsInPeriod, activeAtStart },
     earlyTurnover: { percent: earlyTurnoverPercent, earlyExits: earlyExits.length, totalExits: exitsInPeriod.length },
     avgCostPerEmployee: { value: avgCostPerEmployee, headcount: activeUsers.length },

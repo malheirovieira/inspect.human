@@ -2,12 +2,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
 import { CandidateDadosForm } from "@/components/recrutamento/CandidateDadosForm";
 import { CandidateTimeline } from "@/components/recrutamento/CandidateTimeline";
 import { CandidateNotes } from "@/components/recrutamento/CandidateNotes";
 import { getCandidate } from "@/services/candidates";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { ProcessTimeline } from "@/schemas/candidate";
-import { FileText, Folder, Boxes } from "lucide-react";
+import { FileText, Folder, Boxes, Download } from "lucide-react";
+
+const RESUME_BUCKET = "resumes";
 
 const TABS = [
   { key: "dados", label: "Dados" },
@@ -30,6 +34,18 @@ export default async function CandidatoPerfilPage({
 
   const candidate = await getCandidate(candidateId);
   if (!candidate) notFound();
+
+  // URL assinada e de curta duração — o bucket é privado, então o link de
+  // download só funciona por um tempo curto em vez de ficar público pra
+  // sempre (o path em si já é isolado por company_id/candidate_id). Só
+  // gera quando a aba Currículo está de fato aberta, pra não bater no
+  // Storage à toa nas outras abas.
+  let resumeUrl: string | null = null;
+  if (activeTab === "curriculo" && candidate.resumePath) {
+    const supabaseAdmin = createSupabaseAdminClient();
+    const { data } = await supabaseAdmin.storage.from(RESUME_BUCKET).createSignedUrl(candidate.resumePath, 300);
+    resumeUrl = data?.signedUrl ?? null;
+  }
 
   return (
     <>
@@ -86,13 +102,26 @@ export default async function CandidatoPerfilPage({
           </div>
         )}
 
-        {activeTab === "curriculo" && (
-          <EmptyState
-            icon={FileText}
-            title="Upload de currículo em breve"
-            description="O envio e a visualização do currículo em PDF ainda estão sendo desenvolvidos."
-          />
-        )}
+        {activeTab === "curriculo" &&
+          (resumeUrl ? (
+            <div className="fin-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <FileText size={18} style={{ color: "var(--text-muted)" }} />
+                <span style={{ fontSize: 14, fontWeight: 500 }}>Currículo enviado na candidatura</span>
+              </div>
+              <a href={resumeUrl} target="_blank" rel="noreferrer">
+                <Button variant="secondary">
+                  <Download size={14} /> Baixar PDF
+                </Button>
+              </a>
+            </div>
+          ) : (
+            <EmptyState
+              icon={FileText}
+              title="Nenhum currículo enviado"
+              description="Este candidato não anexou um PDF de currículo na candidatura."
+            />
+          ))}
 
         {activeTab === "documentos" && (
           <EmptyState

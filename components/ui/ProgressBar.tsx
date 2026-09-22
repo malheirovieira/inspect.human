@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export function ProgressBar({ percent }: { percent: number }) {
+export function ProgressBar({ percent, color }: { percent: number; color?: string }) {
   const clamped = Math.max(0, Math.min(100, percent));
   // Começa em 0 e anima até o valor real no mount/atualização — sem isso,
   // o preenchimento já nasceria no tamanho final e não teria o que animar.
@@ -15,7 +15,7 @@ export function ProgressBar({ percent }: { percent: number }) {
 
   return (
     <div className="fin-bar__track">
-      <div className="fin-bar__fill" style={{ width: `${width}%` }} />
+      <div className="fin-bar__fill" style={{ width: `${width}%`, background: color }} />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { Logo } from "@/components/ui/Logo";
 import { Card } from "@/components/ui/Card";
 import { ApplyForm } from "@/components/recrutamento/ApplyForm";
 import { getPublicOpenJob } from "@/services/jobs";
@@ -18,7 +17,7 @@ export default async function VagaPublicaPage({ params }: { params: Promise<{ sl
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-page)", padding: "48px 24px" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
-        <Logo />
+        <span className="brand-wordmark">{found.company.name}</span>
 
         <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fin-eyebrow">{WORK_MODE_LABEL[found.job.workMode] ?? found.job.workMode}</span>

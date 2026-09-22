@@ -18,8 +18,3 @@ export async function listEmployeeExits(filters: ExitFilters = {}) {
     orderBy: { exitDate: "desc" },
   });
 }
-
-// Sem filtro de período — a página de KPIs recorta por competência em memória.
-export async function listAllEmployeeExitsForKpis(companyId: string) {
-  return prisma.employeeExit.findMany({ where: { companyId } });
-}

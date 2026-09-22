@@ -2,9 +2,7 @@ import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ListToolbar } from "@/components/ui/ListToolbar";
-import { NewJobToggle } from "@/components/recrutamento/NewJobToggle";
-import { JobForm } from "@/components/recrutamento/JobForm";
+import { VagasToolbar } from "@/components/recrutamento/VagasToolbar";
 import { Briefcase } from "lucide-react";
 import { listJobs } from "@/services/jobs";
 import { listCompanyOptions } from "@/services/companyOptions";
@@ -34,28 +32,10 @@ export default async function VagasPage({
     <>
       <Header eyebrow="RECRUTAMENTO" title="Vagas" />
       <div className="fin-content">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <ListToolbar
-            searchPlaceholder="Buscar por título ou local..."
-            filters={[
-              {
-                key: "status",
-                label: "Todos os status",
-                options: [
-                  { value: "OPEN", label: "Aberta" },
-                  { value: "DRAFT", label: "Rascunho" },
-                  { value: "CLOSED", label: "Fechada" },
-                ],
-              },
-            ]}
-          />
-          <NewJobToggle>
-            <JobForm
-              employmentTypeOptions={employmentTypes.map((o) => o.label)}
-              departmentOptions={departments.map((o) => o.label)}
-            />
-          </NewJobToggle>
-        </div>
+        <VagasToolbar
+          employmentTypeOptions={employmentTypes.map((o) => o.label)}
+          departmentOptions={departments.map((o) => o.label)}
+        />
 
         {jobs.length === 0 ? (
           <EmptyState

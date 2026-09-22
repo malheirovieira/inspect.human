@@ -4,6 +4,7 @@ import { ColaboradorForm } from "@/components/colaboradores/ColaboradorForm";
 import { getColaborador } from "@/services/colaboradores";
 import { listCompanyOptions } from "@/services/companyOptions";
 import type { Dependent } from "@/schemas/colaborador";
+import type { CompanyOption } from "@prisma/client";
 
 function toDateInput(date: Date | null): string {
   if (!date) return "";
@@ -30,8 +31,8 @@ export default async function EditarColaboradorPage({ params }: { params: Promis
       <div className="fin-content">
         <ColaboradorForm
           colaboradorId={colaborador.id}
-          departmentOptions={departments.map((d) => d.label)}
-          workScheduleOptions={workSchedules.map((w) => w.label)}
+          departmentOptions={departments.map((d: CompanyOption) => d.label)}
+          workScheduleOptions={workSchedules.map((w: CompanyOption) => w.label)}
           initialDependents={(colaborador.dependents as Dependent[] | null) ?? []}
           initial={{
             name: colaborador.name,

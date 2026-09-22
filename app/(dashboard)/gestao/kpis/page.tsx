@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { getHrKpis } from "@/services/kpis";
-import { currentCompetence } from "@/schemas/budget";
+import { currentCompetence } from "@/lib/competence";
 
 function formatMoney(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -62,11 +62,6 @@ export default async function KpisPage({
             value={kpis.timeToHire.avgDays !== null ? formatDays(kpis.timeToHire.avgDays) : "Sem dados"}
             meta={`${kpis.timeToHire.sampleSize} contratação(ões) no mês`}
             selected
-          />
-          <StatCard
-            label="Desvio de budget"
-            value={kpis.budgetDeviation.percent !== null ? formatPercent(kpis.budgetDeviation.percent) : "Sem dados"}
-            meta={`${formatMoney(kpis.budgetDeviation.consumed)} de ${formatMoney(kpis.budgetDeviation.allocated)}`}
           />
           <StatCard
             label="Turnover"

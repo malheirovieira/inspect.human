@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FieldLabel, Input } from "@/components/ui/Field";
+import { formatPhone } from "@/lib/phoneMask";
 import { applyToJob } from "@/app/empresa/[slug]/vagas/[jobId]/actions";
 
 export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: string }) {
@@ -11,6 +12,7 @@ export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: 
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [resume, setResume] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -20,7 +22,14 @@ export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: 
     setSubmitting(true);
     setError(null);
 
-    const result = await applyToJob(companySlug, jobId, { name, email, phone, linkedinUrl });
+    const formData = new FormData();
+    formData.set("name", name);
+    formData.set("email", email);
+    formData.set("phone", phone);
+    formData.set("linkedinUrl", linkedinUrl);
+    if (resume) formData.set("resume", resume);
+
+    const result = await applyToJob(companySlug, jobId, formData);
 
     setSubmitting(false);
 
@@ -53,15 +62,28 @@ export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: 
         <FieldLabel label="E-mail" required>
           <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </FieldLabel>
-        <FieldLabel label="Telefone">
-          <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <FieldLabel label="Telefone" required>
+          <Input
+            required
+            type="tel"
+            placeholder="(11) 91234-5678"
+            maxLength={15}
+            value={phone}
+            onChange={(e) => setPhone(formatPhone(e.target.value))}
+          />
         </FieldLabel>
         <FieldLabel label="LinkedIn">
           <Input placeholder="https://linkedin.com/in/..." value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
         </FieldLabel>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
-          O envio de currículo em PDF estará disponível em breve.
-        </p>
+        <FieldLabel label="Currículo (PDF, até 5MB)">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setResume(e.target.files?.[0] ?? null)}
+            className="fin-input"
+            style={{ padding: "9px 14px" }}
+          />
+        </FieldLabel>
         {error && (
           <div
             style={{

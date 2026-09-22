@@ -66,7 +66,7 @@ export type ProcessTimeline = Partial<Record<(typeof PROCESS_STEPS)[number], str
 export const applyToJobSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido"),
-  phone: z.string().optional(),
+  phone: z.string().min(14, "Telefone é obrigatório"),
   linkedinUrl: z.string().optional(),
 });
 

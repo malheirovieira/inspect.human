@@ -8,28 +8,33 @@
    visual entre os dois produtos. Adaptar aqui = adaptar nos dois produtos.
    ========================================================================= */
 :root {
-  /* Paleta verde (troca da paleta azul original do Inspect Finance a
-     pedido do usuário). --green-900 e --green-700 são os dois tons exatos
-     fornecidos (#253D2C e #2E6F40); os demais tons da escala foram
-     derivados a partir deles para manter a mesma estrutura de gradientes,
-     estados de hover e superfícies claras que o resto do sistema usa. */
-  --green-900: #253d2c;
-  --green-800: #2c4e36;
-  --green-700: #2e6f40;
-  --green-600: #3c9054;
-  --green-400: #8dce9f;
-  --green-surface: #eef7f0;
+  /* Paleta preto + accent (mesmo truque de sempre: os nomes de variável
+     --green-*, --gray-*, --surface-* ficam iguais, só os hex mudam, pra
+     propagar em todo o app sem reescrever cada tela). Accent verde vivo
+     (positivo/ativo) e danger vermelho (remover); a escala preto
+     (green-900/800) não muda. */
+  --green-900: #131313;
+  --green-800: #262626;
+  --green-700: #15803d;
+  --green-600: #166534;
+  --green-400: #4ade80;
+  --green-surface: #dcfce7;
   --white: #ffffff;
-  --gray-50: #f5f5f2;
-  --gray-100: #ecece8;
-  --gray-200: #e2e1dc;
-  --gray-400: #75746d;
-  --gray-700: #4d4c46;
-  --ink: #1c1b17;
-  --success: #1e7a4c;
-  --success-surface: #e4f3ea;
-  --danger: #a23b2e;
-  --danger-surface: #f6e7e3;
+  --gray-50: #fafaf9;
+  --gray-100: #f3f2f0;
+  --gray-200: #e5e3df;
+  --gray-400: #8a8a85;
+  --gray-700: #4a4a46;
+  --ink: #131313;
+  --success: #15803d;
+  --success-surface: #dcfce7;
+  --danger: #dc2626;
+  --danger-surface: #fee2e2;
+  /* Azul "padrão" de identidade/interação (hover de botão primário, painel
+     de login/cadastro, foco de campo) — token à parte de --green-700 e
+     --success, que agora são semânticos (estado ativo/positivo). */
+  --focus-ring: #195ab4;
+  --focus-ring-light: #5f99e9;
   --surface-page: var(--gray-50);
   --surface: var(--white);
   --surface-muted: var(--gray-100);
@@ -39,16 +44,16 @@
   --text-secondary: var(--gray-700);
   --text-muted: var(--gray-400);
   --on-dark: var(--white);
-  --action-primary: var(--green-700);
-  --action-primary-hover: var(--green-600);
+  --action-primary: var(--green-900);
+  --action-primary-hover: var(--focus-ring);
   --action-primary-text: var(--green-900);
   --on-action-primary: var(--white);
   --radius-sm: 4px;
   --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-lg: 16px;
   --radius-full: 999px;
   --shadow-sm: 0 1px 2px rgba(5, 19, 42, 0.06), 0 1px 1px rgba(5, 19, 42, 0.04);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 html,
@@ -72,7 +77,10 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 8px 24px;
+  padding: 14px 12px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 .fin-sidebar__avatar {
   width: 40px;
@@ -185,6 +193,66 @@ body {
   gap: 20px;
 }
 
+/* ---- Entrada de página (components/layout/PageTransition.tsx) ----
+   "both" mantém o keyframe de 0% (invisível) aplicado durante o delay
+   inicial e o de 100% depois que termina — sem isso o elemento ficaria
+   visível por padrão entre o mount e o animation-delay começar a rodar. */
+@keyframes fin-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fin-page-enter {
+  /* flex column + flex:1 pra herdar a altura cheia de .fin-main (que já é
+     flex column esticado pelo .fin-app) — sem isso o conteúdo de dentro
+     (como o loading) só ocupa a própria altura de conteúdo, não a da tela,
+     e a bolinha de carregamento centraliza acima do meio de verdade. */
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  animation: fin-page-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+/* ---- Loading entre navegações (app/(dashboard)/loading.tsx) ---- */
+.fin-route-loading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  background: rgba(250, 250, 249, 0.75);
+  animation: fin-route-loading-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.fin-route-loading__spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: 3px solid var(--border);
+  border-top-color: var(--focus-ring);
+  animation: fin-route-loading-spin 1.4s linear infinite;
+}
+@keyframes fin-route-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fin-route-loading-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
 .fin-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -277,6 +345,29 @@ body {
 .fin-statcard--selected {
   background: var(--green-900);
 }
+/* Card "Colaboradores" do dashboard — referência: Uiverse.io, adaptado ao
+   raio de borda padrão do app. O "levantar" no hover usa transform (não
+   margin) justamente pra não afetar o layout/altura da linha do grid — com
+   margin-top negativo os cards vizinhos "sentem" a mudança de posição. */
+.fin-statcard-featured {
+  background: rgb(40, 40, 55);
+  background: linear-gradient(344deg, rgba(40, 40, 55, 1) 0%, rgba(16, 16, 18, 1) 50%);
+  box-shadow: 4px 6px 14px #00000036;
+  border-radius: var(--radius-lg);
+  transition: transform 0.3s ease;
+}
+.fin-statcard-featured:hover {
+  transform: translateY(-6px);
+}
+/* Mesmo efeito de "levantar" do card Colaboradores, reutilizável em
+   qualquer outro card do dashboard (StatCard simples ou os cards de
+   conteúdo) — mesma transição/deslocamento, só sem o fundo em gradiente. */
+.fin-card-hover-lift {
+  transition: transform 0.3s ease;
+}
+.fin-card-hover-lift:hover {
+  transform: translateY(-6px);
+}
 .fin-statcard__eyebrow {
   font-size: 11px;
   color: var(--text-muted);
@@ -339,6 +430,9 @@ body {
 .brand-wordmark--light {
   color: #fff;
 }
+.brand-wordmark--sm {
+  font-size: 16px;
+}
 .fin-icon-btn {
   width: 32px;
   height: 32px;
@@ -364,14 +458,88 @@ body {
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--surface);
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font: inherit;
   font-size: 14px;
   width: 100%;
 }
+.fin-input::placeholder {
+  color: var(--text-muted);
+}
 .fin-input:focus {
-  outline: 2px solid var(--green-400);
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+/* ---- Campo de busca (pílula + sublinhado animado no foco) ---- */
+.fin-search {
+  --timing: 0.3s;
+  --width-of-input: 260px;
+  --height-of-input: 40px;
+  --border-height: 2px;
+  --input-bg: var(--surface);
+  --border-color: var(--focus-ring);
+  --after-border-radius: 4px;
+  position: relative;
+  width: var(--width-of-input);
+  height: var(--height-of-input);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-inline: 0.8em;
+  border-radius: var(--radius-full);
+  transition: border-radius 0.5s ease;
+  background: var(--input-bg);
+}
+.fin-search button {
+  display: flex;
+  align-items: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.fin-search__input {
+  font: inherit;
+  font-size: 14px;
+  background-color: transparent;
+  width: 100%;
+  height: 100%;
+  padding-inline: 0.5em;
+  border: none;
+  color: var(--text-primary);
+}
+.fin-search__input:focus {
+  outline: none;
+}
+.fin-search:before {
+  content: "";
+  position: absolute;
+  background: var(--border-color);
+  transform: scaleX(0);
+  transform-origin: center;
+  width: 100%;
+  height: var(--border-height);
+  left: 0;
+  bottom: 0;
+  border-radius: 1px;
+  transition: transform var(--timing) ease;
+}
+.fin-search:focus-within {
+  border-radius: var(--after-border-radius);
+}
+.fin-search:focus-within:before {
+  transform: scale(1);
+}
+.fin-search__reset {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--timing) ease;
+}
+.fin-search__input:not(:placeholder-shown) ~ .fin-search__reset {
+  opacity: 1;
+  visibility: visible;
 }
 
 /* ---- Tela de autenticação (login/cadastro) ---- */
@@ -409,7 +577,7 @@ body {
   gap: 28px;
   padding: 56px 48px;
   color: #fff;
-  background: linear-gradient(150deg, var(--green-900) 0%, var(--green-700) 100%);
+  background: linear-gradient(150deg, var(--green-900) 0%, var(--focus-ring) 100%);
   overflow: hidden;
 }
 .auth-shell__title {
@@ -442,7 +610,7 @@ body {
   color: #c9d8ec;
 }
 .auth-shell__bullets svg {
-  color: var(--green-400);
+  color: var(--focus-ring-light);
   flex-shrink: 0;
   margin-top: 1px;
 }

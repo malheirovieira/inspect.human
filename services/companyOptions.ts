@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
 
-export const OPTION_CATEGORIES = ["SETOR", "HORARIO_TRABALHO", "MODALIDADE_CONTRATACAO", "CATEGORIA_BUDGET"] as const;
+export const OPTION_CATEGORIES = ["SETOR", "HORARIO_TRABALHO", "MODALIDADE_CONTRATACAO"] as const;
 export type OptionCategory = (typeof OPTION_CATEGORIES)[number];
 
 export async function listCompanyOptions(category: OptionCategory) {
@@ -24,6 +24,5 @@ export async function listAllCompanyOptions() {
     SETOR: options.filter((o) => o.category === "SETOR"),
     HORARIO_TRABALHO: options.filter((o) => o.category === "HORARIO_TRABALHO"),
     MODALIDADE_CONTRATACAO: options.filter((o) => o.category === "MODALIDADE_CONTRATACAO"),
-    CATEGORIA_BUDGET: options.filter((o) => o.category === "CATEGORIA_BUDGET"),
   };
 }

@@ -1,14 +1,35 @@
+import Link from "next/link";
 import { Header } from "@/components/layout/Header";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { OptionList } from "@/components/configuracoes/OptionList";
 import { listAllCompanyOptions } from "@/services/companyOptions";
+import { requireSession } from "@/lib/session";
 
 export default async function ConfiguracoesPage() {
-  const options = await listAllCompanyOptions();
+  const [session, options] = await Promise.all([requireSession(), listAllCompanyOptions()]);
 
   return (
     <>
       <Header title="Configurações" />
       <div className="fin-content">
+        {session.role === "ADMIN" && (
+          <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <span className="fin-eyebrow">ACESSO</span>
+              <div className="fin-heading" style={{ marginBottom: 0 }}>
+                Usuários
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                Crie acesso ao sistema pro seu time (RH ou colaborador) sem passar pelo Supabase.
+              </p>
+            </div>
+            <Link href="/configuracoes/usuarios">
+              <Button variant="secondary">Convidar colaborador</Button>
+            </Link>
+          </Card>
+        )}
+
         <div>
           <span className="fin-eyebrow">LISTAS DA EMPRESA</span>
           <div className="fin-heading" style={{ marginBottom: 0 }}>
@@ -37,12 +58,6 @@ export default async function ConfiguracoesPage() {
             title="Modalidades de contratação"
             description="Ex.: CLT, PJ, Estágio."
             options={options.MODALIDADE_CONTRATACAO}
-          />
-          <OptionList
-            category="CATEGORIA_BUDGET"
-            title="Categorias de budget"
-            description="Ex.: Treinamento, Confraternizações, Benefícios. Salário é automático e não aparece aqui."
-            options={options.CATEGORIA_BUDGET}
           />
         </div>
       </div>

@@ -1,27 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { copyToClipboard } from "@/lib/clipboard";
 
 export function CopyLinkButton({ path }: { path: string }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
 
   async function handleCopy() {
     const url = `${window.location.origin}${path}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard indisponível (ex.: contexto não seguro) — ignora silenciosamente
-    }
+    setStatus((await copyToClipboard(url)) ? "copied" : "error");
+    setTimeout(() => setStatus("idle"), 2000);
   }
 
   return (
     <Button type="button" variant="secondary" onClick={handleCopy}>
-      {copied ? <Check size={14} /> : <Copy size={14} />}
-      {copied ? "Link copiado" : "Copiar link público"}
+      {status === "copied" ? <Check size={14} /> : status === "error" ? <X size={14} /> : <Copy size={14} />}
+      {status === "copied" ? "Link copiado" : status === "error" ? "Não foi possível copiar" : "Copiar link público"}
     </Button>
   );
 }

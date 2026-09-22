@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { generateTemporaryPassword } from "@/lib/tempPassword";
 import {
   createColaboradorSchema,
   updateColaboradorSchema,
@@ -10,7 +11,9 @@ import {
   type UpdateColaboradorInput,
 } from "@/schemas/colaborador";
 
-export type CreateColaboradorResult = { error: string } | { success: true; userId: string };
+export type CreateColaboradorResult =
+  | { error: string }
+  | { success: true; userId: string; temporaryPassword: string };
 export type ActionResult = { error: string } | { success: true };
 
 // Server Action chamada pelo formulário de cadastro (components/colaboradores/ColaboradorForm.tsx).
@@ -31,7 +34,7 @@ export async function createColaborador(input: CreateColaboradorInput): Promise<
   }
 
   const supabaseAdmin = createSupabaseAdminClient();
-  const temporaryPassword = crypto.randomUUID();
+  const temporaryPassword = generateTemporaryPassword();
 
   const { data: created, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email: data.email,
@@ -51,6 +54,7 @@ export async function createColaborador(input: CreateColaboradorInput): Promise<
         name: data.name,
         email: data.email,
         role: data.role,
+        mustChangePassword: true,
         birthDate: new Date(data.birthDate),
         sex: data.sex,
         nationality: data.nationality,
@@ -92,7 +96,7 @@ export async function createColaborador(input: CreateColaboradorInput): Promise<
         admissionExamResult: data.admissionExamResult || null,
       },
     });
-    return { success: true, userId: user.id };
+    return { success: true, userId: user.id, temporaryPassword };
   } catch {
     // Reverte o usuário de Auth já criado se a gravação no banco falhar,
     // pra não deixar um login órfão sem ficha correspondente.

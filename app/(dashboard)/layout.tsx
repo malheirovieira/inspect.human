@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { requireSession } from "@/lib/session";
@@ -5,6 +6,12 @@ import { prisma } from "@/lib/prisma";
 
 export default async function DashboardGroupLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
+
+  // Conta criada com senha temporária (inviteUser/createColaborador) —
+  // bloqueia todo o dashboard até trocar a senha. /trocar-senha fica fora
+  // deste grupo de rotas (como /login), então não entra nesse redirect.
+  if (session.mustChangePassword) redirect("/trocar-senha");
+
   const company = await prisma.company.findUnique({ where: { id: session.companyId } });
 
   return (

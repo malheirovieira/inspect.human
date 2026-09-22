@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Search } from "lucide-react";
-import { Input, Select } from "@/components/ui/Field";
+import { Select } from "@/components/ui/Field";
+import { SearchInput } from "@/components/ui/SearchInput";
 
 type FilterOption = { value: string; label: string };
 type FilterConfig = { key: string; label: string; options: FilterOption[] };
@@ -38,18 +38,7 @@ export function ListToolbar({
 
   return (
     <div style={{ display: "flex", gap: 12, flexWrap: "nowrap", alignItems: "center", overflowX: "auto" }}>
-      <div style={{ position: "relative", flexShrink: 0, width: 360 }}>
-        <Search
-          size={16}
-          style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }}
-        />
-        <Input
-          placeholder={searchPlaceholder}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          style={{ paddingLeft: 36 }}
-        />
-      </div>
+      <SearchInput value={query} onChange={setQuery} placeholder={searchPlaceholder} width={360} className="shrink-0" />
       {filters.map((filter) => (
         <Select
           key={filter.key}

@@ -6,6 +6,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
+import { TemporaryPasswordCard } from "@/components/ui/TemporaryPasswordCard";
 import { createColaborador, updateColaborador } from "@/app/(dashboard)/colaboradores/actions";
 import type { Dependent } from "@/schemas/colaborador";
 
@@ -145,6 +146,7 @@ export function ColaboradorForm({
   const [dependents, setDependents] = useState<Dependent[]>(initialDependents ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdAccess, setCreatedAccess] = useState<{ email: string; temporaryPassword: string } | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -174,17 +176,40 @@ export function ColaboradorForm({
       dependents,
     };
 
-    const result = isEdit ? await updateColaborador(colaboradorId!, payload) : await createColaborador(payload);
+    if (isEdit) {
+      const result = await updateColaborador(colaboradorId!, payload);
+      setSubmitting(false);
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      router.push("/colaboradores");
+      router.refresh();
+      return;
+    }
 
+    const result = await createColaborador(payload);
     setSubmitting(false);
-
     if ("error" in result) {
       setError(result.error);
       return;
     }
 
-    router.push("/colaboradores");
+    // Mostra a senha temporária antes de sair da tela — ela só aparece
+    // aqui, uma vez, então não dá pra navegar embora sem exibi-la.
+    setCreatedAccess({ email: form.email, temporaryPassword: result.temporaryPassword });
     router.refresh();
+  }
+
+  if (createdAccess) {
+    return (
+      <TemporaryPasswordCard
+        email={createdAccess.email}
+        temporaryPassword={createdAccess.temporaryPassword}
+        dismissLabel="Ir para Colaboradores"
+        onDismiss={() => router.push("/colaboradores")}
+      />
+    );
   }
 
   return (

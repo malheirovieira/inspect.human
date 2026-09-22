@@ -2,12 +2,11 @@ import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ListToolbar } from "@/components/ui/ListToolbar";
-import { NewExitToggle } from "@/components/desligamentos/NewExitToggle";
+import { DesligamentosToolbar } from "@/components/desligamentos/DesligamentosToolbar";
 import { UserX } from "lucide-react";
 import { listEmployeeExits } from "@/services/employeeExits";
 import { listColaboradores } from "@/services/colaboradores";
-import { EXIT_TYPES, EXIT_TYPE_LABELS, EXIT_REASONS, EXIT_REASON_LABELS } from "@/schemas/employeeExit";
+import { EXIT_TYPE_LABELS, EXIT_REASON_LABELS } from "@/schemas/employeeExit";
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString("pt-BR", { timeZone: "UTC" });
@@ -29,31 +28,14 @@ export default async function DesligamentosPage({
     <>
       <Header eyebrow="PESSOAS" title="Desligamentos" />
       <div className="fin-content">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <ListToolbar
-            searchPlaceholder="Buscar por nome..."
-            filters={[
-              {
-                key: "exitType",
-                label: "Todos os tipos",
-                options: EXIT_TYPES.map((t) => ({ value: t, label: EXIT_TYPE_LABELS[t] })),
-              },
-              {
-                key: "reason",
-                label: "Todos os motivos",
-                options: EXIT_REASONS.map((r) => ({ value: r, label: EXIT_REASON_LABELS[r] })),
-              },
-            ]}
-          />
-          <NewExitToggle
-            colaboradores={colaboradores.map((c) => ({
-              id: c.id,
-              name: c.name,
-              position: c.position,
-              department: c.department,
-            }))}
-          />
-        </div>
+        <DesligamentosToolbar
+          colaboradores={colaboradores.map((c) => ({
+            id: c.id,
+            name: c.name,
+            position: c.position,
+            department: c.department,
+          }))}
+        />
 
         {exits.length === 0 ? (
           <EmptyState

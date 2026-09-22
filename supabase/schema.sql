@@ -38,6 +38,9 @@ create table users (
   email text not null,
   role text not null,
   active boolean not null default true,
+  -- Força troca de senha no primeiro login pra contas criadas com senha
+  -- temporária (inviteUser, createColaborador) — ver migrations/0016.
+  must_change_password boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
@@ -232,86 +235,6 @@ create table training_progress (
 create index idx_training_progress_company_assignment on training_progress (company_id, assignment_id);
 
 -- ----------------------------------------------------------------------------
--- time_clocks (Ponto Lite)
--- recorded_at é SEMPRE now() no servidor — nunca aceito do cliente.
--- A sequência ENTRADA/SAÍDA e a proteção contra corrida são garantidas por
--- uma função SECURITY DEFINER chamada pelo servidor (register_time_clock),
--- que serializa por usuário com pg_advisory_xact_lock antes de decidir o
--- próximo tipo esperado.
--- ----------------------------------------------------------------------------
-create table time_clocks (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references companies (id) on delete cascade,
-  user_id uuid not null references users (id) on delete cascade,
-  type text not null,
-  recorded_at timestamptz not null default now(),
-  latitude numeric(9, 6),
-  longitude numeric(9, 6),
-  created_at timestamptz not null default now(),
-  constraint time_clocks_type_check check (type in ('ENTRADA', 'SAIDA'))
-);
-create index idx_time_clocks_company_user_date on time_clocks (company_id, user_id, recorded_at desc);
-
-create or replace function register_time_clock(
-  p_user_id uuid,
-  p_company_id uuid,
-  p_latitude numeric default null,
-  p_longitude numeric default null
-)
-returns time_clocks language plpgsql as $$
-declare
-  v_last_type text;
-  v_next_type text;
-  v_row time_clocks;
-begin
-  -- serializa batidas concorrentes do mesmo usuário (protege contra duplo clique / corrida)
-  perform pg_advisory_xact_lock(hashtext(p_user_id::text));
-
-  select type into v_last_type
-  from time_clocks
-  where user_id = p_user_id
-    and company_id = p_company_id
-    and recorded_at::date = (now() at time zone 'utc')::date
-  order by recorded_at desc
-  limit 1;
-
-  v_next_type := case when v_last_type = 'ENTRADA' then 'SAIDA' else 'ENTRADA' end;
-
-  insert into time_clocks (company_id, user_id, type, latitude, longitude)
-  values (p_company_id, p_user_id, v_next_type, p_latitude, p_longitude)
-  returning * into v_row;
-
-  return v_row;
-end;
-$$ security definer set search_path = public;
-
--- ----------------------------------------------------------------------------
--- payroll_variables (Folha Lite)
--- ----------------------------------------------------------------------------
-create table payroll_variables (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references companies (id) on delete cascade,
-  user_id uuid not null references users (id) on delete cascade,
-  competence date not null,
-  type text not null,
-  description text,
-  amount numeric(12, 2) not null,
-  notes text,
-  created_by uuid references users (id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint payroll_variables_type_check check (
-    type in ('COMISSAO', 'PREMIO', 'FALTA_JUSTIFICADA', 'FALTA_INJUSTIFICADA', 'OUTROS')
-  ),
-  constraint payroll_variables_amount_check check (amount >= 0),
-  constraint payroll_variables_competence_check check (
-    competence = date_trunc('month', competence)::date
-  )
-);
-create index idx_payroll_variables_company_competence on payroll_variables (company_id, competence);
-create index idx_payroll_variables_company_user on payroll_variables (company_id, user_id, competence);
-
--- ----------------------------------------------------------------------------
 -- company_options — listas configuráveis pela empresa (Configurações):
 -- setor, horário de trabalho, modalidade de contratação.
 -- ----------------------------------------------------------------------------
@@ -323,49 +246,10 @@ create table company_options (
   active boolean not null default true,
   created_at timestamptz not null default now(),
   constraint company_options_category_check
-    check (category in ('SETOR', 'HORARIO_TRABALHO', 'MODALIDADE_CONTRATACAO', 'CATEGORIA_BUDGET')),
+    check (category in ('SETOR', 'HORARIO_TRABALHO', 'MODALIDADE_CONTRATACAO')),
   constraint company_options_unique unique (company_id, category, label)
 );
 create index idx_company_options_company_category on company_options (company_id, category);
-
--- ----------------------------------------------------------------------------
--- budgets / budget_expenses — orçamento por departamento/categoria
--- (Gestão > Budget). "department" é texto livre, mesma convenção de
--- users.department (sem FK pra company_options).
--- ----------------------------------------------------------------------------
--- Orçamento com vigência: entra em vigor em start_date e vale até end_date
--- (ou indefinidamente, se null). status ATIVO/SUSPENSO. Pode existir mais
--- de um registro por departamento/categoria ao longo do tempo.
-create table budgets (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references companies (id) on delete cascade,
-  department text not null,
-  category text not null,
-  amount numeric(12, 2) not null,
-  start_date date not null,
-  end_date date,
-  status text not null default 'ATIVO',
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint budgets_category_check check (category in ('SALARIO', 'TREINAMENTO', 'CONFRATERNIZACOES')),
-  constraint budgets_status_check check (status in ('ATIVO', 'SUSPENSO'))
-);
-create index idx_budgets_company_department on budgets (company_id, department, category);
-create index idx_budgets_company_status on budgets (company_id, status);
-
-create table budget_expenses (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid not null references companies (id) on delete cascade,
-  department text not null,
-  category text not null,
-  description text,
-  amount numeric(12, 2) not null,
-  expense_date date not null,
-  created_at timestamptz not null default now(),
-  constraint budget_expenses_category_check check (category in ('SALARIO', 'TREINAMENTO', 'CONFRATERNIZACOES'))
-);
-create index idx_budget_expenses_company_dept_cat on budget_expenses (company_id, department, category);
-create index idx_budget_expenses_company_date on budget_expenses (company_id, expense_date);
 
 -- ----------------------------------------------------------------------------
 -- employee_exits — registro de desligamento (Pessoas > Desligamentos),
@@ -408,6 +292,26 @@ create table kanban_stage_labels (
 );
 
 -- ----------------------------------------------------------------------------
+-- employee_documents — documento anexado à ficha do colaborador (contrato,
+-- atestado, exame etc.). file_url guarda o path no Supabase Storage, não o
+-- binário — upload real (bucket + action + UI) ainda não implementado.
+-- ----------------------------------------------------------------------------
+create table employee_documents (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  user_id uuid not null references users (id) on delete cascade,
+  type text not null, -- validado no Zod, sem check constraint por ora
+  file_name text not null,
+  file_url text not null,
+  issue_date date,
+  expiration_date date,
+  notes text,
+  created_at timestamptz not null default now()
+);
+create index idx_employee_documents_company_id_user_id on employee_documents (company_id, user_id);
+create index idx_employee_documents_company_id_expiration_date on employee_documents (company_id, expiration_date);
+
+-- ----------------------------------------------------------------------------
 -- updated_at automático
 -- ----------------------------------------------------------------------------
 create or replace function set_updated_at()
@@ -421,7 +325,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['companies','users','jobs','candidates','training_trails','payroll_variables']
+  foreach t in array array['companies','users','jobs','candidates','training_trails']
   loop
     execute format('create trigger trg_%I_updated_at before update on %I for each row execute function set_updated_at();', t, t);
   end loop;
@@ -439,8 +343,6 @@ alter table training_trails enable row level security;
 alter table training_items enable row level security;
 alter table training_assignments enable row level security;
 alter table training_progress enable row level security;
-alter table time_clocks enable row level security;
-alter table payroll_variables enable row level security;
 
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public from anon, authenticated;

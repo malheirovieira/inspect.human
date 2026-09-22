@@ -38,13 +38,10 @@ model Company {
   trainingItems       TrainingItem[]
   trainingAssignments TrainingAssignment[]
   trainingProgress    TrainingProgress[]
-  timeClocks          TimeClock[]
-  payrollVariables    PayrollVariable[]
   companyOptions      CompanyOption[]
-  budgets             Budget[]
-  budgetExpenses      BudgetExpense[]
   employeeExits       EmployeeExit[]
   kanbanStageLabels   KanbanStageLabel[]
+  employeeDocuments   EmployeeDocument[]
 
   @@map("companies")
   @@schema("public")
@@ -78,6 +75,12 @@ model User {
   email     String
   role      String
   active    Boolean  @default(true)
+  // Ligado sempre que o acesso é criado com senha temporária gerada pelo
+  // sistema (inviteUser, createColaborador) — força a troca antes de
+  // liberar qualquer rota do dashboard (ver app/(dashboard)/layout.tsx e
+  // app/trocar-senha/). Nunca fica true em contas que definiram a própria
+  // senha (ex.: /cadastro).
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
@@ -136,11 +139,9 @@ model User {
 
   createdJobs         Job[]                @relation("JobCreatedBy")
   trainingAssignments TrainingAssignment[]
-  timeClocks          TimeClock[]
-  payrollVariables    PayrollVariable[]    @relation("PayrollUser")
-  createdPayroll      PayrollVariable[]    @relation("PayrollCreatedBy")
   exit                EmployeeExit?        @relation("ExitUser")
   processedExits      EmployeeExit[]       @relation("ExitCreatedBy")
+  documents           EmployeeDocument[]
 
   @@unique([companyId, email])
   @@unique([companyId, cpf])
@@ -298,95 +299,6 @@ model TrainingProgress {
   @@schema("public")
 }
 
-model TimeClock {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId  String   @map("company_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  type       String
-  recordedAt DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
-  latitude   Decimal? @db.Decimal(9, 6)
-  longitude  Decimal? @db.Decimal(9, 6)
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([companyId, userId, recordedAt])
-  @@map("time_clocks")
-  @@schema("public")
-}
-
-model PayrollVariable {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String   @map("company_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  competence  DateTime @db.Date
-  type        String
-  description String?
-  amount      Decimal  @db.Decimal(12, 2)
-  notes       String?
-  createdById String?  @map("created_by") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user      User    @relation("PayrollUser", fields: [userId], references: [id], onDelete: Cascade)
-  createdBy User?   @relation("PayrollCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-
-  @@index([companyId, competence])
-  @@index([companyId, userId, competence])
-  @@map("payroll_variables")
-  @@schema("public")
-}
-
-// Orçamento alocado por departamento + categoria, por mês (competência).
-// "department" guarda o mesmo texto usado em users.department/company_options
-// (categoria SETOR) — sem FK, mesma convenção de texto livre já usada ali.
-// Orçamento com vigência (não mais "um valor por mês exato"): entra em
-// vigor em startDate e vale até endDate (ou indefinidamente, se null).
-// Pode existir mais de um registro por departamento/categoria ao longo do
-// tempo — services/budget.ts escolhe o vigente pra cada competência.
-model Budget {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId  String    @map("company_id") @db.Uuid
-  department String
-  category   String
-  amount     Decimal   @db.Decimal(12, 2)
-  startDate  DateTime  @map("start_date") @db.Date
-  endDate    DateTime? @map("end_date") @db.Date
-  status     String    @default("ATIVO")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId, department, category])
-  @@index([companyId, status])
-  @@map("budgets")
-  @@schema("public")
-}
-
-// Gasto lançado manualmente (Treinamento/Confraternizações). A categoria
-// Salário não usa esta tabela — o consumo é calculado a partir da soma dos
-// salários dos colaboradores ativos do departamento (services/budget.ts).
-model BudgetExpense {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId   String   @map("company_id") @db.Uuid
-  department  String
-  category    String
-  description String?
-  amount      Decimal  @db.Decimal(12, 2)
-  expenseDate DateTime @map("expense_date") @db.Date
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId, department, category])
-  @@index([companyId, expenseDate])
-  @@map("budget_expenses")
-  @@schema("public")
-}
-
 // Registro de desligamento. Guarda uma "foto" do colaborador (nome, cargo,
 // departamento, data de admissão) porque o cadastro pode ser excluído de
 // verdade depois (users.id → on delete set null) e o histórico de turnover
@@ -429,5 +341,35 @@ model KanbanStageLabel {
 
   @@unique([companyId, stage])
   @@map("kanban_stage_labels")
+  @@schema("public")
+}
+
+// Documento anexado à ficha do colaborador (contrato, atestado, exame etc.).
+// fileUrl guarda o path no Supabase Storage, não o binário — upload real
+// (bucket + action + UI) ainda não implementado, mesmo gap de
+// Candidate.resumePath.
+model EmployeeDocument {
+  id        String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String @map("company_id") @db.Uuid
+  userId    String @map("user_id") @db.Uuid
+
+  // Validar no Zod: CONTRATO | ATESTADO | COMPROVANTE_RESIDENCIA | EXAME_ASO
+  // | RG | CPF | CTPS | FOTO_PERFIL | OUTRO — sem enum de banco (padrão do projeto)
+  type     String
+  fileName String @map("file_name")
+  fileUrl  String @map("file_url")
+
+  issueDate      DateTime? @map("issue_date") @db.Date
+  expirationDate DateTime? @map("expiration_date") @db.Date
+  notes          String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, userId])
+  @@index([companyId, expirationDate])
+  @@map("employee_documents")
   @@schema("public")
 }
