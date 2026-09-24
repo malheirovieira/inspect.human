@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { setJobStatus } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { listCompanyOptions } from "@/services/companyOptions";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
+import { getAiSnippets } from "@/services/resumeAnalyses";
 import { CANDIDATE_STAGES } from "@/schemas/candidate";
 
 const TABS = [
@@ -51,9 +52,18 @@ export default async function VagaDetalhePage({
   if (!job) notFound();
 
   const publicPath = `/empresa/${company?.slug}/vagas/${job.id}`;
+  // Tags + experiência do resumo por IA nos cards (sem o resumo).
+  const aiSnippets = await getAiSnippets(session.companyId, [...new Set(job.applications.map((a) => a.candidateId))]);
   const boardCandidates = job.applications.map((a) => {
     const { candidate, ...rest } = a;
-    return { ...rest, ...candidate, job: { title: job.title } };
+    const snippet = aiSnippets.get(a.candidateId);
+    return {
+      ...rest,
+      ...candidate,
+      job: { title: job.title },
+      aiSkills: snippet?.skills,
+      aiExperienceYears: snippet?.experienceYears ?? null,
+    };
   });
   // Reprovado não conta como candidato "em aberto" — mesma régua usada no
   // filtro "Mostrar reprovados" logo abaixo.

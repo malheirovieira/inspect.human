@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CandidateProfileForm } from "@/components/recrutamento/CandidateProfileForm";
 import { CandidateResumeUpload } from "@/components/recrutamento/CandidateResumeUpload";
-import { CandidateTestToggle } from "@/components/recrutamento/CandidateTestToggle";
+import { CandidateOptionsMenu } from "@/components/recrutamento/CandidateOptionsMenu";
+import { AiSummaryCard } from "@/components/recrutamento/AiSummaryCard";
 import { getPerson } from "@/services/candidates";
+import { getProfileAiState } from "@/services/resumeAnalyses";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { RESUME_BUCKET } from "@/lib/resumes/files";
 import { requireSession } from "@/lib/session";
@@ -45,6 +47,7 @@ export default async function PessoaPerfilPage({
 
   const [candidate, session] = await Promise.all([getPerson(candidateId), requireSession()]);
   if (!candidate) notFound();
+  const aiState = activeTab === "perfil" ? await getProfileAiState(candidate.id) : null;
 
   // Versão atual + anteriores. Sem versão ainda (pessoa anterior ao
   // versionamento e backfill não rodado), cai no arquivo legado resumePath.
@@ -85,14 +88,7 @@ export default async function PessoaPerfilPage({
         ]}
       />
       <div className="fin-content">
-        {(candidate.isTest || session.role === "ADMIN") && (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            {candidate.isTest && <Badge tone="primary">Teste</Badge>}
-            {session.role === "ADMIN" && <CandidateTestToggle candidateId={candidate.id} isTest={candidate.isTest} />}
-          </div>
-        )}
-
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, borderBottom: "1px solid var(--border)" }}>
           {TABS.map((t) => (
             <Link
               key={t.key}
@@ -110,6 +106,12 @@ export default async function PessoaPerfilPage({
               {t.key === "candidaturas" ? ` (${candidate.applications.length})` : ""}
             </Link>
           ))}
+          {/* Selo "Teste" sempre visível quando marcado; o menu ⋮ (onde se
+              marca/desmarca) só pra ADMIN. */}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, paddingBottom: 4 }}>
+            {candidate.isTest && <Badge tone="primary">Teste</Badge>}
+            {session.role === "ADMIN" && <CandidateOptionsMenu candidateId={candidate.id} isTest={candidate.isTest} />}
+          </div>
         </div>
 
         {activeTab === "perfil" && (
@@ -124,8 +126,8 @@ export default async function PessoaPerfilPage({
               }}
             />
 
-            {/* Reservado para o resumo por IA do currículo (Fase 3, etapa 3) —
-                fica ACIMA do currículo. Sem placeholder visível de propósito. */}
+            {/* Resumo por IA — ACIMA do currículo. Some quando não há currículo. */}
+            {aiState && <AiSummaryCard candidateId={candidate.id} state={aiState} />}
 
             {resumeUrl ? (
               <div className="fin-card" style={{ display: "flex", flexDirection: "column", gap: 16 }}>

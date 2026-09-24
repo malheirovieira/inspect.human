@@ -19,6 +19,8 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from "@dnd-kit/utilities";
 import { Select } from "@/components/ui/Field";
 import { TagDot } from "@/components/recrutamento/TagDot";
+import { AiCardSnippet } from "@/components/recrutamento/AiCardSnippet";
+import { Badge } from "@/components/ui/Badge";
 import { Pencil } from "lucide-react";
 import {
   moveCandidateInKanban,
@@ -37,6 +39,10 @@ export type KanbanCandidate = {
   qualificationTag: string | null;
   position: number;
   job: { title: string };
+  isTest?: boolean;
+  // Resumo por IA (análise concluída): até 3 tags + experiência no card.
+  aiSkills?: string[];
+  aiExperienceYears?: number | null;
 };
 
 const TAG_ORDER: Record<string, number> = { GREEN: 0, BLUE: 1, RED: 2 };
@@ -79,8 +85,16 @@ function CandidateCard({ candidate, jobId, showJob }: { candidate: KanbanCandida
         <TagDot tag={candidate.qualificationTag as (typeof CANDIDATE_TAGS)[number]} interactive={false} />
       )}
       <Link href={`/recrutamento/vagas/${jobId}/candidaturas/${candidate.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-        <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: "var(--ink)" }}>{candidate.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: "var(--ink)" }}>
+          {candidate.name}
+          {candidate.isTest && (
+            <Badge tone="primary" style={{ fontSize: 10, padding: "0 6px" }}>
+              Teste
+            </Badge>
+          )}
+        </div>
         {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{candidate.job.title}</div>}
+        <AiCardSnippet skills={candidate.aiSkills} experienceYears={candidate.aiExperienceYears} />
       </Link>
     </div>
   );

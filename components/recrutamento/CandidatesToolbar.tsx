@@ -15,11 +15,14 @@ export function CandidatesToolbar({
   stageOptions,
   tagOptions,
   jobOptions,
+  skillOptions = [],
   jobs,
 }: {
   stageOptions: FilterOption[];
   tagOptions: FilterOption[];
   jobOptions: FilterOption[];
+  // Tags de competência do resumo por IA em uso na empresa.
+  skillOptions?: FilterOption[];
   jobs: Job[];
 }) {
   const [open, setOpen] = useState(false);
@@ -33,6 +36,7 @@ export function CandidatesToolbar({
             { key: "jobId", label: "Todas as vagas", options: jobOptions },
             { key: "stage", label: "Todas as etapas", options: stageOptions },
             { key: "tag", label: "Todas as tags", options: tagOptions },
+            ...(skillOptions.length > 0 ? [{ key: "skill", label: "Todas as competências", options: skillOptions }] : []),
           ]}
         />
         <Button

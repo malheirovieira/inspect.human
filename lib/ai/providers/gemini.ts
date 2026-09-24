@@ -49,17 +49,31 @@ export function createGeminiProvider(opts: { apiKey: string; model: string; fetc
   };
 }
 
-// A doc mostra o texto em `output_text`. Aceita também a lista `outputs`
-// (itens com `text`) por segurança — o envelope completo da resposta não
-// está documentado com exemplo REST.
+// Envelope REAL (confirmado em chamada de 2026-09-24, gemini-3.5-flash-lite):
+//   { status: "completed", steps: [
+//       { type: "thought", signature: "…" },                       ← ignorar
+//       { type: "model_output", content: [{ type: "text", text: "{…}" }] } ] }
+// A doc só mostra `output_text` (atalho dos SDKs) — mantido como fallback.
+type GeminiStep = { type?: string; content?: { type?: string; text?: unknown }[] };
+
 export function extractGeminiText(body: unknown): string {
-  const b = body as { output_text?: unknown; outputs?: unknown };
-  if (typeof b?.output_text === "string") return b.output_text;
-  if (Array.isArray(b?.outputs)) {
-    const texts = b.outputs
-      .map((o: { text?: unknown }) => (typeof o?.text === "string" ? o.text : null))
-      .filter((t): t is string => t !== null);
-    if (texts.length > 0) return texts.join("");
+  const b = body as { status?: unknown; steps?: unknown; output_text?: unknown };
+
+  // Interação não concluída (ex.: bloqueada/incompleta) — falha comum, com o
+  // status na mensagem em vez de um "sem texto" genérico.
+  if (typeof b?.status === "string" && b.status !== "completed") {
+    throw new Error(`Gemini: interação com status "${b.status}"`);
   }
+
+  if (Array.isArray(b?.steps)) {
+    const text = (b.steps as GeminiStep[])
+      .filter((s) => s?.type === "model_output" && Array.isArray(s.content))
+      .flatMap((s) => s.content!)
+      .map((part) => (part?.type === "text" && typeof part.text === "string" ? part.text : ""))
+      .join("");
+    if (text) return text;
+  }
+
+  if (typeof b?.output_text === "string") return b.output_text;
   throw new Error("Gemini: resposta sem texto");
 }

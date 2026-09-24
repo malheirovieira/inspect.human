@@ -2,7 +2,11 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 
-export type CandidateFilters = { q?: string; stage?: string; tag?: string; jobId?: string };
+import { getAiSnippets, getCandidateIdsWithSkill } from "./resumeAnalyses";
+
+// tag = tag de TRIAGEM (qualificationTag); skill = tag de COMPETÊNCIA do
+// resumo por IA — nomes diferentes de propósito.
+export type CandidateFilters = { q?: string; stage?: string; tag?: string; jobId?: string; skill?: string };
 
 // Uma linha por Application (candidatura), com os dados da pessoa
 // embutidos — usado na lista do Banco de Talentos e nos boards
@@ -37,11 +41,14 @@ function flattenApplication<
 
 export async function listCandidates(filters: CandidateFilters = {}) {
   const session = await requireRole(["ADMIN", "HR"]);
-  const { q, stage, tag, jobId } = filters;
+  const { q, stage, tag, jobId, skill } = filters;
+
+  const skillCandidateIds = skill ? await getCandidateIdsWithSkill(session.companyId, skill) : null;
 
   const applications = await prisma.application.findMany({
     where: {
       companyId: session.companyId,
+      ...(skillCandidateIds ? { candidateId: { in: skillCandidateIds } } : {}),
       ...(jobId ? { jobId } : {}),
       ...(stage ? { stage } : {}),
       ...(tag ? { qualificationTag: tag } : {}),
@@ -63,7 +70,11 @@ export async function listCandidates(filters: CandidateFilters = {}) {
     },
   });
 
-  return applications.map(flattenApplication);
+  const snippets = await getAiSnippets(session.companyId, [...new Set(applications.map((a) => a.candidateId))]);
+  return applications.map((a) => {
+    const snippet = snippets.get(a.candidateId);
+    return { ...flattenApplication(a), aiSkills: snippet?.skills, aiExperienceYears: snippet?.experienceYears ?? null };
+  });
 }
 
 // A PESSOA (perfil no Banco de Talentos) — dados de contato + currículo

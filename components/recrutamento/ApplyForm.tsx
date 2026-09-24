@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FieldLabel, Input } from "@/components/ui/Field";
+import { FileDropzone } from "@/components/ui/FileDropzone";
 import { formatPhone } from "@/lib/phoneMask";
 import { applyToJob } from "@/app/empresa/[slug]/vagas/[jobId]/actions";
 
@@ -75,15 +76,11 @@ export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: 
         <FieldLabel label="LinkedIn">
           <Input placeholder="https://linkedin.com/in/..." value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
         </FieldLabel>
-        <FieldLabel label="Currículo (PDF, até 5MB)">
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setResume(e.target.files?.[0] ?? null)}
-            className="fin-input"
-            style={{ padding: "9px 14px" }}
-          />
-        </FieldLabel>
+        {/* div em vez de FieldLabel: a área de upload já é um <label> (não aninhar). */}
+        <div className="fin-field-label">
+          <span>Currículo</span>
+          <FileDropzone file={resume} onFileChange={setResume} disabled={submitting} />
+        </div>
         {error && (
           <div
             style={{

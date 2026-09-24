@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { FileDropzone } from "@/components/ui/FileDropzone";
 import { uploadCandidateResume } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
 
 export function CandidateResumeUpload({
@@ -33,23 +34,21 @@ export function CandidateResumeUpload({
       return;
     }
     setFile(null);
-    (event.target as HTMLFormElement).reset();
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        className="fin-input"
-        style={{ padding: "9px 14px", width: "auto" }}
-      />
-      {error && <div style={{ fontSize: 12, color: "var(--danger)" }}>{error}</div>}
-      <Button type="submit" variant={!file || submitting ? "disabled" : "confirm"}>
-        {submitting ? "Enviando..." : submitLabel}
-      </Button>
+    <form
+      onSubmit={handleSubmit}
+      style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%", maxWidth: 420, margin: "0 auto" }}
+    >
+      <FileDropzone file={file} onFileChange={setFile} disabled={submitting} />
+      {error && <div className="fin-field-error">{error}</div>}
+      {file && (
+        <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
+          {submitting ? "Enviando..." : submitLabel}
+        </Button>
+      )}
     </form>
   );
 }

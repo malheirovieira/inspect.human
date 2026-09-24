@@ -13,7 +13,15 @@ const providers = [
   {
     name: "Gemini",
     make: (f: typeof fetch) => createGeminiProvider({ apiKey: "chave-gemini", model: "modelo-g", fetch: f }),
-    okBody: { output_text: '{"ok":true}' },
+    // Envelope real da Interactions API (confirmado em 2026-09-24).
+    okBody: {
+      status: "completed",
+      object: "interaction",
+      steps: [
+        { type: "thought", signature: "abc" },
+        { type: "model_output", content: [{ type: "text", text: '{"ok":true}' }] },
+      ],
+    },
   },
   {
     name: "OpenAI",
@@ -72,9 +80,31 @@ describe("detalhes por provedor", () => {
     expect(err.message).toContain("RESOURCE_EXHAUSTED");
   });
 
-  it("Gemini: aceita o texto em outputs[] também", async () => {
-    const f = fakeFetch(200, { outputs: [{ type: "text", text: '{"a":' }, { type: "text", text: "1}" }] });
+  it("Gemini: junta vários pedaços de texto do model_output e ignora o passo thought", async () => {
+    const f = fakeFetch(200, {
+      status: "completed",
+      steps: [
+        { type: "thought", signature: "x" },
+        { type: "model_output", content: [{ type: "text", text: '{"a":' }, { type: "text", text: "1}" }] },
+      ],
+    });
     expect(await createGeminiProvider({ apiKey: "k", model: "m", fetch: f }).generate(REQ)).toBe('{"a":1}');
+  });
+
+  it("Gemini: aceita output_text (atalho da doc) como fallback", async () => {
+    const f = fakeFetch(200, { output_text: '{"a":1}' });
+    expect(await createGeminiProvider({ apiKey: "k", model: "m", fetch: f }).generate(REQ)).toBe('{"a":1}');
+  });
+
+  it("Gemini: interação não concluída vira erro com o status", async () => {
+    const f = fakeFetch(200, { status: "incomplete", steps: [] });
+    const err = await createGeminiProvider({ apiKey: "k", model: "m", fetch: f }).generate(REQ).catch((e) => e);
+    expect(err.message).toContain("incomplete");
+  });
+
+  it("Gemini: só com passo thought (sem texto) é erro", async () => {
+    const f = fakeFetch(200, { status: "completed", steps: [{ type: "thought", signature: "x" }] });
+    await expect(createGeminiProvider({ apiKey: "k", model: "m", fetch: f }).generate(REQ)).rejects.toThrow(/sem texto/);
   });
 
   it("OpenAI: recusa do modelo volta vazia (vira resposta inválida)", async () => {

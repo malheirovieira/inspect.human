@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, ArrowRightLeft, Tag, MessageSquare, Mail, Pencil, type LucideIcon } from "lucide-react";
+import { UserPlus, ArrowRightLeft, Tag, MessageSquare, Mail, Pencil, Sparkles, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
@@ -69,6 +69,17 @@ function describeEvent(event: EventRow): { icon: LucideIcon; text: string } {
       const names = fields.map((f) => PROFILE_FIELD_LABELS[f] ?? f).join(", ");
       return { icon: Pencil, text: names ? `Dados do candidato atualizados: ${names}` : "Dados do candidato atualizados" };
     }
+    // Triagem com IA (lib/screening/analyzeResume.ts) — texto neutro, sobre o
+    // resumo, nunca sobre o candidato.
+    case "AI_SUMMARY_GENERATED":
+      return {
+        icon: Sparkles,
+        text: payload.isMock ? "Resumo do currículo gerado (exemplo simulado · sem IA)" : "Resumo do currículo gerado por IA",
+      };
+    case "AI_SUMMARY_NO_TEXT":
+      return { icon: Sparkles, text: "Resumo por IA não gerado: currículo sem texto legível" };
+    case "AI_SUMMARY_FAILED":
+      return { icon: Sparkles, text: "Falha ao gerar o resumo do currículo por IA" };
     case "EMAIL_QUEUED":
     case "EMAIL_SENT":
     case "EMAIL_FAILED":

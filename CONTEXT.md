@@ -239,6 +239,41 @@ depois.
 | `GEMINI_API_KEY` / `OPENAI_API_KEY` | nenhum | só no servidor, nunca `NEXT_PUBLIC_` |
 | `AI_ALLOW_REAL_DATA` | `false` | só `"true"` libera candidato real. **Só com plano PAGO** — os termos do Gemini free proíbem dado pessoal e permitem revisão humana |
 
+### Triagem com IA — interface
+
+Leituras em `services/resumeAnalyses.ts` (sempre a versão ATUAL do
+currículo e a geração mais recente); ações em
+`app/(dashboard)/recrutamento/banco-de-talentos/aiActions.ts`.
+
+- **Perfil da pessoa** — card "Resumo do currículo" (`AiSummaryCard`) acima
+  do currículo; some se a pessoa não tem currículo. Mostra resumo,
+  experiência (+ frase de base), formação, últimos cargos e tags. Rótulo
+  "Gerado por IA · revise antes de decidir" (ou "Exemplo simulado · sem IA"
+  no mock) + data, só com análise concluída. Estados: Processando (recarrega
+  a cada 10s — `AutoRefresh`), Concluído, Falhou ("Tentar novamente";
+  PDF ilegível pede nova versão em vez disso), Sem texto legível, e o motivo
+  da ferramenta não rodar (`AI_BLOCK_REASON_LABELS`) — nesse caso nenhum
+  botão de gerar aparece. "Gerar resumo"/"Gerar novamente" criam nova
+  geração (bloqueado enquanto uma estiver Processando).
+- **Tags editáveis** (`SkillTagsEditor`): clicar renomeia, "×" remove, "+
+  Tag" adiciona (máx. 12, 40 caracteres); salva na hora e marca
+  `skillsEditedAt`. "Gerar novamente" com tags editadas pede confirmação:
+  "Manter minhas tags" (verde) / "Usar as tags da IA" (vermelho) / "X".
+- **Cards** (kanban da vaga e lista do Banco de talentos,
+  `AiCardSnippet`): até 3 tags + tempo de experiência, sem o resumo; selo
+  "Teste" quando marcado.
+- **Banco de talentos**: filtro "Todas as competências" (`?skill=`, sem
+  diferenciar maiúsculas) — `tag` continua sendo a tag de TRIAGEM.
+- **Linha do tempo**: `AI_SUMMARY_GENERATED` / `_NO_TEXT` / `_FAILED` com
+  texto neutro sobre o resumo.
+- **Upload**: `components/ui/FileDropzone.tsx` (arrastar ou clicar, mostra
+  nome/tamanho, "×" vermelho pra tirar) no perfil e no formulário público —
+  substitui o `<input type="file">` padrão. É um `<label>`: não colocar
+  dentro de `FieldLabel`.
+- **"Candidato de teste"** saiu do topo do perfil: fica no menu ⋮
+  (`CandidateOptionsMenu`) na linha das abas, só pra ADMIN; o selo "Teste"
+  aparece ao lado pra todos quando marcado.
+
 ### Página da pessoa vs. página da candidatura
 
 - **`/recrutamento/banco-de-talentos/[candidateId]`** — perfil da PESSOA,
@@ -510,16 +545,12 @@ elevação no hover.
   versionamento nos dois uploads, selo/chave "Teste" no perfil, backfill.
   Aplicada em produção em 2026-09-24; backfill (simulação) encontrou 0
   currículos legados. **Etapa 2 (processamento) feita** — ver seção
-  "Triagem com IA" abaixo.
+  "Triagem com IA" abaixo. **Etapa 3 (interface) feita** — ver "Triagem
+  com IA — interface". Falta a etapa 4 (Configurações + consentimento no
+  formulário público).
   - **Testes de integração (`npm run test:db`) da Fase 3 rodam UMA vez, no
     final da fase**, junto com os de todas as etapas — até lá só os
     unitários (`npm test`) são executados a cada etapa.
-  - Incluir na etapa 3 (interface): (a) trocar o `<input type="file">`
-    padrão por uma área de upload no estilo do design system (arrastar ou
-    clicar pra escolher, mostrando o nome do arquivo); (b) tirar a caixa
-    "Candidato de teste" do topo do perfil e levar pra um lugar discreto
-    (ex.: menu de opções do perfil), ainda só pra ADMIN — o selo "Teste"
-    continua aparecendo quando marcado.
   Decisões já tomadas:
   - **Consentimento** genérico (tabela `consents`: finalidade, versão e hash
     do texto, data/hora, candidatura). Formulário público com dois

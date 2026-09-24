@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TagDot } from "@/components/recrutamento/TagDot";
+import { AiCardSnippet } from "@/components/recrutamento/AiCardSnippet";
 import { UserSearch } from "lucide-react";
 import { STAGE_LABELS, type CANDIDATE_TAGS } from "@/schemas/candidate";
 
@@ -15,6 +16,9 @@ export type BoardCandidate = {
   qualificationTag: string | null;
   position: number;
   job: { title: string };
+  isTest?: boolean;
+  aiSkills?: string[];
+  aiExperienceYears?: number | null;
 };
 
 // Visão em lista dos candidatos. O Kanban (com drag-and-drop) é o
@@ -61,11 +65,15 @@ export function CandidatesBoard({
           }}
         >
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>{candidate.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600 }}>
+              {candidate.name}
+              {candidate.isTest && <Badge tone="primary">Teste</Badge>}
+            </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
               {showJob ? `${candidate.job.title} · ` : ""}
               {candidate.email}
             </div>
+            <AiCardSnippet skills={candidate.aiSkills} experienceYears={candidate.aiExperienceYears} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {candidate.qualificationTag && candidate.stage === "TRIAGE" && (
