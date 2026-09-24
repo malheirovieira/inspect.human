@@ -23,7 +23,6 @@ export function StatCard({
   icon: Icon,
   trend,
   selected,
-  featured,
   lift,
 }: {
   label: string;
@@ -32,18 +31,14 @@ export function StatCard({
   icon?: LucideIcon;
   trend?: Trend;
   selected?: boolean;
-  featured?: boolean;
   // Mesmo efeito de hover (levantar) e mesmo estilo de título (maiúsculo)
-  // do card "Colaboradores" do dashboard — opcional pra não afetar outras
-  // telas que reusam StatCard (ex.: Gestão/KPIs) sem pedir isso.
+  // dos cards do dashboard — opcional pra não afetar outras telas que
+  // reusam StatCard (ex.: Gestão/KPIs) sem pedir isso.
   lift?: boolean;
 }) {
   if (selected) {
     return (
-      <div
-        className={cn("flex flex-1 flex-col justify-between text-white", featured ? "fin-statcard-featured p-4" : "rounded-lg p-5")}
-        style={featured ? undefined : { background: "var(--ink)" }}
-      >
+      <div className="flex flex-1 flex-col justify-between rounded-lg p-5 text-white" style={{ background: "var(--ink)" }}>
         <div className="flex items-start justify-between gap-3">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">{label}</span>
           {Icon && (
@@ -71,19 +66,20 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "flex flex-1 flex-col gap-3 rounded-lg border border-[var(--border)] bg-white p-4",
+        "flex flex-1 flex-col gap-3 rounded-lg border border-[var(--border)] bg-white",
+        lift ? "p-5" : "p-4",
         lift && "fin-card-hover-lift"
       )}
     >
       <div className="flex items-center justify-between gap-2">
-        {Icon && <Icon size={16} className="text-ink" />}
+        {Icon && <Icon size={lift ? 18 : 16} className="text-ink" />}
         {trend && <TrendText trend={trend} />}
       </div>
       <div>
-        <div className={lift ? "text-[11px] font-semibold uppercase tracking-wide text-gray-500" : "text-xs text-gray-500"}>
+        <div className={lift ? "text-[11px] font-semibold uppercase tracking-wide text-ink" : "text-xs text-gray-500"}>
           {label}
         </div>
-        <div className="mt-1 text-2xl font-bold text-ink">{value}</div>
+        <div className={cn("mt-1 font-bold text-ink", lift ? "text-3xl" : "text-2xl")}>{value}</div>
       </div>
     </div>
   );

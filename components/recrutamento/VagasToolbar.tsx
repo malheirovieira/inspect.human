@@ -32,16 +32,14 @@ export function VagasToolbar({
             },
           ]}
         />
-        <Button type="button" variant={open ? "secondary" : "primary"} onClick={() => setOpen((prev) => !prev)}>
-          {open ? (
-            <>
-              <X size={14} /> Cancelar
-            </>
-          ) : (
-            <>
-              <Plus size={14} /> Nova vaga
-            </>
-          )}
+        <Button
+          type="button"
+          variant={open ? "round-cancel" : "round-add"}
+          title={open ? "Cancelar" : "Nova vaga"}
+          aria-label={open ? "Cancelar" : "Nova vaga"}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {open ? <X size={18} /> : <Plus size={18} />}
         </Button>
       </div>
 

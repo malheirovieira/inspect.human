@@ -30,16 +30,14 @@ export function DesligamentosToolbar({ colaboradores }: { colaboradores: Colabor
             },
           ]}
         />
-        <Button type="button" variant={open ? "secondary" : "primary"} onClick={() => setOpen((prev) => !prev)}>
-          {open ? (
-            <>
-              <X size={14} /> Cancelar
-            </>
-          ) : (
-            <>
-              <Plus size={14} /> Registrar desligamento
-            </>
-          )}
+        <Button
+          type="button"
+          variant={open ? "round-cancel" : "round-add"}
+          title={open ? "Cancelar" : "Registrar desligamento"}
+          aria-label={open ? "Cancelar" : "Registrar desligamento"}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {open ? <X size={18} /> : <Plus size={18} />}
         </Button>
       </div>
 

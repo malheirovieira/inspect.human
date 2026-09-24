@@ -11,38 +11,39 @@ const config: Config = {
     extend: {
       colors: {
         green: {
-          900: "#131313",
+          900: "#1D1D1F",
           800: "#262626",
-          700: "#15803D",
-          600: "#166534",
-          400: "#4ADE80",
-          surface: "#DCFCE7",
+          700: "#34C759",
+          600: "#26A349",
+          400: "#6FE396",
+          surface: "#E3F9E9",
         },
         gray: {
-          50: "#FAFAF9",
+          50: "#F5F5F7",
           100: "#F3F2F0",
-          200: "#E5E3DF",
-          400: "#8A8A85",
-          600: "#4D4D47",
+          200: "rgba(0,0,0,0.06)",
+          400: "#86868B",
+          600: "#515154",
           700: "#4A4A46",
         },
-        ink: "#131313",
-        success: { DEFAULT: "#15803D", surface: "#DCFCE7" },
-        danger: { DEFAULT: "#DC2626", surface: "#FEE2E2" },
+        ink: "#1D1D1F",
+        success: { DEFAULT: "#34C759", surface: "#E3F9E9" },
+        danger: { DEFAULT: "#FF3B30", surface: "#FFE5E3" },
         // Tokens semânticos genéricos (shadcn-style) mapeados para a paleta
         // do produto — usados por componentes que trabalham em utilitários
         // Tailwind puros em vez das classes fin-* legadas.
-        primary: "#131313",
-        accent: "#15803D",
+        primary: "#1D1D1F",
+        accent: "#34C759",
       },
       borderRadius: {
-        sm: "4px",
-        md: "6px",
-        lg: "16px",
-        xl: "8px",
+        sm: "10px",
+        md: "10px",
+        lg: "18px",
+        xl: "10px",
       },
       boxShadow: {
-        sm: "0 1px 2px rgba(5,19,42,0.06), 0 1px 1px rgba(5,19,42,0.04)",
+        sm: "0 1px 3px rgba(0,0,0,0.03)",
+        hover: "0 8px 24px rgba(0,0,0,0.07)",
       },
       fontFamily: {
         sans: [
@@ -67,6 +68,10 @@ const config: Config = {
       },
       transitionDuration: {
         "800": "800ms",
+      },
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.34,1.56,0.64,1)",
+        "out-soft": "cubic-bezier(0.16,1,0.3,1)",
       },
     },
   },

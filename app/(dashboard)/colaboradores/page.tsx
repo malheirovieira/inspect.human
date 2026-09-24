@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ListToolbar } from "@/components/ui/ListToolbar";
 import { ColaboradorRowActions } from "@/components/colaboradores/ColaboradorRowActions";
-import { Users } from "lucide-react";
+import { Users, Plus } from "lucide-react";
 import { listColaboradores } from "@/services/colaboradores";
 import { listCompanyOptions } from "@/services/companyOptions";
 
@@ -55,7 +55,9 @@ export default async function ColaboradoresPage({
             ]}
           />
           <Link href="/colaboradores/novo">
-            <Button variant="primary">Cadastrar colaborador</Button>
+            <Button variant="round-add" title="Cadastrar colaborador" aria-label="Cadastrar colaborador">
+              <Plus size={18} />
+            </Button>
           </Link>
         </div>
 

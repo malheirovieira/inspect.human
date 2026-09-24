@@ -312,6 +312,23 @@ create index idx_employee_documents_company_id_user_id on employee_documents (co
 create index idx_employee_documents_company_id_expiration_date on employee_documents (company_id, expiration_date);
 
 -- ----------------------------------------------------------------------------
+-- notifications — avisos operacionais da empresa (ex.: candidatura recebida).
+-- Lidas via sininho no topo do dashboard.
+-- ----------------------------------------------------------------------------
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  type text not null, -- validado no Zod, sem check constraint por ora
+  title text not null,
+  message text not null,
+  link text,
+  read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index idx_notifications_company_id_created_at on notifications (company_id, created_at desc);
+create index idx_notifications_company_id_read on notifications (company_id, read);
+
+-- ----------------------------------------------------------------------------
 -- updated_at automático
 -- ----------------------------------------------------------------------------
 create or replace function set_updated_at()

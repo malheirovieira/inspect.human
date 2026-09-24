@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Poppins, Inter } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 
 // Fonte da wordmark (logo em texto, sem ícone) — mesma família serifada do
@@ -10,16 +10,9 @@ const playfair = Playfair_Display({
   variable: "--font-logo",
 });
 
-// Fonte das frases de efeito (telas de login/cadastro) — sans-serif mais
-// forte e moderna, separada da fonte de texto corrido do sistema.
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-heading",
-});
-
-// Fonte base do sistema (texto corrido, UI) — a mesma usada no protótipo em
-// Figma Make, exposta como variável e referenciada em --font-sans.
+// Fonte base do sistema (texto corrido, UI, títulos) — a mesma em todo o
+// app, inclusive nas telas de login/cadastro (--font-heading/Poppins foi
+// removida: era usada só ali e o padrão atual do produto é Inter em tudo).
 const inter = Inter({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -33,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${playfair.variable} ${poppins.variable} ${inter.variable}`}>
+    <html lang="pt-BR" className={`${playfair.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   );

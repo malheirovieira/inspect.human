@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Select } from "@/components/ui/Field";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -11,9 +11,14 @@ type FilterConfig = { key: string; label: string; options: FilterOption[] };
 export function ListToolbar({
   searchPlaceholder,
   filters = [],
+  children,
 }: {
   searchPlaceholder: string;
   filters?: FilterConfig[];
+  // Controles extras que precisam ficar visualmente no mesmo grupo dos
+  // filtros (ex.: seletor de visualização Lista/Kanban), mas com
+  // comportamento próprio — não passam pelo estado/debounce de busca daqui.
+  children?: ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -38,10 +43,11 @@ export function ListToolbar({
 
   return (
     <div style={{ display: "flex", gap: 12, flexWrap: "nowrap", alignItems: "center", overflowX: "auto" }}>
-      <SearchInput value={query} onChange={setQuery} placeholder={searchPlaceholder} width={360} className="shrink-0" />
+      <SearchInput value={query} onChange={setQuery} placeholder={searchPlaceholder} className="shrink-0" />
       {filters.map((filter) => (
         <Select
           key={filter.key}
+          className="fin-filter-select"
           value={searchParams.get(filter.key) ?? ""}
           onChange={(e) => updateParam(filter.key, e.target.value)}
           style={{ flexShrink: 0, width: 180 }}
@@ -54,6 +60,7 @@ export function ListToolbar({
           ))}
         </Select>
       ))}
+      {children}
     </div>
   );
 }

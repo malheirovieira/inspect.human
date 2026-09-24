@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Field";
 import { ListToolbar } from "@/components/ui/ListToolbar";
 import { CandidateManualForm } from "./CandidateManualForm";
 
@@ -29,6 +30,13 @@ export function CandidatesToolbar({
   jobs: Job[];
 }) {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  function handleViewChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const params = new URLSearchParams(baseQuery);
+    if (e.target.value === "kanban") params.set("view", "kanban");
+    router.push(`/recrutamento/candidatos?${params.toString()}`);
+  }
 
   return (
     <>
@@ -39,26 +47,27 @@ export function CandidatesToolbar({
             { key: "stage", label: "Todas as etapas", options: stageOptions },
             { key: "tag", label: "Todas as tags", options: tagOptions },
           ]}
-        />
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href={{ pathname: "/recrutamento/candidatos", query: baseQuery }}>
-            <Button variant={isKanban ? "secondary" : "primary"}>Lista</Button>
-          </Link>
-          <Link href={{ pathname: "/recrutamento/candidatos", query: { ...baseQuery, view: "kanban" } }}>
-            <Button variant={isKanban ? "primary" : "secondary"}>Kanban</Button>
-          </Link>
-          <Button type="button" variant={open ? "secondary" : "primary"} onClick={() => setOpen((prev) => !prev)}>
-            {open ? (
-              <>
-                <X size={14} /> Cancelar
-              </>
-            ) : (
-              <>
-                <Plus size={14} /> Cadastrar candidato
-              </>
-            )}
-          </Button>
-        </div>
+        >
+          <Select
+            className="fin-filter-select"
+            value={isKanban ? "kanban" : "list"}
+            onChange={handleViewChange}
+            style={{ flexShrink: 0, width: 140 }}
+            aria-label="Visualização"
+          >
+            <option value="list">Lista</option>
+            <option value="kanban">Kanban</option>
+          </Select>
+        </ListToolbar>
+        <Button
+          type="button"
+          variant={open ? "round-cancel" : "round-add"}
+          title={open ? "Cancelar" : "Cadastrar candidato"}
+          aria-label={open ? "Cancelar" : "Cadastrar candidato"}
+          onClick={() => setOpen((prev) => !prev)}
+        >
+          {open ? <X size={18} /> : <Plus size={18} />}
+        </Button>
       </div>
 
       {open && (

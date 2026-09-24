@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
-  LayoutGrid,
+  Home,
   Users,
   Briefcase,
   GraduationCap,
@@ -31,7 +31,11 @@ type NavGroup = {
   label: string;
   icon: LucideIcon;
   section: string;
+  // Rota da visão geral do módulo — clicar no nome do grupo navega pra cá
+  // (a seta ao lado só abre/fecha o acordeão, sem navegar).
+  href: string;
   items: NavItem[];
+  disabled?: boolean;
 };
 
 const EASE = "[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]";
@@ -41,10 +45,13 @@ const COLLAPSE_STORAGE_KEY = "inspect-human:sidebar-collapsed";
 // de sumir/aparecer de golpe.
 const LABEL_FADE = cn("overflow-hidden whitespace-nowrap transition-opacity duration-700", EASE);
 
+// Não faz parte de nenhum grupo (fica fora de GROUPS, sem rótulo de seção
+// acima) — é o pouso fixo pós-login, por isso nenhum grupo fica marcado
+// como ativo quando o usuário está aqui.
 const DASHBOARD: NavItem & { icon: LucideIcon } = {
   href: "/dashboard",
-  label: "Dashboard",
-  icon: LayoutGrid,
+  label: "Início",
+  icon: Home,
 };
 
 const GROUPS: NavGroup[] = [
@@ -52,6 +59,10 @@ const GROUPS: NavGroup[] = [
     label: "Pessoas",
     icon: Users,
     section: "PESSOAS",
+    href: "/pessoas",
+    // Colaboradores/Desligamentos: módulo em desenvolvimento por ora — fica
+    // cinza e sem interação no menu, igual "Ajuda".
+    disabled: true,
     items: [
       { href: "/colaboradores", label: "Colaboradores" },
       { href: "/desligamentos", label: "Desligamentos" },
@@ -61,6 +72,7 @@ const GROUPS: NavGroup[] = [
     label: "Recrutamento",
     icon: Briefcase,
     section: "PESSOAS",
+    href: "/recrutamento",
     items: [
       { href: "/recrutamento/vagas", label: "Vagas" },
       { href: "/recrutamento/candidatos", label: "Candidatos" },
@@ -70,6 +82,9 @@ const GROUPS: NavGroup[] = [
     label: "Desenvolvimento",
     icon: GraduationCap,
     section: "PESSOAS",
+    href: "/desenvolvimento",
+    // Módulo em desenvolvimento por ora — mesmo bloqueio do grupo Pessoas.
+    disabled: true,
     items: [
       { href: "/desenvolvimento/trilhas", label: "Trilhas" },
       { href: "/desenvolvimento/progresso", label: "Progresso" },
@@ -79,6 +94,9 @@ const GROUPS: NavGroup[] = [
     label: "Gestão",
     icon: TrendingUp,
     section: "ANÁLISE",
+    href: "/gestao",
+    // Módulo em desenvolvimento por ora — mesmo bloqueio do grupo Pessoas.
+    disabled: true,
     items: [{ href: "/gestao/kpis", label: "KPIs" }],
   },
 ];
@@ -91,7 +109,9 @@ const OUTROS: (NavItem & { icon: LucideIcon })[] = [
 ];
 
 function groupForPath(pathname: string): string | null {
-  const group = GROUPS.find((g) => g.items.some((item) => pathname.startsWith(item.href)));
+  const group = GROUPS.find(
+    (g) => pathname === g.href || g.items.some((item) => pathname.startsWith(item.href))
+  );
   return group ? group.label : null;
 }
 
@@ -150,12 +170,15 @@ function SimpleNavItem({
       href={item.href}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+        "relative flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
         EASE,
         collapsed ? "justify-center gap-0 px-0" : "gap-2",
         active ? "bg-gray-100 text-ink" : "text-gray-600 hover:bg-gray-100"
       )}
     >
+      {active && (
+        <span className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-full bg-ink" />
+      )}
       <Icon size={18} className={cn("shrink-0", active ? "text-ink" : "text-gray-400")} />
       <span
         className={cn(LABEL_FADE, "text-left", collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100")}
@@ -238,7 +261,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-gray-200 bg-white transition-[width] duration-[700ms]",
+        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-gray-200 bg-white/70 backdrop-blur-xl backdrop-saturate-150 transition-[width] duration-[700ms]",
         EASE,
         collapsed ? "w-[76px]" : "w-[280px]"
       )}
@@ -259,7 +282,6 @@ export function Sidebar({
         </div>
 
         <nav className={cn("flex flex-1 flex-col", collapsed ? "gap-1" : "gap-0.5")}>
-          <SectionLabel label="PRINCIPAL" collapsed={collapsed} />
           <SimpleNavItem item={DASHBOARD} pathname={pathname} collapsed={collapsed} />
 
           {SECTION_ORDER.map((section) => (
@@ -270,6 +292,32 @@ export function Sidebar({
                 const isActiveRoute = group.label === routeGroup;
                 const highlighted = collapsed ? isActiveRoute : isOpen;
                 const Icon = group.icon;
+
+                if (group.disabled) {
+                  return (
+                    <span
+                      key={group.label}
+                      title={collapsed ? group.label : undefined}
+                      className={cn(
+                        "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+                        EASE,
+                        collapsed ? "justify-center gap-0 px-0" : "gap-2"
+                      )}
+                    >
+                      <Icon size={18} className="shrink-0" />
+                      <span
+                        className={cn(
+                          LABEL_FADE,
+                          "text-left",
+                          collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
+                        )}
+                      >
+                        {group.label}
+                      </span>
+                    </span>
+                  );
+                }
+
                 return (
                   <div
                     key={group.label}
@@ -280,16 +328,16 @@ export function Sidebar({
                       !collapsed && openGroup && !isOpen && "opacity-45"
                     )}
                   >
-                    <button
-                      type="button"
+                    <Link
+                      href={group.href}
                       onClick={() => toggleGroup(group.label)}
                       aria-expanded={isOpen}
                       title={collapsed ? group.label : undefined}
                       className={cn(
-                        "flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+                        "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
                         EASE,
                         collapsed ? "justify-center gap-0 px-0" : "gap-2",
-                        highlighted ? "bg-gray-100 text-ink" : "text-gray-600 hover:bg-gray-100"
+                        highlighted ? "bg-white text-ink" : "text-gray-600"
                       )}
                     >
                       <Icon size={18} className={cn("shrink-0", highlighted ? "text-ink" : "text-gray-400")} />
@@ -310,7 +358,7 @@ export function Sidebar({
                           )}
                         />
                       </span>
-                    </button>
+                    </Link>
 
                     <div
                       className={cn(

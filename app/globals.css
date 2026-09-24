@@ -10,26 +10,28 @@
 :root {
   /* Paleta preto + accent (mesmo truque de sempre: os nomes de variável
      --green-*, --gray-*, --surface-* ficam iguais, só os hex mudam, pra
-     propagar em todo o app sem reescrever cada tela). Accent verde vivo
-     (positivo/ativo) e danger vermelho (remover); a escala preto
-     (green-900/800) não muda. */
-  --green-900: #131313;
+     propagar em todo o app sem reescrever cada tela). Portado do mockup
+     "estilo Apple" (Bolt/glassmorphism) enviado pelo usuário — fundo
+     levemente acinzentado, bordas em preto translúcido, raios maiores,
+     verde/vermelho mais vivos. Escala preto (green-900/800) quase igual,
+     só ajustada pro tom exato do mockup. */
+  --green-900: #1d1d1f;
   --green-800: #262626;
-  --green-700: #15803d;
-  --green-600: #166534;
-  --green-400: #4ade80;
-  --green-surface: #dcfce7;
+  --green-700: #34c759;
+  --green-600: #26a349;
+  --green-400: #6fe396;
+  --green-surface: #e3f9e9;
   --white: #ffffff;
-  --gray-50: #fafaf9;
+  --gray-50: #f5f5f7;
   --gray-100: #f3f2f0;
-  --gray-200: #e5e3df;
-  --gray-400: #8a8a85;
+  --gray-200: rgba(0, 0, 0, 0.06);
+  --gray-400: #86868b;
   --gray-700: #4a4a46;
-  --ink: #131313;
-  --success: #15803d;
-  --success-surface: #dcfce7;
-  --danger: #dc2626;
-  --danger-surface: #fee2e2;
+  --ink: #1d1d1f;
+  --success: #34c759;
+  --success-surface: #e3f9e9;
+  --danger: #ff3b30;
+  --danger-surface: #ffe5e3;
   /* Azul "padrão" de identidade/interação (hover de botão primário, painel
      de login/cadastro, foco de campo) — token à parte de --green-700 e
      --success, que agora são semânticos (estado ativo/positivo). */
@@ -48,12 +50,21 @@
   --action-primary-hover: var(--focus-ring);
   --action-primary-text: var(--green-900);
   --on-action-primary: var(--white);
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 16px;
+  --radius-sm: 10px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
   --radius-full: 999px;
-  --shadow-sm: 0 1px 2px rgba(5, 19, 42, 0.06), 0 1px 1px rgba(5, 19, 42, 0.04);
-  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.07);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  /* SF Pro não pode ser distribuída fora de software Apple (licença) — por
+     isso não dá pra hospedar o arquivo da fonte. -apple-system/BlinkMacSystemFont
+     pede pro navegador usar a fonte do sistema: em Mac/iOS isso É a SF Pro de
+     verdade (com a troca automática Display/Text conforme o tamanho do
+     texto). Fora do ecossistema Apple, cai pra Inter — desenhada como
+     substituta métrica da SF Pro, mesmo padrão já usado no resto do app. */
+  --font-sans: -apple-system, BlinkMacSystemFont, var(--font-inter), "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 html,
@@ -81,6 +92,10 @@ body {
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  transition: background 0.2s ease;
+}
+.fin-sidebar__profile:hover {
+  background: rgba(0, 0, 0, 0.03);
 }
 .fin-sidebar__avatar {
   width: 40px;
@@ -93,6 +108,10 @@ body {
   justify-content: center;
   font-weight: 600;
   font-size: 14px;
+  transition: transform 0.25s var(--ease-spring);
+}
+.fin-sidebar__profile:hover .fin-sidebar__avatar {
+  transform: scale(1.06);
   flex-shrink: 0;
 }
 .fin-sidebar__name {
@@ -109,11 +128,50 @@ body {
 }
 
 /* ---- Header ---- */
+/* Faixa fina no topo (data à esquerda, busca centralizada, sino à
+   direita) — separada do título/breadcrumb, que fica no .fin-header
+   logo abaixo. "sticky" pra acompanhar o scroll, como no mockup. O fundo
+   e a borda ocupam a largura total da página (fica igual num monitor
+   largo); só o conteúdo de dentro (.fin-topbar__inner) é limitado e
+   centralizado, junto com o header/conteúdo abaixo. */
+.fin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  min-height: 52px;
+  padding: 0 40px;
+  background: rgba(245, 245, 247, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+}
+.fin-topbar__inner {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.fin-topbar__date {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.fin-topbar__search {
+  margin: 0 auto;
+}
 .fin-header {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 40px 40px 24px;
+  padding: 24px 40px 24px;
 }
 .fin-header__crumb {
   font-size: 11px;
@@ -139,12 +197,8 @@ body {
 .fin-header__title {
   font-size: 32px;
   font-weight: 700;
+  letter-spacing: -0.03em;
   margin: 0;
-}
-.fin-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 .fin-header__add,
 .fin-header__bell {
@@ -166,6 +220,14 @@ body {
   border-radius: var(--radius-full);
   background: var(--surface-muted);
   color: var(--text-secondary);
+  transition: background 0.2s ease, transform 0.15s var(--ease-out-soft);
+}
+.fin-header__bell:hover {
+  background: var(--gray-200);
+  transform: scale(1.05);
+}
+.fin-header__bell:active {
+  transform: scale(0.92);
 }
 .fin-header__dot {
   position: absolute;
@@ -176,6 +238,150 @@ body {
   border-radius: var(--radius-full);
   background: var(--danger);
   border: 2px solid var(--surface-muted);
+  animation: fin-pulse-dot 2s ease-in-out infinite;
+}
+@keyframes fin-pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.fin-header__bell--ring {
+  animation: fin-bell-ring 0.65s ease-in-out;
+  transform-origin: top center;
+}
+@keyframes fin-bell-ring {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(16deg);
+  }
+  30% {
+    transform: rotate(-13deg);
+  }
+  45% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+/* ---- Painel de notificações (dropdown do sino) ---- */
+.fin-notif-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 340px;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hover);
+  overflow: hidden;
+  z-index: 40;
+}
+.fin-notif-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.fin-notif-panel__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fin-notif-panel__actions {
+  display: flex;
+  gap: 6px;
+}
+.fin-notif-panel__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.fin-notif-panel__actions button:hover {
+  background: var(--gray-200);
+  color: var(--ink);
+}
+.fin-notif-panel__list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.fin-notif-empty {
+  margin: 0;
+  padding: 24px 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.fin-notif-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s ease;
+}
+.fin-notif-item:last-child {
+  border-bottom: none;
+}
+.fin-notif-item:hover {
+  background: var(--surface-muted);
+}
+.fin-notif-item--unread {
+  background: var(--success-surface);
+}
+.fin-notif-item--unread:hover {
+  background: var(--success-surface);
+  filter: brightness(0.97);
+}
+.fin-notif-item__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.fin-notif-item__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fin-notif-item__time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.fin-notif-item__message {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 /* ---- Primitivas compartilhadas ---- */
@@ -185,7 +391,12 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* Header/conteúdo ficam centralizados (mesma largura do .fin-topbar__inner
+   acima) — só a faixa do topbar em si (fundo/borda) ocupa a página toda. */
 .fin-content {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
   flex-grow: 1;
   padding: 0 40px 40px;
   display: flex;
@@ -259,6 +470,10 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   padding: 24px;
+  transition: transform 0.3s var(--ease-out-soft), box-shadow 0.3s var(--ease-out-soft);
+}
+.fin-card:hover {
+  box-shadow: var(--shadow-hover);
 }
 .fin-card--muted {
   background: var(--surface-muted);
@@ -315,6 +530,46 @@ body {
   color: var(--white);
   cursor: not-allowed;
 }
+/* ---- Botão redondo (toggle incluir/cancelar ao lado dos filtros) ---- */
+.fin-btn--round {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  transition: transform 0.15s var(--ease-out-soft), filter 0.2s ease;
+}
+.fin-btn--round:hover {
+  filter: brightness(0.92);
+  transform: scale(1.05);
+}
+.fin-btn--round:active {
+  transform: scale(0.92);
+}
+.fin-btn.fin-btn--round-add {
+  background: var(--success);
+  color: var(--white);
+}
+.fin-btn.fin-btn--round-cancel {
+  background: var(--danger);
+  color: var(--white);
+}
+/* ---- Filtro de lista (select ao lado da busca) — pílula, sem contorno azul ---- */
+.fin-input.fin-filter-select {
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2386868B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+}
+.fin-input.fin-filter-select:focus {
+  box-shadow: none;
+  border-color: var(--border);
+}
 .fin-badge {
   display: inline-flex;
   align-items: center;
@@ -349,28 +604,15 @@ body {
 .fin-statcard--selected {
   background: var(--green-900);
 }
-/* Card "Colaboradores" do dashboard — referência: Uiverse.io, adaptado ao
-   raio de borda padrão do app. O "levantar" no hover usa transform (não
-   margin) justamente pra não afetar o layout/altura da linha do grid — com
+/* Levantar no hover dos cards de métrica/dashboard — usa transform (não
+   margin) justamente pra não afetar o layout/altura da linha do grid; com
    margin-top negativo os cards vizinhos "sentem" a mudança de posição. */
-.fin-statcard-featured {
-  background: rgb(40, 40, 55);
-  background: linear-gradient(344deg, rgba(40, 40, 55, 1) 0%, rgba(16, 16, 18, 1) 50%);
-  box-shadow: 4px 6px 14px #00000036;
-  border-radius: var(--radius-lg);
-  transition: transform 0.3s ease;
-}
-.fin-statcard-featured:hover {
-  transform: translateY(-6px);
-}
-/* Mesmo efeito de "levantar" do card Colaboradores, reutilizável em
-   qualquer outro card do dashboard (StatCard simples ou os cards de
-   conteúdo) — mesma transição/deslocamento, só sem o fundo em gradiente. */
 .fin-card-hover-lift {
-  transition: transform 0.3s ease;
+  transition: transform 0.3s var(--ease-out-soft), box-shadow 0.3s var(--ease-out-soft);
 }
 .fin-card-hover-lift:hover {
-  transform: translateY(-6px);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
 }
 .fin-statcard__eyebrow {
   font-size: 11px;
@@ -475,15 +717,11 @@ body {
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
-/* ---- Campo de busca (pílula + sublinhado animado no foco) ---- */
+/* ---- Campo de busca (pílula, sem animação) ---- */
 .fin-search {
-  --timing: 0.3s;
-  --width-of-input: 260px;
-  --height-of-input: 40px;
-  --border-height: 2px;
+  --width-of-input: 420px;
+  --height-of-input: 36px;
   --input-bg: var(--surface);
-  --border-color: var(--focus-ring);
-  --after-border-radius: 4px;
   position: relative;
   width: var(--width-of-input);
   height: var(--height-of-input);
@@ -492,7 +730,6 @@ body {
   gap: 2px;
   padding-inline: 0.8em;
   border-radius: var(--radius-full);
-  transition: border-radius 0.5s ease;
   background: var(--input-bg);
 }
 .fin-search button {
@@ -517,29 +754,9 @@ body {
 .fin-search__input:focus {
   outline: none;
 }
-.fin-search:before {
-  content: "";
-  position: absolute;
-  background: var(--border-color);
-  transform: scaleX(0);
-  transform-origin: center;
-  width: 100%;
-  height: var(--border-height);
-  left: 0;
-  bottom: 0;
-  border-radius: 1px;
-  transition: transform var(--timing) ease;
-}
-.fin-search:focus-within {
-  border-radius: var(--after-border-radius);
-}
-.fin-search:focus-within:before {
-  transform: scale(1);
-}
 .fin-search__reset {
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--timing) ease;
 }
 .fin-search__input:not(:placeholder-shown) ~ .fin-search__reset {
   opacity: 1;
@@ -560,7 +777,7 @@ body {
   min-height: 600px;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(5, 19, 42, 0.14);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
   background: var(--surface);
   /* alguns navegadores/SO (modo alto contraste, foco padrão em containers
      não interativos) desenham um contorno tracejado nesse card — anulamos
@@ -585,9 +802,10 @@ body {
   overflow: hidden;
 }
 .auth-shell__title {
-  font-family: var(--font-heading), var(--font-sans);
+  font-family: var(--font-sans);
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   margin: 0;
   max-width: 320px;
 }

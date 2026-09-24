@@ -42,6 +42,7 @@ model Company {
   employeeExits       EmployeeExit[]
   kanbanStageLabels   KanbanStageLabel[]
   employeeDocuments   EmployeeDocument[]
+  notifications       Notification[]
 
   @@map("companies")
   @@schema("public")
@@ -371,5 +372,29 @@ model EmployeeDocument {
   @@index([companyId, userId])
   @@index([companyId, expirationDate])
   @@map("employee_documents")
+  @@schema("public")
+}
+
+// Avisos operacionais da empresa, exibidos no sininho do topo do dashboard
+// (ex.: candidatura recebida). Sem userId — visível pra quem tem acesso a
+// Recrutamento (ADMIN/HR) na empresa, não por pessoa.
+model Notification {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+
+  // Validar no Zod: CANDIDATE_APPLIED — único tipo por ora
+  type    String
+  title   String
+  message String
+  link    String?
+  read    Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([companyId, read])
+  @@map("notifications")
   @@schema("public")
 }

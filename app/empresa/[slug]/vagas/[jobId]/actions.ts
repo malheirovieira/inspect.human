@@ -59,6 +59,16 @@ export async function applyToJob(companySlug: string, jobId: string, formData: F
     },
   });
 
+  await prisma.notification.create({
+    data: {
+      companyId: found.company.id,
+      type: "CANDIDATE_APPLIED",
+      title: "Nova candidatura",
+      message: `${candidate.name} se candidatou para ${found.job.title}`,
+      link: `/recrutamento/candidatos/${candidate.id}`,
+    },
+  });
+
   if (resume) {
     const path = `${found.company.id}/${candidate.id}.pdf`;
     const supabaseAdmin = createSupabaseAdminClient();
