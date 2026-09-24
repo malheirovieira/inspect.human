@@ -126,7 +126,8 @@ create index idx_jobs_open on jobs (company_id, created_at desc) where status = 
 -- ----------------------------------------------------------------------------
 -- candidates — a PESSOA (independente de vaga). Uma pessoa pode ter várias
 -- candidaturas (applications) ao longo do tempo, inclusive em vagas
--- diferentes — ver "banco de talentos".
+-- diferentes — ver "banco de talentos". Anotações não moram aqui: viraram
+-- evento (NOTE_ADDED) em application_events, por candidatura.
 -- ----------------------------------------------------------------------------
 create table candidates (
   id uuid primary key default gen_random_uuid(),
@@ -136,7 +137,6 @@ create table candidates (
   phone text,
   linkedin_url text,
   resume_path text,
-  notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -147,7 +147,9 @@ create index idx_candidates_company_email on candidates (company_id, email);
 -- applications — a candidatura de um candidate a UMA vaga específica.
 -- company_id é sempre copiado do job no momento do insert (trigger abaixo),
 -- nunca aceito do payload do formulário público. Sem check constraint pra
--- stage (padrão mais recente do projeto: validar no Zod).
+-- stage (padrão mais recente do projeto: validar no Zod). O checklist da
+-- candidatura (UI) é 100% derivado de `stage` — sem coluna própria de
+-- "etapas concluídas" (era process_steps, removida).
 -- ----------------------------------------------------------------------------
 create table applications (
   id uuid primary key default gen_random_uuid(),
@@ -158,7 +160,6 @@ create table applications (
   position integer not null default 0,
   qualification_tag text,
   hired_at timestamptz,
-  process_steps jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

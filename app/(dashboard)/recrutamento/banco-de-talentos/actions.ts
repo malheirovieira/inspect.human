@@ -68,18 +68,35 @@ export async function createCandidateManual(input: CreateCandidateManualInput): 
   return { success: true };
 }
 
+// Só avança de Triagem pra próxima etapa se a tag for GREEN ("Perfil
+// compatível") — sem isso, qualquer tentativa de avançar (checklist OU
+// Kanban, mesma regra pros dois) reprova automaticamente em vez de mover
+// pra etapa pedida. Não se aplica indo PRA Triagem ou já reprovando.
+function resolveTargetStage(
+  application: { stage: string; qualificationTag: string | null },
+  requested: (typeof CANDIDATE_STAGES)[number]
+): (typeof CANDIDATE_STAGES)[number] {
+  const leavingTriageForward = application.stage === "TRIAGE" && requested !== "TRIAGE" && requested !== "REJECTED";
+  if (leavingTriageForward && application.qualificationTag !== "GREEN") {
+    return "REJECTED";
+  }
+  return requested;
+}
+
 // applicationId (parâmetro chamado assim nas funções abaixo que operam na
 // candidatura, não na pessoa). Revalida as duas telas que mostram a
 // etapa: a vaga (Kanban) e o detalhe da candidatura — pra nenhuma ficar com
 // dado desatualizado depois de mover por qualquer um dos dois lados.
 export async function moveCandidateStage(
   applicationId: string,
-  stage: (typeof CANDIDATE_STAGES)[number]
+  requestedStage: (typeof CANDIDATE_STAGES)[number]
 ): Promise<ActionResult> {
   const session = await requireRole(["ADMIN", "HR"]);
 
   const application = await prisma.application.findFirst({ where: { id: applicationId, companyId: session.companyId } });
   if (!application) return { error: "Candidato não encontrado." };
+
+  const stage = resolveTargetStage(application, requestedStage);
 
   await prisma.application.update({
     where: { id: applicationId },
@@ -117,12 +134,14 @@ export async function moveCandidateInKanban(
   const application = await prisma.application.findFirst({ where: { id: applicationId, companyId: session.companyId } });
   if (!application) return { error: "Candidato não encontrado." };
 
+  const finalStage = resolveTargetStage(application, toStage);
+
   await prisma.$transaction([
     prisma.application.update({
       where: { id: applicationId },
       data: {
-        stage: toStage,
-        hiredAt: toStage === "HIRED" && !application.hiredAt ? new Date() : undefined,
+        stage: finalStage,
+        hiredAt: finalStage === "HIRED" && !application.hiredAt ? new Date() : undefined,
       },
     }),
     ...orderedIdsInStage.map((id, index) =>
@@ -135,12 +154,12 @@ export async function moveCandidateInKanban(
 
   // Só registra evento quando a etapa de fato muda — reordenar dentro da
   // mesma coluna não é um evento interessante pro histórico.
-  if (application.stage !== toStage) {
+  if (application.stage !== finalStage) {
     await logApplicationEvent({
       companyId: session.companyId,
       applicationId,
       type: "STAGE_CHANGED",
-      payload: { from: application.stage, to: toStage },
+      payload: { from: application.stage, to: finalStage },
       actorId: session.userId,
     });
   }
