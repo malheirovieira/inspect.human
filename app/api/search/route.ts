@@ -37,9 +37,9 @@ export async function GET(request: Request) {
       select: { id: true, title: true, department: true },
       take: 5,
     }),
-    prisma.candidate.findMany({
-      where: { companyId, name: { contains: q, mode: "insensitive" } },
-      select: { id: true, name: true, email: true },
+    prisma.application.findMany({
+      where: { companyId, candidate: { name: { contains: q, mode: "insensitive" } } },
+      select: { id: true, jobId: true, candidate: { select: { name: true, email: true } } },
       take: 5,
     }),
   ]);
@@ -57,11 +57,11 @@ export async function GET(request: Request) {
       sublabel: j.department,
       href: `/recrutamento/vagas/${j.id}`,
     })),
-    candidatos: candidatos.map((c) => ({
-      id: c.id,
-      label: c.name,
-      sublabel: c.email,
-      href: `/recrutamento/candidatos/${c.id}`,
+    candidatos: candidatos.map((a) => ({
+      id: a.id,
+      label: a.candidate.name,
+      sublabel: a.candidate.email,
+      href: `/recrutamento/vagas/${a.jobId}/candidaturas/${a.id}`,
     })),
   };
 

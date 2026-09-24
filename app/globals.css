@@ -716,6 +716,45 @@ body {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
+/* ---- Card do Kanban de candidatos — estilo Trello ---- */
+.fin-kanban-card {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px rgba(9, 30, 66, 0.15), 0 1px 1px rgba(9, 30, 66, 0.12);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: grab;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.fin-kanban-card:hover {
+  box-shadow: 0 4px 8px rgba(9, 30, 66, 0.2), 0 2px 4px rgba(9, 30, 66, 0.12);
+  transform: translateY(-1px);
+}
+.fin-kanban-card:active {
+  cursor: grabbing;
+}
+/* Campo bloqueado (ex.: card de detalhes antes de clicar em "Editar") —
+   cinza, sem cursor de edição, sinaliza visualmente que não dá pra digitar. */
+.fin-input:disabled {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+/* Seta nativa do <select> fica colada na borda por padrão do navegador —
+   troca por uma seta cinza com mais respiro (mesma ideia do .fin-filter-select,
+   mas pros selects de formulário de cadastro, que são retangulares). */
+select.fin-input {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2386868B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px;
+}
 
 /* ---- Campo de busca (pílula, sem animação) ---- */
 .fin-search {

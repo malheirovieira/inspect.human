@@ -1,0 +1,115 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Card } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Field";
+import { moveCandidateStage, setCandidateTag } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
+import { CANDIDATE_STAGES, STAGE_LABELS, CANDIDATE_TAGS, TAG_LABELS, TAG_COLORS, TAG_NEXT_STEP } from "@/schemas/candidate";
+
+type Stage = (typeof CANDIDATE_STAGES)[number];
+type Tag = (typeof CANDIDATE_TAGS)[number];
+
+// Cabeçalho da candidatura: nome (com link pro perfil da pessoa), vaga,
+// etapa atual e tag de triagem — editáveis aqui, mesma action que o
+// Kanban/checklist usam (sincronização automática).
+export function ApplicationHeader({
+  applicationId,
+  candidateId,
+  candidateName,
+  jobTitle,
+  stage,
+  tag,
+  stageLabels,
+}: {
+  applicationId: string;
+  candidateId: string;
+  candidateName: string;
+  jobTitle: string;
+  stage: Stage;
+  tag: Tag | null;
+  stageLabels: Record<Stage, string>;
+}) {
+  const router = useRouter();
+  const [currentStage, setCurrentStage] = useState(stage);
+  const [currentTag, setCurrentTag] = useState<Tag | "">(tag ?? "");
+
+  async function handleStageChange(next: Stage) {
+    setCurrentStage(next);
+    await moveCandidateStage(applicationId, next);
+    router.refresh();
+  }
+
+  async function handleTagChange(next: Tag | "") {
+    setCurrentTag(next);
+    await setCandidateTag(applicationId, next || null);
+
+    // Tag "Reprovado" na triagem já é a decisão — reprova a candidatura
+    // direto, sem precisar de um segundo passo manual pra mover a etapa.
+    if (next === "RED") {
+      setCurrentStage("REJECTED");
+      await moveCandidateStage(applicationId, "REJECTED");
+    }
+
+    router.refresh();
+  }
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)" }}>{candidateName}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{jobTitle}</div>
+        </div>
+        <Link href={`/recrutamento/banco-de-talentos/${candidateId}`} style={{ fontSize: 13, fontWeight: 500 }}>
+          Ver perfil completo
+        </Link>
+      </div>
+
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: "1 1 240px" }}>
+          <span className="fin-eyebrow">ETAPA ATUAL</span>
+          <Select
+            value={currentStage}
+            disabled={currentStage === "REJECTED"}
+            onChange={(e) => handleStageChange(e.target.value as Stage)}
+          >
+            {CANDIDATE_STAGES.map((s) => (
+              <option key={s} value={s}>
+                {stageLabels[s] ?? STAGE_LABELS[s]}
+              </option>
+            ))}
+          </Select>
+          {currentStage === "REJECTED" && (
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              Candidatura reprovada — etapa bloqueada para alterações.
+            </span>
+          )}
+        </div>
+
+        {/* A tag é uma ferramenta de triagem — só faz sentido editar
+            enquanto a candidatura ainda está nessa etapa. */}
+        {currentStage === "TRIAGE" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: "1 1 240px" }}>
+            <span className="fin-eyebrow">TAG DE TRIAGEM</span>
+            <Select value={currentTag} onChange={(e) => handleTagChange(e.target.value as Tag | "")}>
+              <option value="">Aguardando Tag Triagem</option>
+              {CANDIDATE_TAGS.map((t) => (
+                <option key={t} value={t}>
+                  {TAG_LABELS[t]}
+                </option>
+              ))}
+            </Select>
+            {currentTag && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", background: TAG_COLORS[currentTag], flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{TAG_NEXT_STEP[currentTag]}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+}

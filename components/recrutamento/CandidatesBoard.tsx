@@ -8,6 +8,7 @@ import { STAGE_LABELS, type CANDIDATE_TAGS } from "@/schemas/candidate";
 
 export type BoardCandidate = {
   id: string;
+  candidateId: string;
   name: string;
   email: string;
   stage: string;
@@ -18,13 +19,19 @@ export type BoardCandidate = {
 
 // Visão em lista dos candidatos. O Kanban (com drag-and-drop) é o
 // KanbanBoard, um componente client à parte — ver components/recrutamento/KanbanBoard.tsx.
+//
+// `jobId` presente = lista dentro de UMA vaga (aba Candidatos) — cada linha
+// linka pra candidatura. Ausente = Banco de Talentos (lista geral) — cada
+// linha linka pro perfil da pessoa.
 export function CandidatesBoard({
   candidates,
+  jobId,
   showJob = true,
   emptyTitle = "Nenhum candidato ainda",
   emptyDescription = "Candidaturas recebidas pelo link público das vagas aparecem aqui.",
 }: {
   candidates: BoardCandidate[];
+  jobId?: string;
   showJob?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
@@ -38,7 +45,11 @@ export function CandidatesBoard({
       {candidates.map((candidate, index) => (
         <Link
           key={candidate.id}
-          href={`/recrutamento/candidatos/${candidate.id}`}
+          href={
+            jobId
+              ? `/recrutamento/vagas/${jobId}/candidaturas/${candidate.id}`
+              : `/recrutamento/banco-de-talentos/${candidate.candidateId}`
+          }
           style={{
             display: "flex",
             alignItems: "center",

@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { setJobStatus } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { listCompanyOptions } from "@/services/companyOptions";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
+import { CANDIDATE_STAGES } from "@/schemas/candidate";
 
 const TABS = [
   { key: "detalhes", label: "Detalhes" },
@@ -26,12 +27,17 @@ export default async function VagaDetalhePage({
   searchParams,
 }: {
   params: Promise<{ jobId: string }>;
-  searchParams: Promise<{ tab?: string; view?: string }>;
+  searchParams: Promise<{ tab?: string; view?: string; showRejected?: string }>;
 }) {
   const { jobId } = await params;
-  const { tab, view } = await searchParams;
+  const { tab, view, showRejected: showRejectedParam } = await searchParams;
   const activeTab = TABS.some((t) => t.key === tab) ? tab! : "detalhes";
-  const isKanban = view === "kanban";
+  // Padrão é Kanban (pipeline da vaga) — só cai pra lista com ?view=list explícito.
+  const isKanban = view !== "list";
+  // Reprovados ficam escondidos por padrão (Kanban esconde a coluna, lista
+  // esconde as linhas) — "Mostrar reprovados" revela os dois.
+  const showRejected = showRejectedParam === "1";
+  const visibleStages = showRejected ? CANDIDATE_STAGES : CANDIDATE_STAGES.filter((s) => s !== "REJECTED");
 
   const session = await requireSession();
   const [job, company, employmentTypes, departments, stageLabels] = await Promise.all([
@@ -45,7 +51,10 @@ export default async function VagaDetalhePage({
   if (!job) notFound();
 
   const publicPath = `/empresa/${company?.slug}/vagas/${job.id}`;
-  const boardCandidates = job.candidates.map((c) => ({ ...c, job: { title: job.title } }));
+  const boardCandidates = job.applications.map((a) => {
+    const { candidate, ...rest } = a;
+    return { ...rest, ...candidate, job: { title: job.title } };
+  });
 
   return (
     <>
@@ -65,7 +74,7 @@ export default async function VagaDetalhePage({
               {job.status === "OPEN" ? "Aberta" : job.status === "CLOSED" ? "Fechada" : "Rascunho"}
             </Badge>
             <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              {job.candidates.length} candidato(s) recebido(s)
+              {job.applications.length} candidato(s) recebido(s)
               {job.department ? ` · ${job.department}` : ""}
               {job.createdBy ? ` · Criada por ${job.createdBy.name}` : ""}
             </span>
@@ -115,7 +124,7 @@ export default async function VagaDetalhePage({
               }}
             >
               {t.label}
-              {t.key === "candidatos" ? ` (${job.candidates.length})` : ""}
+              {t.key === "candidatos" ? ` (${job.applications.length})` : ""}
             </Link>
           ))}
         </div>
@@ -138,19 +147,31 @@ export default async function VagaDetalhePage({
 
         {activeTab === "candidatos" && (
           <>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Link href={`/recrutamento/vagas/${jobId}?tab=candidatos`}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
+              <Link
+                href={`/recrutamento/vagas/${jobId}?tab=candidatos${isKanban ? "" : "&view=list"}${showRejected ? "" : "&showRejected=1"}`}
+              >
+                <Button variant={showRejected ? "primary" : "secondary"}>Mostrar reprovados</Button>
+              </Link>
+              <Link href={`/recrutamento/vagas/${jobId}?tab=candidatos&view=list${showRejected ? "&showRejected=1" : ""}`}>
                 <Button variant={isKanban ? "secondary" : "primary"}>Lista</Button>
               </Link>
-              <Link href={`/recrutamento/vagas/${jobId}?tab=candidatos&view=kanban`}>
+              <Link href={`/recrutamento/vagas/${jobId}?tab=candidatos${showRejected ? "&showRejected=1" : ""}`}>
                 <Button variant={isKanban ? "primary" : "secondary"}>Kanban</Button>
               </Link>
             </div>
             {isKanban ? (
-              <KanbanBoard candidates={boardCandidates} stageLabels={stageLabels} showJob={false} />
+              <KanbanBoard
+                candidates={boardCandidates}
+                stageLabels={stageLabels}
+                jobId={jobId}
+                showJob={false}
+                visibleStages={visibleStages}
+              />
             ) : (
               <CandidatesBoard
-                candidates={boardCandidates}
+                candidates={showRejected ? boardCandidates : boardCandidates.filter((c) => c.stage !== "REJECTED")}
+                jobId={jobId}
                 showJob={false}
                 emptyTitle="Nenhuma candidatura recebida ainda"
                 emptyDescription="Candidaturas enviadas pelo link público desta vaga aparecem aqui."

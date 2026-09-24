@@ -75,7 +75,7 @@ const GROUPS: NavGroup[] = [
     href: "/recrutamento",
     items: [
       { href: "/recrutamento/vagas", label: "Vagas" },
-      { href: "/recrutamento/candidatos", label: "Candidatos" },
+      { href: "/recrutamento/banco-de-talentos", label: "Banco de Talentos" },
     ],
   },
   {

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
-import { createCandidateManual } from "@/app/(dashboard)/recrutamento/candidatos/actions";
+import { formatPhone } from "@/lib/phoneMask";
+import { createCandidateManual } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
 
 type Job = { id: string; title: string };
 
@@ -24,7 +25,7 @@ export function CandidateManualForm({ jobs, onCreated }: { jobs: Job[]; onCreate
     setSubmitting(true);
     setError(null);
 
-    const result = await createCandidateManual({ jobId, name, email, phone, linkedinUrl });
+    const result = await createCandidateManual({ jobId, name, email, phone: phone.replace(/\D/g, ""), linkedinUrl });
 
     setSubmitting(false);
     if ("error" in result) {
@@ -70,7 +71,7 @@ export function CandidateManualForm({ jobs, onCreated }: { jobs: Job[]; onCreate
             <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </FieldLabel>
           <FieldLabel label="Telefone">
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Input type="tel" placeholder="(11) 91234-5678" maxLength={15} value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} />
           </FieldLabel>
           <FieldLabel label="LinkedIn">
             <Input placeholder="https://linkedin.com/in/..." value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />

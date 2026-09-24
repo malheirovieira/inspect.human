@@ -2,8 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { applyToJobSchema, PROCESS_STEPS, type ProcessTimeline } from "@/schemas/candidate";
+import { applyToJobSchema } from "@/schemas/candidate";
 import { getPublicOpenJob } from "@/services/jobs";
+import { logApplicationEvent } from "@/services/applicationEvents";
 
 export type ApplyResult = { error: string } | { success: true };
 
@@ -48,15 +49,34 @@ export async function applyToJob(companySlug: string, jobId: string, formData: F
   const found = await getPublicOpenJob(companySlug, jobId);
   if (!found) return { error: "Vaga não encontrada ou não está mais recebendo candidaturas." };
 
-  const candidate = await prisma.candidate.create({
-    data: {
-      companyId: found.company.id,
-      jobId: found.job.id,
-      name: parsed.data.name,
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      linkedinUrl: parsed.data.linkedinUrl || null,
-    },
+  // Candidate é a pessoa, reaproveitada entre candidaturas — antes de criar
+  // um novo, procura por e-mail dentro da empresa (mesmo candidato pode se
+  // candidatar a mais de uma vaga ao longo do tempo).
+  let candidate = await prisma.candidate.findFirst({ where: { companyId: found.company.id, email: parsed.data.email } });
+  if (!candidate) {
+    candidate = await prisma.candidate.create({
+      data: {
+        companyId: found.company.id,
+        name: parsed.data.name,
+        email: parsed.data.email,
+        phone: parsed.data.phone,
+        linkedinUrl: parsed.data.linkedinUrl || null,
+      },
+    });
+  }
+
+  const application = await prisma.application.create({
+    data: { companyId: found.company.id, candidateId: candidate.id, jobId: found.job.id },
+  });
+
+  // actorId null: candidatura pública não tem sessão — evento gerado pelo
+  // sistema, não por uma ação de um usuário logado.
+  await logApplicationEvent({
+    companyId: found.company.id,
+    applicationId: application.id,
+    type: "APPLICATION_CREATED",
+    payload: { source: "PUBLIC_FORM" },
+    actorId: null,
   });
 
   await prisma.notification.create({
@@ -65,7 +85,7 @@ export async function applyToJob(companySlug: string, jobId: string, formData: F
       type: "CANDIDATE_APPLIED",
       title: "Nova candidatura",
       message: `${candidate.name} se candidatou para ${found.job.title}`,
-      link: `/recrutamento/candidatos/${candidate.id}`,
+      link: `/recrutamento/vagas/${found.job.id}/candidaturas/${application.id}`,
     },
   });
 
@@ -77,10 +97,7 @@ export async function applyToJob(companySlug: string, jobId: string, formData: F
       .upload(path, resume, { contentType: "application/pdf", upsert: true });
 
     if (!uploadError) {
-      // Currículo em mãos = a etapa "Triagem de currículo" (primeira do
-      // processo) já pode ser considerada concluída automaticamente.
-      const processSteps: ProcessTimeline = { [PROCESS_STEPS[0]]: new Date().toISOString() };
-      await prisma.candidate.update({ where: { id: candidate.id }, data: { resumePath: path, processSteps } });
+      await prisma.candidate.update({ where: { id: candidate.id }, data: { resumePath: path } });
     } else {
       console.error("Falha ao subir currículo pro Storage:", uploadError);
     }

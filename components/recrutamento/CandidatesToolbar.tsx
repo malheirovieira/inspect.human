@@ -1,42 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Field";
 import { ListToolbar } from "@/components/ui/ListToolbar";
 import { CandidateManualForm } from "./CandidateManualForm";
 
 type Job = { id: string; title: string };
 type FilterOption = { value: string; label: string };
 
-// Junta a linha de filtros/Lista/Kanban/Cadastrar num único componente client
-// pra poder compartilhar o estado "open" entre o botão (que fica na linha,
-// ao lado dos outros) e o formulário (que expande abaixo, ocupando a largura
-// toda) — sem isso os dois ficam presos ao mesmo lugar na árvore, e um dos
-// dois posicionamentos sempre sai errado.
+// Sem seletor de visualização: Banco de Talentos é só lista (o Kanban fica
+// dentro de cada vaga, em /recrutamento/vagas/[jobId]?tab=candidatos).
 export function CandidatesToolbar({
-  isKanban,
-  baseQuery,
   stageOptions,
   tagOptions,
+  jobOptions,
   jobs,
 }: {
-  isKanban: boolean;
-  baseQuery: Record<string, string>;
   stageOptions: FilterOption[];
   tagOptions: FilterOption[];
+  jobOptions: FilterOption[];
   jobs: Job[];
 }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
-
-  function handleViewChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const params = new URLSearchParams(baseQuery);
-    if (e.target.value === "kanban") params.set("view", "kanban");
-    router.push(`/recrutamento/candidatos?${params.toString()}`);
-  }
 
   return (
     <>
@@ -44,21 +30,11 @@ export function CandidatesToolbar({
         <ListToolbar
           searchPlaceholder="Buscar por nome ou e-mail..."
           filters={[
+            { key: "jobId", label: "Todas as vagas", options: jobOptions },
             { key: "stage", label: "Todas as etapas", options: stageOptions },
             { key: "tag", label: "Todas as tags", options: tagOptions },
           ]}
-        >
-          <Select
-            className="fin-filter-select"
-            value={isKanban ? "kanban" : "list"}
-            onChange={handleViewChange}
-            style={{ flexShrink: 0, width: 140 }}
-            aria-label="Visualização"
-          >
-            <option value="list">Lista</option>
-            <option value="kanban">Kanban</option>
-          </Select>
-        </ListToolbar>
+        />
         <Button
           type="button"
           variant={open ? "round-cancel" : "round-add"}

@@ -124,35 +124,50 @@ create index idx_jobs_company_status on jobs (company_id, status);
 create index idx_jobs_open on jobs (company_id, created_at desc) where status = 'OPEN';
 
 -- ----------------------------------------------------------------------------
--- candidates
--- company_id é sempre copiado do job no momento do insert (trigger abaixo),
--- nunca aceito do payload do formulário público.
+-- candidates — a PESSOA (independente de vaga). Uma pessoa pode ter várias
+-- candidaturas (applications) ao longo do tempo, inclusive em vagas
+-- diferentes — ver "banco de talentos".
 -- ----------------------------------------------------------------------------
 create table candidates (
   id uuid primary key default gen_random_uuid(),
   company_id uuid not null references companies (id) on delete cascade,
-  job_id uuid not null references jobs (id) on delete cascade,
   name text not null,
   email text not null,
   phone text,
   linkedin_url text,
   resume_path text,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index idx_candidates_company on candidates (company_id);
+create index idx_candidates_company_email on candidates (company_id, email);
+
+-- ----------------------------------------------------------------------------
+-- applications — a candidatura de um candidate a UMA vaga específica.
+-- company_id é sempre copiado do job no momento do insert (trigger abaixo),
+-- nunca aceito do payload do formulário público. Sem check constraint pra
+-- stage (padrão mais recente do projeto: validar no Zod).
+-- ----------------------------------------------------------------------------
+create table applications (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  candidate_id uuid not null references candidates (id) on delete cascade,
+  job_id uuid not null references jobs (id) on delete cascade,
   stage text not null default 'TRIAGE',
   position integer not null default 0,
   qualification_tag text,
   hired_at timestamptz,
   process_steps jsonb,
-  notes text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint candidates_stage_check check (stage in ('TRIAGE', 'INTERVIEW', 'PROPOSAL', 'HIRED')),
-  constraint candidates_qualification_tag_check check (qualification_tag in ('GREEN', 'YELLOW', 'BLUE', 'RED', 'GRAY'))
+  updated_at timestamptz not null default now()
 );
-create index idx_candidates_company on candidates (company_id);
-create index idx_candidates_job on candidates (company_id, job_id);
-create index idx_candidates_stage on candidates (company_id, job_id, stage);
+create index idx_applications_company on applications (company_id);
+create index idx_applications_job on applications (company_id, job_id);
+create index idx_applications_stage on applications (company_id, job_id, stage);
+create index idx_applications_candidate on applications (company_id, candidate_id);
 
-create or replace function candidates_set_company_id()
+create or replace function applications_set_company_id()
 returns trigger language plpgsql as $$
 begin
   select company_id into new.company_id from jobs where id = new.job_id;
@@ -162,9 +177,27 @@ begin
   return new;
 end;
 $$;
-create trigger trg_candidates_set_company_id
-  before insert on candidates
-  for each row execute function candidates_set_company_id();
+create trigger trg_applications_set_company_id
+  before insert on applications
+  for each row execute function applications_set_company_id();
+-- trigger de updated_at: ver "updated_at automático" mais abaixo (set_updated_at()
+-- só é definida lá — precisa vir depois no script rodado do zero).
+
+-- ----------------------------------------------------------------------------
+-- application_events — histórico cronológico de uma candidatura (mudança de
+-- etapa, nota, e-mail enviado na Fase 1 etc.).
+-- ----------------------------------------------------------------------------
+create table application_events (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  application_id uuid not null references applications (id) on delete cascade,
+  type text not null, -- validado no Zod, sem check constraint por ora
+  payload jsonb,
+  actor_id uuid references users (id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index idx_application_events_company_application on application_events (company_id, application_id);
+create index idx_application_events_company_created_at on application_events (company_id, created_at);
 
 -- ----------------------------------------------------------------------------
 -- training_trails / training_items
@@ -342,7 +375,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['companies','users','jobs','candidates','training_trails']
+  foreach t in array array['companies','users','jobs','candidates','applications','training_trails']
   loop
     execute format('create trigger trg_%I_updated_at before update on %I for each row execute function set_updated_at();', t, t);
   end loop;

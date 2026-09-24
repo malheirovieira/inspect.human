@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
 import { TemporaryPasswordCard } from "@/components/ui/TemporaryPasswordCard";
+import { formatPhone } from "@/lib/phoneMask";
 import { createColaborador, updateColaborador } from "@/app/(dashboard)/colaboradores/actions";
 import type { Dependent } from "@/schemas/colaborador";
 
@@ -142,7 +143,13 @@ export function ColaboradorForm({
 }) {
   const router = useRouter();
   const isEdit = Boolean(colaboradorId);
-  const [form, setForm] = useState<FormState>(() => ({ ...INITIAL_STATE, ...initial }));
+  const [form, setForm] = useState<FormState>(() => ({
+    ...INITIAL_STATE,
+    ...initial,
+    // formatPhone tolera tanto dígitos crus (padrão novo) quanto valor já
+    // mascarado (cadastros antigos) — sempre exibe formatado.
+    phone: formatPhone(initial?.phone ?? ""),
+  }));
   const [dependents, setDependents] = useState<Dependent[]>(initialDependents ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -171,6 +178,9 @@ export function ColaboradorForm({
 
     const payload = {
       ...form,
+      // Exibido com máscara no formulário; salvo só com dígitos (ver
+      // lib/phoneMask.ts — mesma regra em todo campo de telefone do sistema).
+      phone: form.phone.replace(/\D/g, ""),
       salary: form.salary as unknown as number,
       transportVoucherOptIn: form.transportVoucherOptIn === "sim",
       dependents,
@@ -266,7 +276,14 @@ export function ColaboradorForm({
           <Input disabled={isEdit} value={form.fatherName} onChange={(e) => update("fatherName", e.target.value)} />
         </FieldLabel>
         <FieldLabel label="Telefone" required>
-          <Input required value={form.phone} onChange={(e) => update("phone", e.target.value)} />
+          <Input
+            required
+            type="tel"
+            placeholder="(11) 91234-5678"
+            maxLength={15}
+            value={form.phone}
+            onChange={(e) => update("phone", formatPhone(e.target.value))}
+          />
         </FieldLabel>
         <FieldLabel label="Grau de instrução">
           <Select value={form.educationLevel} onChange={(e) => update("educationLevel", e.target.value)}>

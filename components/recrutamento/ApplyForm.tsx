@@ -25,7 +25,7 @@ export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: 
     const formData = new FormData();
     formData.set("name", name);
     formData.set("email", email);
-    formData.set("phone", phone);
+    formData.set("phone", phone.replace(/\D/g, ""));
     formData.set("linkedinUrl", linkedinUrl);
     if (resume) formData.set("resume", resume);
 

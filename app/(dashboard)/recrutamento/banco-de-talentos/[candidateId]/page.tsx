@@ -2,26 +2,30 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { CandidateDadosForm } from "@/components/recrutamento/CandidateDadosForm";
-import { CandidateTimeline } from "@/components/recrutamento/CandidateTimeline";
-import { CandidateNotes } from "@/components/recrutamento/CandidateNotes";
-import { getCandidate } from "@/services/candidates";
+import { CandidateProfileForm } from "@/components/recrutamento/CandidateProfileForm";
+import { CandidateResumeUpload } from "@/components/recrutamento/CandidateResumeUpload";
+import { getPerson } from "@/services/candidates";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { ProcessTimeline } from "@/schemas/candidate";
-import { FileText, Folder, Boxes, Download } from "lucide-react";
+import { STAGE_LABELS, TERMINAL_STAGES, type CANDIDATE_STAGES } from "@/schemas/candidate";
+import { FileText, Folder, Download } from "lucide-react";
 
 const RESUME_BUCKET = "resumes";
 
 const TABS = [
-  { key: "dados", label: "Dados" },
-  { key: "curriculo", label: "Currículo" },
-  { key: "processo", label: "Processo" },
+  { key: "perfil", label: "Perfil" },
+  { key: "candidaturas", label: "Candidaturas" },
   { key: "documentos", label: "Documentos" },
-  { key: "erp", label: "ERP" },
 ] as const;
 
-export default async function CandidatoPerfilPage({
+function resultLabel(stage: string): string {
+  if (stage === "HIRED") return "Contratado";
+  if (stage === "REJECTED") return "Reprovado";
+  return "Em andamento";
+}
+
+export default async function PessoaPerfilPage({
   params,
   searchParams,
 }: {
@@ -30,18 +34,16 @@ export default async function CandidatoPerfilPage({
 }) {
   const { candidateId } = await params;
   const { tab } = await searchParams;
-  const activeTab = TABS.some((t) => t.key === tab) ? tab! : "dados";
+  const activeTab = TABS.some((t) => t.key === tab) ? tab! : "perfil";
 
-  const candidate = await getCandidate(candidateId);
+  const candidate = await getPerson(candidateId);
   if (!candidate) notFound();
 
   // URL assinada e de curta duração — o bucket é privado, então o link de
   // download só funciona por um tempo curto em vez de ficar público pra
-  // sempre (o path em si já é isolado por company_id/candidate_id). Só
-  // gera quando a aba Currículo está de fato aberta, pra não bater no
-  // Storage à toa nas outras abas.
+  // sempre. Só gera quando a aba Perfil está de fato aberta.
   let resumeUrl: string | null = null;
-  if (activeTab === "curriculo" && candidate.resumePath) {
+  if (activeTab === "perfil" && candidate.resumePath) {
     const supabaseAdmin = createSupabaseAdminClient();
     const { data } = await supabaseAdmin.storage.from(RESUME_BUCKET).createSignedUrl(candidate.resumePath, 300);
     resumeUrl = data?.signedUrl ?? null;
@@ -51,10 +53,10 @@ export default async function CandidatoPerfilPage({
     <>
       <Header
         title={candidate.name}
-        backHref="/recrutamento/candidatos"
+        backHref="/recrutamento/banco-de-talentos"
         breadcrumb={[
           { label: "Recrutamento" },
-          { label: "Candidatos", href: "/recrutamento/candidatos" },
+          { label: "Banco de Talentos", href: "/recrutamento/banco-de-talentos" },
           { label: candidate.name },
         ]}
       />
@@ -63,7 +65,7 @@ export default async function CandidatoPerfilPage({
           {TABS.map((t) => (
             <Link
               key={t.key}
-              href={`/recrutamento/candidatos/${candidateId}?tab=${t.key}`}
+              href={`/recrutamento/banco-de-talentos/${candidateId}?tab=${t.key}`}
               style={{
                 padding: "10px 16px",
                 fontSize: 13,
@@ -74,68 +76,94 @@ export default async function CandidatoPerfilPage({
               }}
             >
               {t.label}
+              {t.key === "candidaturas" ? ` (${candidate.applications.length})` : ""}
             </Link>
           ))}
         </div>
 
-        {activeTab === "dados" && (
-          <CandidateDadosForm
-            candidateId={candidate.id}
-            stage={candidate.stage as "TRIAGE" | "INTERVIEW" | "PROPOSAL" | "HIRED"}
-            tag={candidate.qualificationTag as "GREEN" | "YELLOW" | "BLUE" | "RED" | "GRAY" | null}
-            initial={{
-              name: candidate.name,
-              email: candidate.email,
-              phone: candidate.phone ?? "",
-              linkedinUrl: candidate.linkedinUrl ?? "",
-            }}
-          />
-        )}
-
-        {activeTab === "processo" && (
+        {activeTab === "perfil" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <CandidateTimeline
+            <CandidateProfileForm
               candidateId={candidate.id}
-              timeline={(candidate.processSteps as ProcessTimeline | null) ?? {}}
+              initial={{
+                name: candidate.name,
+                email: candidate.email,
+                phone: candidate.phone ?? "",
+                linkedinUrl: candidate.linkedinUrl ?? "",
+              }}
             />
-            <CandidateNotes candidateId={candidate.id} notes={candidate.notes} />
+
+            {resumeUrl ? (
+              <div className="fin-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <FileText size={18} style={{ color: "var(--text-muted)" }} />
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>Currículo anexado</span>
+                </div>
+                <a href={resumeUrl} target="_blank" rel="noreferrer">
+                  <Button variant="secondary">
+                    <Download size={14} /> Baixar PDF
+                  </Button>
+                </a>
+              </div>
+            ) : (
+              <EmptyState
+                icon={FileText}
+                title="Nenhum currículo anexado"
+                description="Anexe o PDF do currículo desta pessoa."
+                action={<CandidateResumeUpload candidateId={candidate.id} />}
+              />
+            )}
+
+            {/* Reservado para o resumo por IA do currículo (fase futura) —
+                sem placeholder visível de propósito. */}
           </div>
         )}
 
-        {activeTab === "curriculo" &&
-          (resumeUrl ? (
-            <div className="fin-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <FileText size={18} style={{ color: "var(--text-muted)" }} />
-                <span style={{ fontSize: 14, fontWeight: 500 }}>Currículo enviado na candidatura</span>
-              </div>
-              <a href={resumeUrl} target="_blank" rel="noreferrer">
-                <Button variant="secondary">
-                  <Download size={14} /> Baixar PDF
-                </Button>
-              </a>
-            </div>
-          ) : (
+        {activeTab === "candidaturas" &&
+          (candidate.applications.length === 0 ? (
             <EmptyState
               icon={FileText}
-              title="Nenhum currículo enviado"
-              description="Este candidato não anexou um PDF de currículo na candidatura."
+              title="Nenhuma candidatura ainda"
+              description="Candidaturas desta pessoa a vagas da empresa aparecem aqui."
             />
+          ) : (
+            <div className="fin-card" style={{ padding: 0 }}>
+              {candidate.applications.map((app, index) => (
+                <Link
+                  key={app.id}
+                  href={`/recrutamento/vagas/${app.jobId}/candidaturas/${app.id}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "16px 24px",
+                    borderTop: index === 0 ? "none" : "1px solid var(--border)",
+                    color: "inherit",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{app.job.title}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                      {app.createdAt.toLocaleDateString("pt-BR")} · {STAGE_LABELS[app.stage as (typeof CANDIDATE_STAGES)[number]]}
+                    </div>
+                  </div>
+                  <Badge tone={TERMINAL_STAGES.includes(app.stage as never) ? (app.stage === "HIRED" ? "success" : "danger") : "primary"}>
+                    {resultLabel(app.stage)}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
           ))}
 
         {activeTab === "documentos" && (
+          // Em desenvolvimento de propósito — quando existir, só pedir
+          // documento pra candidatura na etapa Contratado (admissão, não
+          // seleção).
           <EmptyState
             icon={Folder}
-            title="Nenhum documento anexado"
-            description="O upload de documentos do candidato ainda está sendo desenvolvido."
-          />
-        )}
-
-        {activeTab === "erp" && (
-          <EmptyState
-            icon={Boxes}
-            title="Integração com ERP"
-            description="Nenhuma integração configurada ainda."
+            title="Em desenvolvimento"
+            description="Em breve você poderá receber e organizar os documentos de admissão do candidato aqui."
           />
         )}
       </div>

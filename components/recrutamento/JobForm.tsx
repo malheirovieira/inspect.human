@@ -36,6 +36,11 @@ export function JobForm({
   const [form, setForm] = useState<JobInput>(initial ?? INITIAL);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Card de detalhes de uma vaga existente abre bloqueado (cinza, somente
+  // leitura) pra evitar edição sem querer — "Editar" destrava os campos,
+  // "Atualizar" salva e trava de novo. Vaga nova (sem jobId) não bloqueia:
+  // não faz sentido travar um formulário em branco.
+  const [locked, setLocked] = useState(Boolean(jobId));
 
   function update<K extends keyof JobInput>(key: K, value: JobInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -43,6 +48,12 @@ export function JobForm({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
+    if (jobId && locked) {
+      setLocked(false);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -55,19 +66,24 @@ export function JobForm({
       return;
     }
 
-    if (jobId) router.refresh();
+    if (jobId) {
+      setLocked(true);
+      router.refresh();
+    }
     // createJob redireciona no servidor (redirect()), não precisa navegar aqui.
   }
+
+  const fieldsDisabled = jobId ? locked : false;
 
   return (
     <form onSubmit={handleSubmit}>
       <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           <FieldLabel label="Título da vaga" required>
-            <Input required value={form.title} onChange={(e) => update("title", e.target.value)} />
+            <Input required disabled={fieldsDisabled} value={form.title} onChange={(e) => update("title", e.target.value)} />
           </FieldLabel>
           <FieldLabel label="Setor">
-            <Select value={form.department} onChange={(e) => update("department", e.target.value)}>
+            <Select disabled={fieldsDisabled} value={form.department} onChange={(e) => update("department", e.target.value)}>
               <option value="">Selecione</option>
               {departmentOptions.map((option) => (
                 <option key={option} value={option}>
@@ -77,17 +93,22 @@ export function JobForm({
             </Select>
           </FieldLabel>
           <FieldLabel label="Localização">
-            <Input value={form.location} onChange={(e) => update("location", e.target.value)} />
+            <Input disabled={fieldsDisabled} value={form.location} onChange={(e) => update("location", e.target.value)} />
           </FieldLabel>
           <FieldLabel label="Modelo de trabalho" required>
-            <Select required value={form.workMode} onChange={(e) => update("workMode", e.target.value as JobInput["workMode"])}>
+            <Select
+              required
+              disabled={fieldsDisabled}
+              value={form.workMode}
+              onChange={(e) => update("workMode", e.target.value as JobInput["workMode"])}
+            >
               <option value="PRESENCIAL">Presencial</option>
               <option value="REMOTO">Remoto</option>
               <option value="HIBRIDO">Híbrido</option>
             </Select>
           </FieldLabel>
           <FieldLabel label="Tipo de contratação">
-            <Select value={form.employmentType} onChange={(e) => update("employmentType", e.target.value)}>
+            <Select disabled={fieldsDisabled} value={form.employmentType} onChange={(e) => update("employmentType", e.target.value)}>
               <option value="">Selecione</option>
               {employmentTypeOptions.map((option) => (
                 <option key={option} value={option}>
@@ -101,6 +122,7 @@ export function JobForm({
         <FieldLabel label="Descrição da vaga" required>
           <Textarea
             required
+            disabled={fieldsDisabled}
             value={form.description}
             onChange={(e) => update("description", e.target.value)}
             style={{ minHeight: 160 }}
@@ -116,6 +138,7 @@ export function JobForm({
             <FieldLabel label="Encerrar recebimento de currículos">
               <Input
                 type="date"
+                disabled={fieldsDisabled}
                 value={form.resumeDeadline}
                 onChange={(e) => update("resumeDeadline", e.target.value)}
               />
@@ -123,6 +146,7 @@ export function JobForm({
             <FieldLabel label="Encerrar entrevistas">
               <Input
                 type="date"
+                disabled={fieldsDisabled}
                 value={form.interviewDeadline}
                 onChange={(e) => update("interviewDeadline", e.target.value)}
               />
@@ -130,6 +154,7 @@ export function JobForm({
             <FieldLabel label="Encerrar contratação (envio de documentos)">
               <Input
                 type="date"
+                disabled={fieldsDisabled}
                 value={form.hiringDeadline}
                 onChange={(e) => update("hiringDeadline", e.target.value)}
               />
@@ -137,6 +162,7 @@ export function JobForm({
             <FieldLabel label="Previsão de início">
               <Input
                 type="date"
+                disabled={fieldsDisabled}
                 value={form.expectedStartDate}
                 onChange={(e) => update("expectedStartDate", e.target.value)}
               />
@@ -160,7 +186,13 @@ export function JobForm({
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <Button type="submit" variant={submitting ? "disabled" : "primary"}>
-            {submitting ? "Salvando..." : jobId ? "Salvar alterações" : "Criar vaga"}
+            {submitting
+              ? "Salvando..."
+              : !jobId
+                ? "Criar vaga"
+                : locked
+                  ? "Editar"
+                  : "Atualizar"}
           </Button>
         </div>
       </Card>

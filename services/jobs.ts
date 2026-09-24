@@ -23,11 +23,11 @@ export async function listJobs(filters: JobFilters = {}) {
     },
     orderBy: { createdAt: "desc" },
     include: {
-      _count: { select: { candidates: true } },
+      _count: { select: { applications: true } },
       // Só pra saber se a vaga tem alguém contratado (tag "Vaga Preenchida"
       // na listagem) — não é a lista de candidatos da vaga, por isso o
       // select mínimo e o take: 1.
-      candidates: { where: { stage: "HIRED" }, select: { id: true }, take: 1 },
+      applications: { where: { stage: "HIRED" }, select: { id: true }, take: 1 },
     },
   });
 }
@@ -37,7 +37,12 @@ export async function getJob(jobId: string) {
   return prisma.job.findFirst({
     where: { id: jobId, companyId: session.companyId },
     include: {
-      candidates: { orderBy: { createdAt: "desc" } },
+      applications: {
+        orderBy: { createdAt: "desc" },
+        include: {
+          candidate: { select: { name: true, email: true, phone: true, linkedinUrl: true, resumePath: true } },
+        },
+      },
       createdBy: { select: { name: true } },
     },
   });

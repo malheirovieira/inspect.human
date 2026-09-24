@@ -17,14 +17,13 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
 import { TagDot } from "@/components/recrutamento/TagDot";
-import { Pencil, GripVertical } from "lucide-react";
+import { Pencil } from "lucide-react";
 import {
   moveCandidateInKanban,
   setKanbanStageLabel,
-} from "@/app/(dashboard)/recrutamento/candidatos/actions";
+} from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
 import { CANDIDATE_STAGES, type CANDIDATE_TAGS } from "@/schemas/candidate";
 
 type Stage = (typeof CANDIDATE_STAGES)[number];
@@ -40,7 +39,7 @@ export type KanbanCandidate = {
   job: { title: string };
 };
 
-const TAG_ORDER: Record<string, number> = { GREEN: 0, YELLOW: 1, BLUE: 2, RED: 3, GRAY: 4 };
+const TAG_ORDER: Record<string, number> = { GREEN: 0, BLUE: 1, RED: 2 };
 
 function groupAndSort(candidates: KanbanCandidate[], mode: SortMode): Record<Stage, KanbanCandidate[]> {
   const columns = {} as Record<Stage, KanbanCandidate[]>;
@@ -62,36 +61,27 @@ function groupAndSort(candidates: KanbanCandidate[], mode: SortMode): Record<Sta
   return columns;
 }
 
-function CandidateCard({ candidate, showJob }: { candidate: KanbanCandidate; showJob: boolean }) {
+// Estilo Trello: o card inteiro é a área de arrastar (sem alça separada) —
+// o activationConstraint de 5px no sensor (ver useSensors abaixo) garante
+// que um clique simples (sem arrastar) ainda funcione como navegação normal
+// pro Link interno, em vez de ser sequestrado pelo drag.
+function CandidateCard({ candidate, jobId, showJob }: { candidate: KanbanCandidate; jobId: string; showJob: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: candidate.id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <Card style={{ padding: 12, boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "flex-start", gap: 6 }}>
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label="Arrastar candidato"
-          style={{ background: "none", border: "none", padding: 0, cursor: "grab", color: "var(--text-muted)", marginTop: 2 }}
-        >
-          <GripVertical size={14} />
-        </button>
-        <Link href={`/recrutamento/candidatos/${candidate.id}`} style={{ textDecoration: "none", color: "inherit", flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            {candidate.qualificationTag && candidate.stage === "TRIAGE" && (
-              <TagDot tag={candidate.qualificationTag as (typeof CANDIDATE_TAGS)[number]} interactive={false} />
-            )}
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{candidate.name}</div>
-          </div>
-          {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{candidate.job.title}</div>}
-        </Link>
-      </Card>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="fin-kanban-card">
+      {candidate.qualificationTag && candidate.stage === "TRIAGE" && (
+        <TagDot tag={candidate.qualificationTag as (typeof CANDIDATE_TAGS)[number]} interactive={false} />
+      )}
+      <Link href={`/recrutamento/vagas/${jobId}/candidaturas/${candidate.id}`} style={{ textDecoration: "none", color: "inherit" }}>
+        <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: "var(--ink)" }}>{candidate.name}</div>
+        {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{candidate.job.title}</div>}
+      </Link>
     </div>
   );
 }
@@ -100,6 +90,7 @@ function StageColumn({
   stage,
   label,
   candidates,
+  jobId,
   showJob,
   editing,
   onStartEdit,
@@ -109,6 +100,7 @@ function StageColumn({
   stage: Stage;
   label: string;
   candidates: KanbanCandidate[];
+  jobId: string;
   showJob: boolean;
   editing: boolean;
   onStartEdit: () => void;
@@ -122,7 +114,7 @@ function StageColumn({
     <div
       ref={setNodeRef}
       style={{
-        width: 280,
+        width: 304,
         flexShrink: 0,
         background: isOver ? "var(--surface-selected)" : "var(--surface-muted)",
         borderRadius: "var(--radius-lg)",
@@ -188,7 +180,9 @@ function StageColumn({
           {candidates.length === 0 ? (
             <p style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 6px", margin: 0 }}>Nenhum candidato</p>
           ) : (
-            candidates.map((candidate) => <CandidateCard key={candidate.id} candidate={candidate} showJob={showJob} />)
+            candidates.map((candidate) => (
+              <CandidateCard key={candidate.id} candidate={candidate} jobId={jobId} showJob={showJob} />
+            ))
           )}
         </div>
       </SortableContext>
@@ -199,11 +193,18 @@ function StageColumn({
 export function KanbanBoard({
   candidates,
   stageLabels,
+  jobId,
   showJob = true,
+  visibleStages = CANDIDATE_STAGES,
 }: {
   candidates: KanbanCandidate[];
   stageLabels: Record<Stage, string>;
+  jobId: string;
   showJob?: boolean;
+  // Quais colunas renderizar — default é todas. Usado pra esconder
+  // "Reprovado" quando o filtro "Mostrar reprovados" está desligado (os
+  // candidatos continuam existindo, só não aparecem como coluna vazia/cheia).
+  visibleStages?: readonly Stage[];
 }) {
   const router = useRouter();
   const [sortMode, setSortMode] = useState<SortMode>("manual");
@@ -306,12 +307,13 @@ export function KanbanBoard({
 
       <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start", overflowX: "auto", paddingBottom: 8 }}>
-          {CANDIDATE_STAGES.map((stage) => (
+          {visibleStages.map((stage) => (
             <StageColumn
               key={stage}
               stage={stage}
               label={labels[stage]}
               candidates={columns[stage]}
+              jobId={jobId}
               showJob={showJob}
               editing={editingStage === stage}
               onStartEdit={() => setEditingStage(stage)}

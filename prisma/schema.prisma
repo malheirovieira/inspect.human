@@ -34,6 +34,8 @@ model Company {
   users               User[]
   jobs                Job[]
   candidates          Candidate[]
+  applications        Application[]
+  applicationEvents   ApplicationEvent[]
   trainingTrails      TrainingTrail[]
   trainingItems       TrainingItem[]
   trainingAssignments TrainingAssignment[]
@@ -143,6 +145,7 @@ model User {
   exit                EmployeeExit?        @relation("ExitUser")
   processedExits      EmployeeExit[]       @relation("ExitCreatedBy")
   documents           EmployeeDocument[]
+  applicationEvents   ApplicationEvent[]   @relation("ApplicationEventActor")
 
   @@unique([companyId, email])
   @@unique([companyId, cpf])
@@ -175,9 +178,9 @@ model Job {
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdBy  User?       @relation("JobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  candidates Candidate[]
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy    User?         @relation("JobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  applications Application[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -185,17 +188,41 @@ model Job {
   @@schema("public")
 }
 
+// A PESSOA — independente de vaga. Uma mesma pessoa pode ter várias
+// candidaturas (Application) ao longo do tempo, inclusive em vagas
+// diferentes ("banco de talentos"). Campos aqui são os que fazem sentido
+// reaproveitar entre candidaturas (currículo, contato). Anotações não moram
+// mais aqui — viraram evento (NOTE_ADDED) em ApplicationEvent, por
+// candidatura, não pela pessoa (ver aba "Candidatura").
 model Candidate {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId   String   @map("company_id") @db.Uuid
-  jobId       String   @map("job_id") @db.Uuid
   name        String
   email       String
   phone       String?
   linkedinUrl String?  @map("linkedin_url")
-  // Nullable por enquanto: candidatura pública ainda não faz upload pro
-  // Storage (fase futura). Preenchido quando o upload de currículo existir.
+  // Nullable: nem toda candidatura anexa currículo, e o upload manual pelo
+  // recrutador (aba Perfil) também é opcional.
   resumePath  String?  @map("resume_path")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@index([companyId])
+  @@index([companyId, email])
+  @@map("candidates")
+  @@schema("public")
+}
+
+// A CANDIDATURA de um Candidate a UMA vaga específica — pipeline/etapa,
+// tag de qualificação e processo pertencem aqui, não à pessoa.
+model Application {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  candidateId String   @map("candidate_id") @db.Uuid
+  jobId       String   @map("job_id") @db.Uuid
   stage       String   @default("TRIAGE")
   // Posição manual dentro da coluna do Kanban (etapa) — usada no modo de
   // ordenação "Manual" pra saber quem fica em cima/embaixo.
@@ -206,21 +233,44 @@ model Candidate {
   // Preenchido só na primeira vez que o estágio vira HIRED — usado pro KPI
   // de time-to-hire (não usar updatedAt, que muda a cada edição qualquer).
   hiredAt     DateTime? @map("hired_at") @db.Timestamptz(6)
-  // Linha do tempo granular do processo (aba Processo) — mapa
-  // { chave_da_etapa: timestamp ISO | null }, ver PROCESS_STEPS em
-  // schemas/candidate.ts. Independente do "stage" grosso usado no Kanban.
-  processSteps Json?   @map("process_steps")
-  notes       String?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  job     Job     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  events    ApplicationEvent[]
 
   @@index([companyId])
   @@index([companyId, jobId])
   @@index([companyId, jobId, stage])
-  @@map("candidates")
+  @@index([companyId, candidateId])
+  @@map("applications")
+  @@schema("public")
+}
+
+// Histórico cronológico de uma candidatura — mudança de etapa, nota
+// adicionada, e-mail enviado (Fase 1) etc. payload guarda detalhes
+// específicos do tipo (ex.: STAGE_CHANGED: {from, to}), sem schema fixo por
+// tipo (validado no Zod na hora de gravar, não no banco).
+model ApplicationEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  applicationId String   @map("application_id") @db.Uuid
+  type          String
+  payload       Json?
+  // null = evento gerado pelo sistema (ex.: candidatura pública), não por
+  // uma ação de um usuário logado.
+  actorId       String?  @map("actor_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("ApplicationEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, applicationId])
+  @@index([companyId, createdAt])
+  @@map("application_events")
   @@schema("public")
 }
 

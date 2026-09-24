@@ -1,127 +1,153 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { UserPlus, ArrowRightLeft, Tag, MessageSquare, Mail, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { toggleProcessStep } from "@/app/(dashboard)/recrutamento/candidatos/actions";
-import { PROCESS_STEPS, PROCESS_STEP_LABELS, type ProcessTimeline } from "@/schemas/candidate";
+import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Field";
+import { addApplicationNote } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
+import { STAGE_LABELS, TAG_LABELS, type CANDIDATE_STAGES, type CANDIDATE_TAGS } from "@/schemas/candidate";
 
-function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+type EventRow = {
+  id: string;
+  type: string;
+  payload: unknown;
+  createdAt: Date;
+  actor: { name: string } | null;
+};
+
+function formatDateTime(date: Date): string {
+  return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
-export function CandidateTimeline({ candidateId, timeline }: { candidateId: string; timeline: ProcessTimeline }) {
+function stageLabel(stage: string | null): string {
+  if (!stage) return "—";
+  return STAGE_LABELS[stage as (typeof CANDIDATE_STAGES)[number]] ?? stage;
+}
+
+function tagLabel(tag: string | null): string {
+  if (!tag) return "Aguardando Tag Triagem";
+  return TAG_LABELS[tag as (typeof CANDIDATE_TAGS)[number]] ?? tag;
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  PUBLIC_FORM: "formulário público da vaga",
+  MANUAL: "cadastro manual",
+};
+
+// type + payload -> (ícone, descrição). Eventos com type desconhecido (ex.:
+// de uma versão futura) caem no fallback genérico em vez de sumir da lista.
+function describeEvent(event: EventRow): { icon: LucideIcon; text: string } {
+  const payload = (event.payload ?? {}) as Record<string, unknown>;
+
+  switch (event.type) {
+    case "APPLICATION_CREATED":
+      return { icon: UserPlus, text: `Candidatura criada via ${SOURCE_LABELS[payload.source as string] ?? "sistema"}` };
+    case "STAGE_CHANGED":
+      return {
+        icon: ArrowRightLeft,
+        text: `Etapa alterada de "${stageLabel(payload.from as string | null)}" para "${stageLabel(payload.to as string | null)}"`,
+      };
+    case "TAG_CHANGED":
+      return {
+        icon: Tag,
+        text: `Tag alterada de "${tagLabel(payload.from as string | null)}" para "${tagLabel(payload.to as string | null)}"`,
+      };
+    case "NOTE_ADDED":
+      return { icon: MessageSquare, text: payload.note as string };
+    case "EMAIL_QUEUED":
+    case "EMAIL_SENT":
+    case "EMAIL_FAILED":
+      return { icon: Mail, text: (payload.summary as string) ?? "Evento de e-mail" };
+    default:
+      return { icon: MessageSquare, text: event.type };
+  }
+}
+
+// Linha do tempo única da candidatura: campo de anotação no topo (anotação
+// é só mais um tipo de evento, ApplicationEvent) e, abaixo, todo o
+// histórico em ordem cronológica decrescente — substitui os antigos
+// "Histórico do processo" + "Adicionar anotação" + "Histórico de atividade".
+export function CandidateTimeline({ applicationId, events }: { applicationId: string; events: EventRow[] }) {
   const router = useRouter();
-  const [steps, setSteps] = useState<ProcessTimeline>(timeline);
-  const [pendingStep, setPendingStep] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleToggle(step: (typeof PROCESS_STEPS)[number]) {
-    const isCompleted = Boolean(steps[step]);
-    const stepIndex = PROCESS_STEPS.indexOf(step);
-    setPendingStep(step);
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
 
-    // Espelha a cascata do servidor: marcar preenche as anteriores,
-    // desmarcar limpa as posteriores.
-    setSteps((prev) => {
-      const next = { ...prev };
-      if (isCompleted) {
-        for (let i = stepIndex; i < PROCESS_STEPS.length; i++) next[PROCESS_STEPS[i]] = null;
-      } else {
-        const now = new Date().toISOString();
-        for (let i = 0; i <= stepIndex; i++) {
-          if (!next[PROCESS_STEPS[i]]) next[PROCESS_STEPS[i]] = now;
-        }
-      }
-      return next;
-    });
+    const result = await addApplicationNote(applicationId, note);
 
-    await toggleProcessStep(candidateId, step);
-
-    setPendingStep(null);
+    setSubmitting(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setNote("");
     router.refresh();
   }
 
   return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <span className="fin-eyebrow">LINHA DO TEMPO DO PROCESSO</span>
-      <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 16px" }}>
-        Marcar uma etapa completa também marca as anteriores; desmarcar uma etapa desmarca as posteriores.
-      </p>
+    <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <span className="fin-eyebrow">LINHA DO TEMPO</span>
 
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {PROCESS_STEPS.map((step, index) => {
-          const completedAt = steps[step];
-          const isCompleted = Boolean(completedAt);
-          const isLast = index === PROCESS_STEPS.length - 1;
-          const isPending = pendingStep === step;
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <Textarea
+          required
+          placeholder="Ex.: Entrevista técnica marcada para sexta-feira às 14h."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        {error && <div style={{ fontSize: 12, color: "var(--danger)" }}>{error}</div>}
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
+            {submitting ? "Salvando..." : "Adicionar anotação"}
+          </Button>
+        </div>
+      </form>
 
-          return (
-            <button
-              key={step}
-              type="button"
-              onClick={() => handleToggle(step)}
-              disabled={isPending}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 14,
-                background: "none",
-                border: "none",
-                padding: 0,
-                textAlign: "left",
-                cursor: isPending ? "wait" : "pointer",
-                width: "100%",
-                font: "inherit",
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "var(--radius-full)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    background: isCompleted ? "var(--action-primary)" : "var(--surface)",
-                    border: isCompleted ? "none" : "2px solid var(--border)",
-                    transition: "background 0.2s ease, border-color 0.2s ease",
-                  }}
-                >
-                  {isCompleted && <Check size={13} color="var(--on-action-primary)" strokeWidth={3} />}
-                </div>
-                {!isLast && (
+      {events.length === 0 ? (
+        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Nenhuma atividade registrada ainda.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {events.map((event, index) => {
+            const { icon: Icon, text } = describeEvent(event);
+            const isLast = index === events.length - 1;
+            return (
+              <div key={event.id} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
                   <div
                     style={{
-                      width: 2,
-                      flex: 1,
-                      minHeight: 28,
-                      background: isCompleted ? "var(--action-primary)" : "var(--border)",
-                      transition: "background 0.2s ease",
+                      width: 22,
+                      height: 22,
+                      borderRadius: "var(--radius-full)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      background: "var(--surface-muted)",
+                      color: "var(--text-secondary)",
                     }}
-                  />
-                )}
-              </div>
-              <div style={{ paddingBottom: 22 }}>
-                <div
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: isCompleted ? "var(--text-primary)" : "var(--text-muted)",
-                  }}
-                >
-                  {PROCESS_STEP_LABELS[step]}
+                  >
+                    <Icon size={12} />
+                  </div>
+                  {!isLast && <div style={{ width: 2, flex: 1, minHeight: 20, background: "var(--border)" }} />}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                  {completedAt ? formatDateTime(completedAt) : "Pendente"}
+                <div style={{ paddingBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>{text}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                    {formatDateTime(event.createdAt)} · {event.actor?.name ?? "Sistema"}
+                  </div>
                 </div>
               </div>
-            </button>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </Card>
   );
 }

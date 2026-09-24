@@ -5,7 +5,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Briefcase, UserSquare2, UserCheck, Clock } from "lucide-react";
 import { requireRole } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { CANDIDATE_STAGES, STAGE_LABELS } from "@/schemas/candidate";
+import { PIPELINE_STAGES, STAGE_LABELS, TERMINAL_STAGES } from "@/schemas/candidate";
 
 function daysBetween(a: Date, b: Date): number {
   return (b.getTime() - a.getTime()) / 86_400_000;
@@ -28,23 +28,24 @@ async function getRecruitmentOverview(companyId: string) {
   const [openJobsCount, candidatesInProgressCount, hiresThisMonth, hiredCandidates, candidatesByStage, openJobs, stageByJob] =
     await Promise.all([
       prisma.job.count({ where: { companyId, status: "OPEN" } }),
-      prisma.candidate.count({ where: { companyId, stage: { not: "HIRED" } } }),
-      prisma.candidate.count({ where: { companyId, hiredAt: { gte: start, lt: end } } }),
-      prisma.candidate.findMany({
+      prisma.application.count({ where: { companyId, stage: { notIn: [...TERMINAL_STAGES] } } }),
+      prisma.application.count({ where: { companyId, hiredAt: { gte: start, lt: end } } }),
+      prisma.application.findMany({
         where: { companyId, hiredAt: { not: null } },
         select: { hiredAt: true, job: { select: { publishedAt: true } } },
       }),
-      prisma.candidate.groupBy({ by: ["stage"], where: { companyId }, _count: { _all: true } }),
+      prisma.application.groupBy({ by: ["stage"], where: { companyId }, _count: { _all: true } }),
       prisma.job.findMany({
         where: { companyId, status: "OPEN" },
-        select: { id: true, title: true, department: true, _count: { select: { candidates: true } } },
+        select: { id: true, title: true, department: true, _count: { select: { applications: true } } },
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
-      // Concentração por etapa: HIRED é estado terminal, não interessa aqui.
-      prisma.candidate.groupBy({
+      // Concentração por etapa: HIRED/REJECTED são estados terminais, não
+      // interessam aqui (não são um "gargalo" a resolver).
+      prisma.application.groupBy({
         by: ["jobId", "stage"],
-        where: { companyId, stage: { not: "HIRED" } },
+        where: { companyId, stage: { notIn: [...TERMINAL_STAGES] } },
         _count: { _all: true },
       }),
     ]);
@@ -60,7 +61,10 @@ async function getRecruitmentOverview(companyId: string) {
     : null;
 
   const stageCounts = new Map(candidatesByStage.map((s) => [s.stage, s._count._all]));
-  const funnel = CANDIDATE_STAGES.map((stage) => ({
+  // REJECTED fica de fora do funil: é uma saída do processo, não uma etapa
+  // sequencial de progressão (que é o que um funil representa) — mesma
+  // lista usada pelo checklist da candidatura (PIPELINE_STAGES).
+  const funnel = PIPELINE_STAGES.map((stage) => ({
     stage,
     label: STAGE_LABELS[stage],
     count: stageCounts.get(stage) ?? 0,
@@ -89,7 +93,7 @@ async function getRecruitmentOverview(companyId: string) {
     return {
       jobId,
       title: jobTitleById.get(jobId) ?? "Vaga",
-      stage: STAGE_LABELS[entry.stage as (typeof CANDIDATE_STAGES)[number]],
+      stage: STAGE_LABELS[entry.stage as keyof typeof STAGE_LABELS],
       count: entry.count,
     };
   });
@@ -109,7 +113,7 @@ export default async function RecrutamentoOverviewPage() {
           <Link href="/recrutamento/vagas" className="flex">
             <StatCard icon={Briefcase} value={String(data.openJobsCount)} label="Vagas abertas" lift />
           </Link>
-          <Link href="/recrutamento/candidatos" className="flex">
+          <Link href="/recrutamento/banco-de-talentos" className="flex">
             <StatCard icon={UserSquare2} value={String(data.candidatesInProgressCount)} label="Candidatos em processo" lift />
           </Link>
           <StatCard icon={UserCheck} value={String(data.hiresThisMonth)} label="Contratações no mês" lift />
@@ -125,7 +129,7 @@ export default async function RecrutamentoOverviewPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <Link
-                href="/recrutamento/candidatos"
+                href="/recrutamento/banco-de-talentos"
                 className="text-[11px] font-semibold uppercase tracking-wide text-ink hover:opacity-70"
                 style={{ display: "inline-block" }}
               >
@@ -227,7 +231,7 @@ export default async function RecrutamentoOverviewPage() {
                       <div className="truncate text-xs text-gray-400">{j.department || "—"}</div>
                     </div>
                     <span className="shrink-0 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-                      {j._count.candidates} candidato{j._count.candidates === 1 ? "" : "s"}
+                      {j._count.applications} candidato{j._count.applications === 1 ? "" : "s"}
                     </span>
                   </Link>
                 ))

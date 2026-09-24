@@ -20,7 +20,7 @@ export async function getHrKpis(competence: string) {
 
   const [hiredCandidates, allUsers, allExits, exitsInPeriod, admissionsInPeriod, candidatesInPeriod] =
     await Promise.all([
-      prisma.candidate.findMany({
+      prisma.application.findMany({
         where: { companyId, hiredAt: { gte: start, lt: end } },
         include: { job: { select: { publishedAt: true, title: true } } },
       }),
@@ -31,7 +31,7 @@ export async function getHrKpis(competence: string) {
       prisma.employeeExit.findMany({ where: { companyId } }),
       prisma.employeeExit.findMany({ where: { companyId, exitDate: { gte: start, lt: end } } }),
       prisma.user.count({ where: { companyId, admissionDate: { gte: start, lt: end } } }),
-      prisma.candidate.findMany({ where: { companyId, createdAt: { gte: start, lt: end } }, select: { stage: true } }),
+      prisma.application.findMany({ where: { companyId, createdAt: { gte: start, lt: end } }, select: { stage: true } }),
     ]);
 
   // ---- 1. Time-to-hire: média de dias entre a vaga ser publicada e o

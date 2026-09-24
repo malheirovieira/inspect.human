@@ -1,72 +1,73 @@
 import { z } from "zod";
 
-export const CANDIDATE_STAGES = ["TRIAGE", "INTERVIEW", "PROPOSAL", "HIRED"] as const;
+export const CANDIDATE_STAGES = ["TRIAGE", "TEST", "INTERVIEW", "PROPOSAL", "HIRED", "REJECTED"] as const;
 
 export const STAGE_LABELS: Record<(typeof CANDIDATE_STAGES)[number], string> = {
   TRIAGE: "Triagem",
+  TEST: "Teste",
   INTERVIEW: "Entrevista",
   PROPOSAL: "Proposta",
   HIRED: "Contratado",
+  REJECTED: "Reprovado",
 };
+
+// Tipo estável da etapa — automações (Fase 1: gatilho de e-mail, e o que
+// vier depois) disparam por ISSO, nunca pelo nome da etapa (STAGE_LABELS é
+// customizável por empresa via KanbanStageLabel; STAGE_TYPES não é —
+// fica fixo no código, amarrado à chave interna do stage).
+export const STAGE_TYPES: Record<(typeof CANDIDATE_STAGES)[number], string> = {
+  TRIAGE: "SCREENING",
+  TEST: "TEST",
+  INTERVIEW: "INTERVIEW",
+  PROPOSAL: "OFFER",
+  HIRED: "HIRED",
+  REJECTED: "REJECTED",
+};
+
+// Etapas que encerram o pipeline — não contam como "em processo" nem como
+// concentração/gargalo (ver app/(dashboard)/recrutamento/page.tsx).
+export const TERMINAL_STAGES = ["HIRED", "REJECTED"] as const;
+
+// Sequência do checklist da candidatura — mesma lista e mesma ordem do
+// Kanban, MENOS "Reprovado" (não é uma etapa sequencial: é uma saída do
+// pipeline, tratada à parte como aviso "Reprovado em [etapa]"). Única fonte
+// de verdade é Application.stage — não existe armazenamento próprio de
+// "concluído" por etapa (ver CandidateProcessChecklist).
+export const PIPELINE_STAGES = CANDIDATE_STAGES.filter((stage) => stage !== "REJECTED");
 
 // Tag manual de qualificação do candidato — independente da etapa do
 // pipeline. Sinaliza rapidamente pra quem está triando o que fazer a seguir.
-export const CANDIDATE_TAGS = ["GREEN", "YELLOW", "BLUE", "RED", "GRAY"] as const;
+// Marcar RED move a candidatura direto pra REJECTED (ver ApplicationHeader)
+// — o gatilho é pelo valor do enum, não pelo label, então o rename aqui não
+// mexe nesse comportamento.
+export const CANDIDATE_TAGS = ["GREEN", "BLUE", "RED"] as const;
 
 export const TAG_LABELS: Record<(typeof CANDIDATE_TAGS)[number], string> = {
-  GREEN: "Aprovado / Perfil Ideal",
-  YELLOW: "Em avaliação / Em dúvida",
-  BLUE: "Banco de Talentos / Futuro",
-  RED: "Reprovado / Sem Fit",
-  GRAY: "Duplicado ou Incompleto",
+  GREEN: "Perfil compatível",
+  BLUE: "Banco de talentos",
+  RED: "Perfil incompatível",
 };
 
 // Tons vivos/saturados de propósito — precisam se destacar como um alerta
 // visual rápido, diferente do resto da paleta (mais neutra) do produto.
 export const TAG_COLORS: Record<(typeof CANDIDATE_TAGS)[number], string> = {
   GREEN: "#16A34A",
-  YELLOW: "#F59E0B",
   BLUE: "#2563EB",
   RED: "#DC2626",
-  GRAY: "#6B7280",
 };
 
 export const TAG_NEXT_STEP: Record<(typeof CANDIDATE_TAGS)[number], string> = {
   GREEN: "Avançar de fase e agendar entrevista.",
-  YELLOW: "Realizar triagem por telefone ou teste curto.",
   BLUE: "Salvar para outras vagas ou posições similares.",
   RED: "Desclassificar do processo e enviar feedback.",
-  GRAY: "Arquivar ou solicitar correção de dados.",
 };
-
-// Linha do tempo granular do processo (aba Processo) — marcos fixos na
-// ordem em que normalmente acontecem. Independente do "stage" grosso usado
-// no Kanban/lista.
-export const PROCESS_STEPS = [
-  "TRIAGEM_CURRICULO",
-  "ENTREVISTA_RECRUTAMENTO",
-  "ENTREVISTA_GESTAO",
-  "AVALIACAO",
-  "CONTRATADO",
-  "ENVIO_DOCUMENTOS",
-] as const;
-
-export const PROCESS_STEP_LABELS: Record<(typeof PROCESS_STEPS)[number], string> = {
-  TRIAGEM_CURRICULO: "Triagem de currículo",
-  ENTREVISTA_RECRUTAMENTO: "Entrevista com recrutamento",
-  ENTREVISTA_GESTAO: "Entrevista com gestão",
-  AVALIACAO: "Avaliação",
-  CONTRATADO: "Contratado",
-  ENVIO_DOCUMENTOS: "Envio dos documentos",
-};
-
-// Mapa etapa -> data de conclusão (ISO) ou null se ainda não aconteceu.
-export type ProcessTimeline = Partial<Record<(typeof PROCESS_STEPS)[number], string | null>>;
 
 export const applyToJobSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("E-mail inválido"),
-  phone: z.string().min(14, "Telefone é obrigatório"),
+  // Dígitos apenas (a máscara é só de exibição, ver lib/phoneMask.ts) — 10
+  // (fixo) ou 11 (celular com o 9º dígito).
+  phone: z.string().min(10, "Telefone é obrigatório").max(11, "Telefone inválido"),
   linkedinUrl: z.string().optional(),
 });
 

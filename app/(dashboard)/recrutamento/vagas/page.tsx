@@ -15,8 +15,8 @@ const STATUS_LABEL: Record<(typeof JOB_STATUSES)[number], string> = {
   CLOSED: "Fechada",
 };
 
-function jobBadge(job: { status: string; candidates: { id: string }[] }): { label: string; tone: "success" | "primary" | "danger" } {
-  if (job.candidates.length > 0) return { label: "Vaga Preenchida", tone: "success" };
+function jobBadge(job: { status: string; applications: { id: string }[] }): { label: string; tone: "success" | "primary" | "danger" } {
+  if (job.applications.length > 0) return { label: "Vaga Preenchida", tone: "success" };
   if (job.status === "CLOSED") return { label: "Vaga não preenchida", tone: "danger" };
   return { label: STATUS_LABEL[job.status as keyof typeof STATUS_LABEL], tone: job.status === "OPEN" ? "success" : "primary" };
 }
@@ -72,7 +72,7 @@ export default async function VagasPage({
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{job.title}</div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                    {job.location || "Local não informado"} · {job._count.candidates} candidato(s)
+                    {job.location || "Local não informado"} · {job._count.applications} candidato(s)
                   </div>
                 </div>
                 <Badge tone={jobBadge(job).tone}>{jobBadge(job).label}</Badge>
