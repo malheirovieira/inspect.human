@@ -40,7 +40,7 @@ export async function getJob(jobId: string) {
       applications: {
         orderBy: { createdAt: "desc" },
         include: {
-          candidate: { select: { name: true, email: true, phone: true, linkedinUrl: true, resumePath: true } },
+          candidate: { select: { name: true, email: true, phone: true, linkedinUrl: true, currentResumeId: true, isTest: true } },
         },
       },
       createdBy: { select: { name: true } },

@@ -28,8 +28,15 @@ model Company {
   slug        String   @unique
   description String?
   active      Boolean  @default(true)
+  // Chave "Triagem com IA" (Configurações). Desligada por padrão e bloqueada
+  // enquanto AI_ALLOW_REAL_DATA=false (ver lib/ai).
+  aiScreeningEnabled   Boolean   @default(false) @map("ai_screening_enabled")
+  aiScreeningChangedAt DateTime? @map("ai_screening_changed_at") @db.Timestamptz(6)
+  aiScreeningChangedById String? @map("ai_screening_changed_by") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  aiScreeningChangedBy User? @relation("CompanyAiScreeningChangedBy", fields: [aiScreeningChangedById], references: [id], onDelete: SetNull)
 
   users               User[]
   jobs                Job[]
@@ -45,6 +52,10 @@ model Company {
   kanbanStageLabels   KanbanStageLabel[]
   employeeDocuments   EmployeeDocument[]
   notifications       Notification[]
+  backgroundTasks     BackgroundTask[]
+  candidateResumes    CandidateResume[]
+  resumeAnalyses      ResumeAnalysis[]
+  consents            Consent[]
 
   @@map("companies")
   @@schema("public")
@@ -146,6 +157,9 @@ model User {
   processedExits      EmployeeExit[]       @relation("ExitCreatedBy")
   documents           EmployeeDocument[]
   applicationEvents   ApplicationEvent[]   @relation("ApplicationEventActor")
+  uploadedResumes     CandidateResume[]    @relation("ResumeUploadedBy")
+  editedAnalyses      ResumeAnalysis[]     @relation("AnalysisSkillsEditedBy")
+  aiScreeningChanges  Company[]            @relation("CompanyAiScreeningChangedBy")
 
   @@unique([companyId, email])
   @@unique([companyId, cpf])
@@ -201,14 +215,24 @@ model Candidate {
   email       String
   phone       String?
   linkedinUrl String?  @map("linkedin_url")
-  // Nullable: nem toda candidatura anexa currículo, e o upload manual pelo
-  // recrutador (aba Perfil) também é opcional.
+  // LEGADO (arquivo único por pessoa, sobrescrito a cada upload). Não gravar
+  // mais — currículo agora é versionado em CandidateResume. Só lido como
+  // fallback até o backfill (scripts/backfill-resume-versions.js); sai na
+  // migration 0023.
   resumePath  String?  @map("resume_path")
+  // Versão ATUAL do currículo da pessoa (perfil). null = sem currículo.
+  currentResumeId String? @map("current_resume_id") @db.Uuid
+  // Candidato fictício (testes/demonstração). Só ADMIN edita. Enquanto
+  // AI_ALLOW_REAL_DATA=false, só estes passam pela triagem com IA.
+  isTest      Boolean  @default(false) @map("is_test")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  applications Application[]
+  company       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currentResume CandidateResume?  @relation("CandidateCurrentResume", fields: [currentResumeId], references: [id], onDelete: SetNull)
+  resumes       CandidateResume[] @relation("CandidateResumes")
+  applications  Application[]
+  consents      Consent[]
 
   @@index([companyId])
   @@index([companyId, email])
@@ -233,19 +257,120 @@ model Application {
   // Preenchido só na primeira vez que o estágio vira HIRED — usado pro KPI
   // de time-to-hire (não usar updatedAt, que muda a cada edição qualquer).
   hiredAt     DateTime? @map("hired_at") @db.Timestamptz(6)
+  // Versão do currículo ENVIADA com esta candidatura — registro histórico,
+  // gravado uma vez e nunca atualizado (versão nova da pessoa não mexe aqui).
+  // null = candidatura sem currículo, ou anterior ao versionamento.
+  resumeId    String?  @map("resume_id") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
-  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  job       Job              @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  resume    CandidateResume? @relation("ApplicationResume", fields: [resumeId], references: [id], onDelete: SetNull)
   events    ApplicationEvent[]
+  consents  Consent[]
 
   @@index([companyId])
   @@index([companyId, jobId])
   @@index([companyId, jobId, stage])
   @@index([companyId, candidateId])
   @@map("applications")
+  @@schema("public")
+}
+
+// VERSÃO do currículo de uma pessoa. Criada só por lib/resumes (hash
+// calculado no upload, caminho empresa/pessoa/<sha256>.pdf, sem upsert). O
+// mesmo arquivo reaproveita a versão (unique candidateId + sha256).
+model CandidateResume {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  candidateId   String    @map("candidate_id") @db.Uuid
+  storagePath   String    @unique @map("storage_path")
+  sha256        String
+  sizeBytes     Int       @map("size_bytes")
+  // PUBLIC_FORM | RECRUITER | LEGACY (check constraint no banco)
+  source        String
+  uploadedById  String?   @map("uploaded_by") @db.Uuid
+  // Preenchidos pelo processamento da Fase 3.
+  extractedText String?   @map("extracted_text")
+  // PENDING | OK | NO_TEXT | INVALID_PDF
+  textStatus    String    @default("PENDING") @map("text_status")
+  pageCount     Int?      @map("page_count")
+  extractedAt   DateTime? @map("extracted_at") @db.Timestamptz(6)
+  // Quando deixou de ser a versão atual — base da retenção (lib/resumes/retention.ts).
+  supersededAt  DateTime? @map("superseded_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company      Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate    Candidate        @relation("CandidateResumes", fields: [candidateId], references: [id], onDelete: Cascade)
+  uploadedBy   User?            @relation("ResumeUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  currentFor   Candidate[]      @relation("CandidateCurrentResume")
+  applications Application[]    @relation("ApplicationResume")
+  analyses     ResumeAnalysis[]
+
+  @@unique([candidateId, sha256], map: "candidate_resumes_candidate_sha256_unique")
+  @@index([companyId, candidateId, createdAt(sort: Desc)], map: "idx_candidate_resumes_company_candidate")
+  @@map("candidate_resumes")
+  @@schema("public")
+}
+
+// Uma GERAÇÃO de resumo por IA de uma versão de currículo. Só acrescenta
+// (nova geração = linha nova) — o card mostra a mais recente, e o histórico
+// alimenta o contador de uso mensal. Nada aqui altera etapa/tag da
+// candidatura: a decisão é sempre humana.
+model ResumeAnalysis {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  resumeId       String    @map("resume_id") @db.Uuid
+  generation     Int
+  // PROCESSING | DONE | FAILED | NO_TEXT | SKIPPED
+  status         String    @default("PROCESSING")
+  // Só com SKIPPED: NO_CONSENT | COMPANY_DISABLED | REAL_DATA_BLOCKED —
+  // motivo sobre a FERRAMENTA, nunca sobre o candidato.
+  skipReason     String?   @map("skip_reason")
+  result         Json?
+  // Tags em vigor (começam iguais às da IA; recrutador pode editar).
+  skills         String[]  @default([])
+  skillsEditedAt DateTime? @map("skills_edited_at") @db.Timestamptz(6)
+  skillsEditedById String? @map("skills_edited_by") @db.Uuid
+  provider       String?
+  model          String?
+  isMock         Boolean   @default(false) @map("is_mock")
+  errorCode      String?   @map("error_code")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  resume         CandidateResume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  skillsEditedBy User?           @relation("AnalysisSkillsEditedBy", fields: [skillsEditedById], references: [id], onDelete: SetNull)
+
+  @@unique([resumeId, generation], map: "resume_analyses_resume_generation_unique")
+  @@map("resume_analyses")
+  @@schema("public")
+}
+
+// Consentimento genérico: finalidade + versão/hash do texto exato exibido.
+// Registro de prova — nunca editar; revogar = preencher revokedAt.
+model Consent {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  candidateId   String    @map("candidate_id") @db.Uuid
+  applicationId String?   @map("application_id") @db.Uuid
+  // APPLICATION_PROCESSING | AI_SCREENING | … (validado no Zod)
+  purpose       String
+  textVersion   String    @map("text_version")
+  textHash      String    @map("text_hash")
+  source        String
+  grantedAt     DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate   Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, candidateId, purpose], map: "idx_consents_company_candidate_purpose")
+  @@map("consents")
   @@schema("public")
 }
 
@@ -446,5 +571,38 @@ model Notification {
   @@index([companyId, createdAt])
   @@index([companyId, read])
   @@map("notifications")
+  @@schema("public")
+}
+
+// Fila de tarefas em segundo plano (e-mail na Fase 1, triagem com IA na
+// Fase 3). NÃO confundir com Job (vaga). Enfileirar/processar sempre via
+// lib/tasks — as queries de bloqueio (FOR UPDATE SKIP LOCKED) são SQL cru lá;
+// este model é usado só pela leitura da tela de Configurações e pelo
+// "Tentar novamente".
+model BackgroundTask {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // null = tarefa do sistema, sem empresa
+  companyId      String?   @map("company_id") @db.Uuid
+  type           String
+  payload        Json      @default("{}")
+  // pending | running | done | failed (check constraint no banco)
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(5) @map("max_attempts")
+  // Reagendamentos por erro temporário (ex.: 429) — não consomem attempts.
+  deferrals      Int       @default(0)
+  runAt          DateTime  @default(now()) @map("run_at") @db.Timestamptz(6)
+  lockedAt       DateTime? @map("locked_at") @db.Timestamptz(6)
+  lockedBy       String?   @map("locked_by")
+  lastError      String?   @map("last_error")
+  idempotencyKey String?   @unique @map("idempotency_key")
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status, updatedAt(sort: Desc)], map: "idx_background_tasks_company_status")
+  @@map("background_tasks")
   @@schema("public")
 }

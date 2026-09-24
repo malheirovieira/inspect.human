@@ -91,6 +91,13 @@ create table users (
   constraint users_company_email_unique unique (company_id, email),
   constraint users_company_cpf_unique unique (company_id, cpf)
 );
+-- Chave "Triagem com IA" da empresa (migrations/0022) — aqui e não no
+-- create table companies porque referencia users, criada depois.
+alter table companies
+  add column ai_screening_enabled boolean not null default false,
+  add column ai_screening_changed_at timestamptz,
+  add column ai_screening_changed_by uuid references users (id) on delete set null;
+
 create index idx_users_company on users (company_id);
 create index idx_users_company_active on users (company_id, active);
 
@@ -136,7 +143,11 @@ create table candidates (
   email text not null,
   phone text,
   linkedin_url text,
+  -- legado (arquivo único por pessoa) — substituído por current_resume_id
+  -- (candidate_resumes, mais abaixo); sai na migration 0023, depois do backfill
   resume_path text,
+  -- candidato fictício (testes/demonstração) — só ADMIN edita
+  is_test boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -199,6 +210,91 @@ create table application_events (
 );
 create index idx_application_events_company_application on application_events (company_id, application_id);
 create index idx_application_events_company_created_at on application_events (company_id, created_at);
+
+-- ----------------------------------------------------------------------------
+-- candidate_resumes — versões do currículo (ver migrations/0022). Cada
+-- arquivo diferente = versão nova, caminho próprio no Storage
+-- (empresa/pessoa/<sha256>.pdf, sem upsert); o mesmo arquivo reaproveita a
+-- versão. candidates.current_resume_id = versão atual da pessoa;
+-- applications.resume_id = versão enviada naquela candidatura (histórico).
+-- ----------------------------------------------------------------------------
+create table candidate_resumes (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  candidate_id uuid not null references candidates (id) on delete cascade,
+  storage_path text not null unique,
+  sha256 text not null,
+  size_bytes integer not null,
+  source text not null, -- LEGACY = migrado do antigo resume_path
+  uploaded_by uuid references users (id) on delete set null,
+  extracted_text text,
+  text_status text not null default 'PENDING',
+  page_count integer,
+  extracted_at timestamptz,
+  superseded_at timestamptz, -- deixou de ser a versão atual — base da retenção
+  created_at timestamptz not null default now(),
+  constraint candidate_resumes_sha256_format check (sha256 ~ '^[0-9a-f]{64}$'),
+  constraint candidate_resumes_source_check check (source in ('PUBLIC_FORM', 'RECRUITER', 'LEGACY')),
+  constraint candidate_resumes_text_status_check check (text_status in ('PENDING', 'OK', 'NO_TEXT', 'INVALID_PDF')),
+  constraint candidate_resumes_candidate_sha256_unique unique (candidate_id, sha256)
+);
+create index idx_candidate_resumes_company_candidate on candidate_resumes (company_id, candidate_id, created_at desc);
+create index idx_candidate_resumes_superseded_at on candidate_resumes (superseded_at) where superseded_at is not null;
+
+alter table candidates
+  add column current_resume_id uuid references candidate_resumes (id) on delete set null;
+alter table applications
+  add column resume_id uuid references candidate_resumes (id) on delete set null;
+create index idx_applications_resume on applications (resume_id) where resume_id is not null;
+
+-- ----------------------------------------------------------------------------
+-- resume_analyses — uma linha por geração de resumo por IA (só acrescenta).
+-- skip_reason é sobre a FERRAMENTA (sem consentimento, chave desligada,
+-- dados reais bloqueados), nunca sobre o candidato.
+-- ----------------------------------------------------------------------------
+create table resume_analyses (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  resume_id uuid not null references candidate_resumes (id) on delete cascade,
+  generation integer not null,
+  status text not null default 'PROCESSING',
+  skip_reason text,
+  result jsonb,
+  skills text[] not null default '{}',
+  skills_edited_at timestamptz,
+  skills_edited_by uuid references users (id) on delete set null,
+  provider text,
+  model text,
+  is_mock boolean not null default false,
+  error_code text,
+  created_at timestamptz not null default now(),
+  completed_at timestamptz,
+  constraint resume_analyses_generation_check check (generation >= 1),
+  constraint resume_analyses_status_check check (status in ('PROCESSING', 'DONE', 'FAILED', 'NO_TEXT', 'SKIPPED')),
+  constraint resume_analyses_skip_reason_check
+    check (skip_reason is null or skip_reason in ('NO_CONSENT', 'COMPANY_DISABLED', 'REAL_DATA_BLOCKED')),
+  constraint resume_analyses_resume_generation_unique unique (resume_id, generation)
+);
+create index idx_resume_analyses_skills on resume_analyses using gin (skills);
+create index idx_resume_analyses_company_completed on resume_analyses (company_id, completed_at) where status = 'DONE';
+
+-- ----------------------------------------------------------------------------
+-- consents — consentimento genérico (finalidade + versão/hash do texto
+-- exato exibido). purpose validado no Zod, sem check constraint.
+-- ----------------------------------------------------------------------------
+create table consents (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  candidate_id uuid not null references candidates (id) on delete cascade,
+  application_id uuid references applications (id) on delete cascade,
+  purpose text not null,
+  text_version text not null,
+  text_hash text not null,
+  source text not null,
+  granted_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+create index idx_consents_company_candidate_purpose on consents (company_id, candidate_id, purpose);
 
 -- ----------------------------------------------------------------------------
 -- training_trails / training_items
@@ -363,6 +459,36 @@ create index idx_notifications_company_id_created_at on notifications (company_i
 create index idx_notifications_company_id_read on notifications (company_id, read);
 
 -- ----------------------------------------------------------------------------
+-- background_tasks — fila de tarefas em segundo plano (ver migrations/0021 e
+-- lib/tasks/). Processada pela rota /api/cron/tasks, disparada pelo pg_cron
+-- (supabase/cron/process_tasks.sql — configuração por ambiente, fora daqui).
+-- ----------------------------------------------------------------------------
+create table background_tasks (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid references companies (id) on delete cascade, -- null = tarefa do sistema
+  type text not null, -- validado no registro de tipos (lib/tasks)
+  payload jsonb not null default '{}'::jsonb,
+  status text not null default 'pending',
+  attempts integer not null default 0,
+  max_attempts integer not null default 5,
+  deferrals integer not null default 0, -- reagendamentos por erro temporário (não consomem attempts)
+  run_at timestamptz not null default now(),
+  locked_at timestamptz,
+  locked_by text,
+  last_error text,
+  idempotency_key text unique,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint background_tasks_status_check check (status in ('pending', 'running', 'done', 'failed')),
+  constraint background_tasks_attempts_check check (attempts >= 0 and max_attempts >= 1 and deferrals >= 0)
+);
+create index idx_background_tasks_pending_run_at on background_tasks (run_at) where status = 'pending';
+create index idx_background_tasks_running_locked_at on background_tasks (locked_at) where status = 'running';
+create index idx_background_tasks_company_status on background_tasks (company_id, status, updated_at desc);
+create index idx_background_tasks_completed_at on background_tasks (status, completed_at) where status in ('done', 'failed');
+
+-- ----------------------------------------------------------------------------
 -- updated_at automático
 -- ----------------------------------------------------------------------------
 create or replace function set_updated_at()
@@ -376,7 +502,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['companies','users','jobs','candidates','applications','training_trails']
+  foreach t in array array['companies','users','jobs','candidates','applications','training_trails','background_tasks']
   loop
     execute format('create trigger trg_%I_updated_at before update on %I for each row execute function set_updated_at();', t, t);
   end loop;
@@ -394,6 +520,10 @@ alter table training_trails enable row level security;
 alter table training_items enable row level security;
 alter table training_assignments enable row level security;
 alter table training_progress enable row level security;
+alter table background_tasks enable row level security;
+alter table candidate_resumes enable row level security;
+alter table resume_analyses enable row level security;
+alter table consents enable row level security;
 
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public from anon, authenticated;

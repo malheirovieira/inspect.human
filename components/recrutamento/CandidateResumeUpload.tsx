@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { uploadCandidateResume } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
 
-export function CandidateResumeUpload({ candidateId }: { candidateId: string }) {
+export function CandidateResumeUpload({
+  candidateId,
+  submitLabel = "Anexar currículo",
+}: {
+  candidateId: string;
+  submitLabel?: string;
+}) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -26,6 +32,8 @@ export function CandidateResumeUpload({ candidateId }: { candidateId: string }) 
       setError(result.error);
       return;
     }
+    setFile(null);
+    (event.target as HTMLFormElement).reset();
     router.refresh();
   }
 
@@ -39,8 +47,8 @@ export function CandidateResumeUpload({ candidateId }: { candidateId: string }) 
         style={{ padding: "9px 14px", width: "auto" }}
       />
       {error && <div style={{ fontSize: 12, color: "var(--danger)" }}>{error}</div>}
-      <Button type="submit" variant={!file || submitting ? "disabled" : "primary"}>
-        {submitting ? "Enviando..." : "Anexar currículo"}
+      <Button type="submit" variant={!file || submitting ? "disabled" : "confirm"}>
+        {submitting ? "Enviando..." : submitLabel}
       </Button>
     </form>
   );

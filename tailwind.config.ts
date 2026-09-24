@@ -29,6 +29,10 @@ const config: Config = {
         ink: "#1D1D1F",
         success: { DEFAULT: "#34C759", surface: "#E3F9E9" },
         danger: { DEFAULT: "#FF3B30", surface: "#FFE5E3" },
+        // Botões: salvar/confirmar/atualizar (verde) e cancelar/excluir
+        // (vermelho) — espelho de --action-confirm/--action-cancel.
+        confirm: { DEFAULT: "#177F0F", hover: "#11630B" },
+        cancel: { DEFAULT: "#FE0401", hover: "#D10301" },
         // Tokens semânticos genéricos (shadcn-style) mapeados para a paleta
         // do produto — usados por componentes que trabalham em utilitários
         // Tailwind puros em vez das classes fin-* legadas.

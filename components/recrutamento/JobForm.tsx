@@ -3,10 +3,11 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { EditLockActions, useEditLock } from "@/components/ui/EditLock";
 import { FieldLabel, Input, Select, Textarea } from "@/components/ui/Field";
+import { zodFieldErrors } from "@/lib/fieldErrors";
 import { createJob, updateJob } from "@/app/(dashboard)/recrutamento/vagas/actions";
-import type { JobInput } from "@/schemas/job";
+import { jobSchema, type JobInput } from "@/schemas/job";
 
 const INITIAL: JobInput = {
   title: "",
@@ -33,54 +34,62 @@ export function JobForm({
   departmentOptions?: string[];
 }) {
   const router = useRouter();
-  const [form, setForm] = useState<JobInput>(initial ?? INITIAL);
+  // Vaga existente abre BLOQUEADA (cinza, somente leitura) pra evitar edição
+  // sem querer — padrão compartilhado com o perfil do candidato
+  // (components/ui/EditLock). Vaga nova (sem jobId) não bloqueia.
+  const isExisting = Boolean(jobId);
+  const lock = useEditLock<JobInput>(initial ?? INITIAL, isExisting);
+  const { values: form, setValues: setForm, locked, fieldErrors } = lock;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Card de detalhes de uma vaga existente abre bloqueado (cinza, somente
-  // leitura) pra evitar edição sem querer — "Editar" destrava os campos,
-  // "Atualizar" salva e trava de novo. Vaga nova (sem jobId) não bloqueia:
-  // não faz sentido travar um formulário em branco.
-  const [locked, setLocked] = useState(Boolean(jobId));
 
   function update<K extends keyof JobInput>(key: K, value: JobInput[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+    if (fieldErrors[key]) lock.setFieldErrors(({ [key]: _removed, ...rest }) => rest);
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (locked) return;
+    setError(null);
 
-    if (jobId && locked) {
-      setLocked(false);
+    // Mesma validação do servidor, antes de enviar — erro embaixo do campo.
+    const check = jobSchema.safeParse(form);
+    if (!check.success) {
+      lock.setFieldErrors(zodFieldErrors(check.error));
       return;
     }
 
     setSubmitting(true);
-    setError(null);
-
     const result = jobId ? await updateJob(jobId, form) : await createJob(form);
-
     setSubmitting(false);
 
     if (result && "error" in result) {
-      setError(result.error);
+      if (result.fieldErrors) lock.setFieldErrors(result.fieldErrors);
+      else setError(result.error);
       return;
     }
 
     if (jobId) {
-      setLocked(true);
+      lock.commit(form);
       router.refresh();
     }
     // createJob redireciona no servidor (redirect()), não precisa navegar aqui.
   }
 
-  const fieldsDisabled = jobId ? locked : false;
+  const fieldsDisabled = locked;
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} noValidate>
       <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-          <FieldLabel label="Título da vaga" required>
-            <Input required disabled={fieldsDisabled} value={form.title} onChange={(e) => update("title", e.target.value)} />
+          <FieldLabel label="Título da vaga" required error={fieldErrors.title}>
+            <Input
+              disabled={fieldsDisabled}
+              aria-invalid={Boolean(fieldErrors.title)}
+              value={form.title}
+              onChange={(e) => update("title", e.target.value)}
+            />
           </FieldLabel>
           <FieldLabel label="Setor">
             <Select disabled={fieldsDisabled} value={form.department} onChange={(e) => update("department", e.target.value)}>
@@ -95,9 +104,8 @@ export function JobForm({
           <FieldLabel label="Localização">
             <Input disabled={fieldsDisabled} value={form.location} onChange={(e) => update("location", e.target.value)} />
           </FieldLabel>
-          <FieldLabel label="Modelo de trabalho" required>
+          <FieldLabel label="Modelo de trabalho" required error={fieldErrors.workMode}>
             <Select
-              required
               disabled={fieldsDisabled}
               value={form.workMode}
               onChange={(e) => update("workMode", e.target.value as JobInput["workMode"])}
@@ -119,10 +127,10 @@ export function JobForm({
           </FieldLabel>
         </div>
 
-        <FieldLabel label="Descrição da vaga" required>
+        <FieldLabel label="Descrição da vaga" required error={fieldErrors.description}>
           <Textarea
-            required
             disabled={fieldsDisabled}
+            aria-invalid={Boolean(fieldErrors.description)}
             value={form.description}
             onChange={(e) => update("description", e.target.value)}
             style={{ minHeight: 160 }}
@@ -185,15 +193,17 @@ export function JobForm({
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
-            {submitting
-              ? "Salvando..."
-              : !jobId
-                ? "Criar vaga"
-                : locked
-                  ? "Editar"
-                  : "Atualizar"}
-          </Button>
+          <EditLockActions
+            isExisting={isExisting}
+            locked={locked}
+            submitting={submitting}
+            createLabel="Criar vaga"
+            onEdit={lock.startEdit}
+            onCancel={() => {
+              setError(null);
+              lock.cancel();
+            }}
+          />
         </div>
       </Card>
     </form>

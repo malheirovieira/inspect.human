@@ -30,6 +30,23 @@ export default async function ConfiguracoesPage() {
           </Card>
         )}
 
+        {session.role === "ADMIN" && (
+          <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <span className="fin-eyebrow">SISTEMA</span>
+              <div className="fin-heading" style={{ marginBottom: 0 }}>
+                Tarefas em segundo plano
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                Acompanhe processamentos automáticos e reenvie os que falharam.
+              </p>
+            </div>
+            <Link href="/configuracoes/tarefas">
+              <Button variant="secondary">Ver tarefas</Button>
+            </Link>
+          </Card>
+        )}
+
         <div>
           <span className="fin-eyebrow">LISTAS DA EMPRESA</span>
           <div className="fin-heading" style={{ marginBottom: 0 }}>

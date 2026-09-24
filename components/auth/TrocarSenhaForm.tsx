@@ -70,7 +70,7 @@ export function TrocarSenhaForm() {
 
       {error && <div style={{ fontSize: 13, color: "var(--danger)" }}>{error}</div>}
 
-      <button type="submit" className="fin-btn fin-btn--primary" disabled={loading} style={{ width: "100%" }}>
+      <button type="submit" className="fin-btn fin-btn--confirm" disabled={loading} style={{ width: "100%" }}>
         {loading ? "Salvando..." : "Trocar senha e continuar"}
       </button>
     </form>

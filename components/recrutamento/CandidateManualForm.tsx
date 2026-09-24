@@ -85,7 +85,7 @@ export function CandidateManualForm({ jobs, onCreated }: { jobs: Job[]; onCreate
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
+          <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
             {submitting ? "Salvando..." : "Cadastrar candidato"}
           </Button>
         </div>

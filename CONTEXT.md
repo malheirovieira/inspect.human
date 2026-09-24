@@ -35,6 +35,10 @@ pra recriar no futuro.
 - `@dnd-kit/*` (kanban de candidatos), `zod` (validação de schemas).
   `framer-motion` e `recharts` foram removidos (framer-motion virou CSS
   puro na transição de página; recharts só existia pro Budget, que saiu).
+- **Vitest 4** (testes — ver seção "Testes"). Fixado na 4 porque a 5 exige
+  `@types/node` >= 22 e o projeto está no 20.
+- Hospedagem: **Vercel Hobby** + **Supabase free** (ver "Pendências antes do
+  primeiro cliente").
 
 ## Rotas implementadas
 
@@ -46,6 +50,8 @@ Públicas
   /empresa/[slug]/vagas/[jobId]  candidatura pública
   /api/public/signup             route handler
   /api/search                    busca global do header (colaboradores/vagas/candidatos)
+  /api/cron/tasks                processador da fila de tarefas — POST com Bearer CRON_SECRET
+                                   (ver "Fila de tarefas em segundo plano")
 
 Dashboard (grupo (dashboard), sessão obrigatória)
   /dashboard                                                  "Início" — pouso fixo pós-login, fora
@@ -71,6 +77,7 @@ Dashboard (grupo (dashboard), sessão obrigatória)
   /desenvolvimento/trilhas, /desenvolvimento/progresso
   /gestao/kpis
   /configuracoes
+  /configuracoes/usuarios, /configuracoes/tarefas             só ADMIN
 ```
 
 `app/exemplo-sidebar/` é um componente de exploração/rascunho, não faz parte
@@ -106,7 +113,8 @@ migration `0018` — qualquer trabalho futuro no módulo depende disso já
 estar assim; confirme antes de assumir o contrário.
 
 - **`Candidate`** — a PESSOA: nome, e-mail, telefone, LinkedIn, currículo
-  (`resumePath`, bucket `resumes`). Reaproveitada entre candidaturas —
+  (versão atual em `currentResumeId` — ver "Currículo versionado" abaixo),
+  `isTest` (candidato fictício, só ADMIN edita, selo "Teste"). Reaproveitada entre candidaturas —
   `applyToJob`/`createCandidateManual` procuram por e-mail dentro da
   empresa antes de criar um novo (sem constraint de unicidade no banco,
   aceitável por ora). **Sem campo de notas** — anotação é evento (ver
@@ -124,6 +132,112 @@ estar assim; confirme antes de assumir o contrário.
   evento gerado pelo sistema (candidatura pública, sem sessão). Lido por
   `services/applicationEvents.ts` (`listApplicationEvents`), renderizado
   pelo componente `CandidateTimeline`.
+
+### Currículo versionado (migration `0022`)
+
+- **`CandidateResume`** = uma VERSÃO do currículo. Caminho no bucket privado
+  `resumes`: `empresa/pessoa/<sha256>.pdf` — **nunca `upsert`**. Arquivo
+  diferente = versão nova; o mesmo arquivo reaproveita a versão (unique
+  `candidateId + sha256`), o que também garante "um processamento de IA por
+  versão" na Fase 3. Guarda o texto extraído do PDF (preenchido na Fase 3).
+- **`Candidate.currentResumeId`** = versão ATUAL da pessoa (perfil, card de
+  IA). **`Application.resumeId`** = versão ENVIADA com aquela candidatura —
+  registro histórico, gravado uma vez e nunca atualizado (upload novo no
+  perfil não mexe nas candidaturas). null = candidatura sem currículo ou
+  anterior ao versionamento.
+- Gravação SEMPRE por `storeResumeVersion` (`lib/resumes/`) — formulário
+  público e upload do recrutador. Confere a assinatura `%PDF-` (não confia
+  no Content-Type), calcula o hash no upload, sobe o arquivo e, numa
+  transação, atualiza os ponteiros e marca `supersededAt` na versão
+  substituída. Regras testadas em `tests/db/resumeVersions.test.ts`.
+- Perfil da pessoa mostra a versão atual, "Versões anteriores" (recolhível)
+  e "Enviar nova versão".
+- **Transição**: `Candidate.resumePath` (arquivo único legado, era
+  sobrescrito) ainda existe e é só **lido** como alternativa no perfil
+  enquanto a pessoa não tiver versão. Passos: rodar
+  `node scripts/backfill-resume-versions.js` (simula) → conferir →
+  `--apply` → migration `0023` remove a coluna e os arquivos legados.
+- **Retenção**: versão substituída apagada 12 meses depois de deixar de ser
+  a atual (`lib/resumes/retention.ts`) — **valor provisório, pendente de
+  validação jurídica**. A limpeza em si entra na etapa 2 da Fase 3.
+
+### Triagem com IA (Fase 3) — processamento
+
+Fluxo:
+
+1. **Upload** (formulário público ou recrutador) → `storeResumeVersion`.
+   Versão NOVA (hash nunca visto pra essa pessoa) chama
+   `requestResumeAnalysis` **dentro da mesma transação**: confere a regra de
+   disponibilidade, cria `resume_analyses` (PROCESSING, geração 1) e
+   enfileira `resume.analyze`. Nunca processa no request. Mesmo PDF
+   reenviado = mesma versão = nenhum processamento novo.
+2. **Tarefa `resume.analyze`** (`lib/screening/analyzeResume.ts`):
+   confere a regra DE NOVO (a config pode ter mudado; bloqueado → `SKIPPED`
+   com o motivo) → extrai o texto do PDF (`unpdf`, uma vez por versão,
+   salvo em `candidate_resumes.extracted_text`) → sem texto legível →
+   `NO_TEXT`, **IA não é chamada** (OCR fora do escopo) → remove dados
+   pessoais → limita a 12.000 caracteres → chama o provedor (só texto,
+   nunca o PDF) → valida com zod + checagem de termos proibidos; inválido
+   tenta mais 1 vez, depois `FAILED`/`INVALID_OUTPUT` → `DONE`.
+3. Cada fim (DONE, NO_TEXT, FAILED) registra evento na linha do tempo:
+   `AI_SUMMARY_GENERATED` / `AI_SUMMARY_NO_TEXT` / `AI_SUMMARY_FAILED`, nas
+   candidaturas enviadas com aquela versão (ou na mais recente da pessoa).
+4. **Nada no pipeline altera `stage` nem `qualificationTag`** — decisão é
+   sempre humana (testado em `tests/db/screening.test.ts`).
+
+Erros: 429/503 do provedor → `TransientTaskError` (volta pra fila sem
+consumir tentativa, respeitando Retry-After/RetryInfo; análise continua
+PROCESSING). 400/401/403/404 → permanente (`FAILED`/`PROVIDER`). Outros →
+nova tentativa normal; só vira `FAILED` na última. Config inválida →
+`FAILED`/`CONFIG`, nenhuma chamada. Códigos em `resume_analyses.error_code`
+são curtos e sem dado pessoal; mensagens de erro de provedor nunca carregam
+o corpo da requisição.
+
+**Regra de disponibilidade** (`lib/ai/availability.ts`, única):
+candidato `isTest` → sempre processa (dispensa chave da empresa e
+consentimento). Real → exige, nesta ordem, `AI_ALLOW_REAL_DATA=true`,
+chave "Triagem com IA" da empresa ligada e consentimento `AI_SCREENING`
+ativo. Textos da interface em `AI_BLOCK_REASON_LABELS` (sobre a
+ferramenta, nunca "elegível").
+
+**Minimização** (`lib/ai/redact.ts`), antes de enviar: e-mail, telefone,
+CPF, RG, CEP e linhas de endereço, **todos** os links e @handles, o nome do
+candidato (com/sem acento e caixa; completo e "primeiro último") e linhas
+com nascimento/idade/estado civil/sexo/nacionalidade — trocados por
+marcadores ([E-MAIL], [NOME]…) que o prompt manda ignorar. O texto
+completo continua no banco (busca futura); só o ENVIADO é minimizado.
+
+**Prompt** (`lib/ai/screening.ts`, `PROMPT_VERSION` gravado em cada
+resultado): só fatos do currículo, `null` em vez de supor; proíbe inferir
+ou mencionar idade, gênero, raça, religião, estado civil, saúde,
+deficiência, aparência; proíbe nota, ranking e recomendação. Rede de
+segurança: resumo/base que mencionar esses temas ou recomendar é recusado
+como resposta inválida.
+
+**Provedores** (`lib/ai/providers/`, `fetch` direto, sem SDK — status HTTP
+à mão pro 429): `mock` (padrão; nenhuma chamada, exemplo fictício após
+1,5s, mesmo formato e mesma validação do real — a interface mostra
+"Exemplo simulado · sem IA"), `gemini` (Interactions API, `store:false`;
+o envelope da resposta não tem exemplo REST na doc — o parser lê
+`output_text` e aceita `outputs[]`; **confirmar na primeira chamada real**),
+`openai` (Responses API, json_schema estrito, `store:false`). Trocar de
+provedor = mudar env.
+
+**Retenção**: pg_cron diário (06:00 UTC) cria `resume.purge_versions`;
+apaga versões substituídas há mais de 12 meses (provisório — jurídico),
+exceto as enviadas com candidatura em andamento. Arquivo primeiro, linha
+depois.
+
+`unpdf` está em `experimental.serverComponentsExternalPackages`
+(`next.config.mjs`) — carregado do node_modules no servidor. Mudou o
+`next.config.mjs`: reiniciar o `npm run dev`.
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `AI_PROVIDER` | `mock` | `mock` \| `gemini` \| `openai`; valor inválido = erro (não cai pra mock em silêncio) |
+| `AI_MODEL` | nenhum | obrigatório pra gemini/openai; nenhum nome de modelo no código |
+| `GEMINI_API_KEY` / `OPENAI_API_KEY` | nenhum | só no servidor, nunca `NEXT_PUBLIC_` |
+| `AI_ALLOW_REAL_DATA` | `false` | só `"true"` libera candidato real. **Só com plano PAGO** — os termos do Gemini free proíbem dado pessoal e permitem revisão humana |
 
 ### Página da pessoa vs. página da candidatura
 
@@ -191,6 +305,120 @@ perfil da pessoa, colaborador) usa `lib/phoneMask.ts` (`formatPhone`): tela
 mostra mascarado (`(11) 91234-5678`), banco guarda só dígitos
 (`.replace(/\D/g, "")` antes de salvar). Padrão único, não é por tela.
 
+## Fila de tarefas em segundo plano (`BackgroundTask`)
+
+**Validada em 2026-09-24**: os 14 testes de integração (`npm run test:db` —
+bloqueio concorrente, novas tentativas, reagendamento por 429, recuperação
+de tarefa travada) passaram no projeto Supabase de teste, pelo transaction
+pooler.
+
+Base das Fases 1 (e-mail) e 3 (triagem com IA) do Recrutamento. Tabela
+`background_tasks` (migration `0021`) — **não confundir com `Job`, que é a
+vaga**. Código em `lib/tasks/`:
+
+- `queue.ts` — núcleo (enfileirar, pegar, executar, recuperar, limpar). Não
+  importa `lib/prisma` nem `server-only`: recebe o banco e o registro por
+  parâmetro, pra ser testável. Horários sempre do `now()` do banco.
+- `index.ts` — atalhos do app já ligados ao Prisma: `enqueue(type, payload,
+  { companyId, idempotencyKey?, runAt?, maxAttempts? }, tx?)` e
+  `processTasks()`. Passe o `tx` de `prisma.$transaction` pra gravar a
+  tarefa junto com a mudança que a originou.
+- `handlers/index.ts` — **registro único de tipos** (`TASK_DEFINITIONS`). Cada
+  fase cria o handler num arquivo da pasta com `defineTask({ type,
+  payloadSchema (zod), handler })` e acrescenta uma linha aqui. Handlers
+  importam de `../registry`/`../errors`, nunca de `@/lib/tasks` (circular).
+- `errors.ts` — `TransientTaskError` e `PermanentTaskError` (abaixo).
+
+### Ciclo de vida
+
+`pending` → (pego) `running` → `done` | `pending` (nova tentativa) | `failed`.
+
+- **Pegar tarefa**: um único comando (`WITH … FOR UPDATE SKIP LOCKED` +
+  `UPDATE … RETURNING`) — seguro no transaction pooler, nenhuma transação
+  fica aberta enquanto o handler roda. Uma por vez, em sequência, até 5 por
+  execução ou 40s (a rota tem `maxDuration = 60`). Pegar já soma 1 em
+  `attempts`.
+- **Erro comum** → volta pra `pending` com espera crescente (30s × 4^(n−1),
+  teto 1h, ±20%: ~30s, 2min, 8min, 32min, 1h). Esgotou `maxAttempts`
+  (padrão 5) → `failed`.
+- **`TransientTaskError`** (HTTP 429 e afins) → reagenda **sem consumir
+  tentativa** (devolve a que foi contada, soma 1 em `deferrals`), usando o
+  `retryAfterMs` se vier. Limite: `MAX_DEFERRALS = 10`; depois disso passa a
+  contar como erro comum — nunca fica em loop.
+- **`PermanentTaskError`**, tipo não registrado ou payload inválido →
+  `failed` na hora.
+- **Tarefa travada**: `running` há mais de 10 min (`STALE_AFTER_MS`) volta
+  pra `pending` no início da próxima execução (ou `failed`, se era a última
+  tentativa). Toda gravação de resultado exige `locked_by` = este
+  processador — um processador antigo que "acorda" depois da recuperação tem
+  o resultado descartado.
+- **`idempotencyKey`** (única, opcional): enfileirar de novo com a mesma
+  chave não faz nada (`enqueue` devolve `null`).
+- **Retenção**: `done` apagada após 30 dias, `failed` após 90 (em lotes de
+  500, no fim de cada execução). Apagar libera a `idempotencyKey`.
+
+### Regras pra quem escreve handler
+
+1. **Idempotente**: a mesma tarefa pode rodar mais de uma vez (entrega "pelo
+   menos uma vez" — ex.: processo morreu depois do efeito e antes de gravar
+   `done`).
+2. **Sem dado pessoal em mensagem de erro** — vai pra `last_error`, que
+   aparece na tela do ADMIN. Payload também nunca é exibido nem devolvido
+   pela rota.
+3. `companyId` sempre preenchido pra tarefa de empresa (senão ela não
+   aparece em Configurações → Tarefas).
+
+### Disparo (cron)
+
+Cron da Vercel no Hobby roda no máximo 1x/dia — não serve. Usamos
+**`pg_cron` + `pg_net` do Supabase**: `supabase/cron/process_tasks.sql`
+(NÃO é migration — URL e segredo mudam por ambiente; os dois ficam no
+Supabase Vault, não no repositório). Roda a cada minuto, mas **só chama a
+rota se existir tarefa `pending` vencida ou `running` travada há mais de 10
+min** — sem trabalho, nenhuma requisição. `timeout_milliseconds := 65000`
+explícito (o padrão do pg_net, 5s, cortaria o processador). Execuções
+sobrepostas são seguras (SKIP LOCKED). Os "10 minutos" existem em dois
+lugares (SQL do cron e `STALE_AFTER_MS`) — mudar junto.
+
+Rota `/api/cron/tasks`: `POST` com `Authorization: Bearer $CRON_SECRET`
+(comparação em tempo constante). Sem `CRON_SECRET` responde 503 (fechada,
+nunca aberta). Não há middleware no projeto — a rota é protegida só pelo
+segredo. Em dev não há pg_cron: `npm run tasks:dev` (num segundo terminal)
+chama a rota local a cada 15s.
+
+Tela `/configuracoes/tarefas` (só ADMIN, card em Configurações): contagem
+por status e as 20 últimas falhas da empresa, com "Tentar novamente" (zera
+`attempts`/`deferrals` e volta pra `pending`; só age se ainda estiver
+`failed`).
+
+### Variáveis de ambiente
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `CRON_SECRET` | nenhum (rota responde 503) | Bearer da rota; mesmo valor na Vercel e no Vault |
+| `TEST_DATABASE_URL` | nenhum (`test:db` pula) | projeto Supabase de TESTE, transaction pooler (porta 6543) |
+| `TEST_DIRECT_URL` | nenhum | projeto de TESTE, session pooler (5432) — só `test:db:setup` |
+
+## Testes
+
+```
+npm test                 # unitários (sem banco): backoff, auth da rota, registro/validação
+npm run test:db:setup    # 1x: aplica schema.sql (ou só a 0021) no projeto de TESTE
+npm run test:db          # integração da fila no projeto de TESTE
+```
+
+- `test:db` usa um **segundo projeto Supabase, só de teste**, conectado
+  pelo **transaction pooler** (mesmo modo da produção — a concorrência é
+  testada nas mesmas condições). O helper recusa rodar se
+  `TEST_DATABASE_URL` for do mesmo projeto de `DATABASE_URL`/`DIRECT_URL`
+  ou se não for a porta 6543. Os testes **apagam** a tabela
+  `background_tasks` do projeto de teste.
+- **O projeto de teste pausa por inatividade** (plano free) — se
+  `test:db`/`test:db:setup` falharem com erro de conexão (`ENOTFOUND`,
+  `Tenant or user not found`, timeout), reativar o projeto no painel do
+  Supabase antes de rodar de novo.
+- Sem `TEST_DATABASE_URL`, `test:db` pula tudo com aviso (não falha).
+
 ## Design system — estado atual
 
 Paleta em verde (`--green-700`/`--success` etc. em `app/globals.css`,
@@ -199,6 +427,31 @@ checar visualmente antes de assumir que é a atual. Fonte base **Inter**
 (`--apple-system, BlinkMacSystemFont` na frente do stack — SF Pro real em
 Mac/iOS, Inter de fallback fora do ecossistema Apple, já que a fonte da
 Apple não pode ser hospedada). Playfair Display só na wordmark do logo.
+
+**Cores de botão — regra do sistema inteiro** (pedido do usuário,
+2026-09-24):
+- **Salvar / confirmar / atualizar / criar** → verde `#177f0f`
+  (`--action-confirm`, `<Button variant="confirm">`).
+- **Cancelar / excluir / remover** → vermelho `#fe0401` (`--action-cancel`:
+  `variant="danger"` com texto, `variant="icon-cancel"` pro "X" ao lado de
+  Atualizar, `round-cancel` nos toggles, cor do ícone de lixeira).
+- `primary` (verde-escuro) fica só pra ação que não grava (ex.: alternar
+  Lista/Kanban). Tokens espelhados em `tailwind.config.ts`
+  (`confirm`/`cancel`). Tela nova: seguir a regra desde o início.
+- Fora da regra por não serem salvar/cancelar: "Entrar" (login) e "Enviar
+  link" (recuperar senha) continuam `primary`.
+
+**Cadastro existente abre bloqueado** — padrão único em
+`components/ui/EditLock.tsx` (`useEditLock` + `EditLockActions`), usado no
+cadastro da vaga (`JobForm`) e no Perfil do candidato
+(`CandidateProfileForm`): campos cinzas + "Editar" → campos liberados +
+"Atualizar" (verde) com "X" (vermelho) ao lado que descarta e volta a
+bloquear → salvou, bloqueia de novo. Validação roda no cliente com o MESMO
+schema zod da action (e a action devolve `fieldErrors`): erro aparece
+embaixo do campo (`FieldLabel error=`) e o que foi digitado não se perde.
+Formulário novo (sem id) não bloqueia. Atualização do perfil do candidato
+registra `PROFILE_UPDATED` na linha do tempo de todas as candidaturas da
+pessoa, só com os NOMES dos campos alterados (sem os valores).
 
 Cards do Kanban de candidatos são estilo Trello: fundo branco, cartão
 inteiro arrastável (sem alça separada — `activationConstraint: {distance:
@@ -229,6 +482,11 @@ elevação no hover.
    seta do navegador fica colada na borda em selects "pílula". Resolvido
    com `appearance: none` + seta SVG customizada via `background-image`
    (ver `.fin-filter-select` e `select.fin-input` em `globals.css`).
+9. **Tabela nova precisa de RLS + revoke explícitos na própria migration**
+   (`enable row level security` + `revoke all … from anon, authenticated`):
+   o Supabase concede acesso a toda tabela nova, e o `revoke all on all
+   tables` do `schema.sql` só valeu pras tabelas que existiam quando rodou.
+   Ver `0021_background_tasks.sql`.
 
 ## Pendências conhecidas
 
@@ -240,10 +498,69 @@ elevação no hover.
   continuam desabilitados no menu, então não há redirect quebrado por
   enquanto.
 - ATS Fase 1 (comunicação por e-mail — templates, Resend, gatilho por
-  etapa, seleção em lote, fila de tarefas `BackgroundTask` via cron
-  externo): planejada, não iniciada. `ApplicationEvent` já suporta os tipos
-  `EMAIL_QUEUED/SENT/FAILED` no componente de timeline, só falta a
-  implementação em si.
+  etapa, seleção em lote): planejada, não iniciada. A fila de tarefas que
+  ela usa **já existe** (seção "Fila de tarefas em segundo plano") — falta
+  só registrar o handler. `ApplicationEvent` já suporta os tipos
+  `EMAIL_QUEUED/SENT/FAILED` no componente de timeline.
+- ATS Fase 3 (triagem com IA): plano aprovado, em 4 etapas revisadas
+  separadamente — (1) dados, (2) processamento, (3) interface, (4)
+  Configurações + consentimento no formulário público. **Etapa 1 (dados)
+  feita**: migration `0022` (versões de currículo, `resume_analyses`,
+  `consents`, `Candidate.isTest`, `Company.aiScreeningEnabled`),
+  versionamento nos dois uploads, selo/chave "Teste" no perfil, backfill.
+  Aplicada em produção em 2026-09-24; backfill (simulação) encontrou 0
+  currículos legados. **Etapa 2 (processamento) feita** — ver seção
+  "Triagem com IA" abaixo.
+  - **Testes de integração (`npm run test:db`) da Fase 3 rodam UMA vez, no
+    final da fase**, junto com os de todas as etapas — até lá só os
+    unitários (`npm test`) são executados a cada etapa.
+  - Incluir na etapa 3 (interface): (a) trocar o `<input type="file">`
+    padrão por uma área de upload no estilo do design system (arrastar ou
+    clicar pra escolher, mostrando o nome do arquivo); (b) tirar a caixa
+    "Candidato de teste" do topo do perfil e levar pra um lugar discreto
+    (ex.: menu de opções do perfil), ainda só pra ADMIN — o selo "Teste"
+    continua aparecendo quando marcado.
+  Decisões já tomadas:
+  - **Consentimento** genérico (tabela `consents`: finalidade, versão e hash
+    do texto, data/hora, candidatura). Formulário público com dois
+    checkboxes: tratamento da candidatura (obrigatório) e análise por IA
+    (opcional). **Recusar a IA não pode prejudicar o candidato em nada.**
+  - **Textos da interface quando a IA não roda** falam da FERRAMENTA, nunca
+    do candidato: "Análise por IA não autorizada pelo candidato" (sem
+    consentimento), "Triagem com IA desativada" (chave da empresa),
+    "Triagem com IA indisponível" (`AI_ALLOW_REAL_DATA=false`). **Nunca usar
+    "elegível"/"inelegível" na interface.**
+  - Antes de enviar à IA, remover também o nome do candidato e linhas com
+    dados pessoais rotulados (nascimento, idade, estado civil, sexo,
+    nacionalidade).
+- **Retenção de versões de currículo (12 meses)**: valor provisório,
+  pendente de validação jurídica (`lib/resumes/retention.ts`).
+- **Backfill + migration `0023`**: rodar `scripts/backfill-resume-versions.js`
+  e só depois remover `candidates.resume_path` e os arquivos legados.
+- Arquivos do Storage não são apagados quando um candidato é excluído
+  (linhas somem por cascade, PDFs ficam) — tratar junto da política geral
+  de retenção.
+
+## Pendências futuras
+
+- **Link de consentimento para candidato cadastrado manualmente**: o
+  recrutador envia um link ao candidato que não passou pelo formulário
+  público, pra ele poder dar (ou não) o consentimento da análise por IA.
+  Hoje esses candidatos nunca passam pela triagem com IA (exceto os de
+  teste).
+
+## Pendências antes do primeiro cliente
+
+- **Vercel Hobby é só pra uso não comercial** — migrar pro plano Pro antes
+  de ter cliente pagante.
+- **Supabase free pausa o projeto por inatividade e não tem backup
+  automático** — migrar pro plano pago antes de ter cliente pagante (além
+  do backup, evita a produção pausar num período sem acesso).
+- **Trocar credenciais expostas fora do ambiente local**: a
+  `SUPABASE_SERVICE_ROLE_KEY`, a senha do banco de produção e a senha do
+  administrador. Usar senhas **diferentes** pro banco e pro login do
+  administrador. Depois de trocar, atualizar `.env.local` e as variáveis na
+  Vercel (`DATABASE_URL`/`DIRECT_URL` carregam a senha do banco).
 
 ## Rodando localmente / testando em rede
 

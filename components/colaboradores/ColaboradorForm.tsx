@@ -521,7 +521,13 @@ export function ColaboradorForm({
                 onChange={(e) => updateDependent(index, "birthCertificateNumber", e.target.value)}
               />
             </FieldLabel>
-            <Button type="button" variant="secondary" onClick={() => removeDependent(index)} aria-label="Remover dependente">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => removeDependent(index)}
+              aria-label="Remover dependente"
+              style={{ color: "var(--action-cancel)" }}
+            >
               <Trash2 size={14} />
             </Button>
           </div>
@@ -547,7 +553,7 @@ export function ColaboradorForm({
       )}
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-        <Button type="submit" variant={submitting ? "disabled" : "primary"}>
+        <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
           {submitting ? "Salvando..." : isEdit ? "Salvar alterações" : "Cadastrar colaborador"}
         </Button>
       </div>

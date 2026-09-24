@@ -6,12 +6,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CandidateProfileForm } from "@/components/recrutamento/CandidateProfileForm";
 import { CandidateResumeUpload } from "@/components/recrutamento/CandidateResumeUpload";
+import { CandidateTestToggle } from "@/components/recrutamento/CandidateTestToggle";
 import { getPerson } from "@/services/candidates";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { RESUME_BUCKET } from "@/lib/resumes/files";
+import { requireSession } from "@/lib/session";
 import { STAGE_LABELS, TERMINAL_STAGES, type CANDIDATE_STAGES } from "@/schemas/candidate";
 import { FileText, Folder, Download } from "lucide-react";
 
-const RESUME_BUCKET = "resumes";
+const RESUME_SOURCE_LABELS: Record<string, string> = {
+  PUBLIC_FORM: "enviado pelo candidato",
+  RECRUITER: "enviado pelo recrutador",
+  LEGACY: "anterior ao histórico de versões",
+};
 
 const TABS = [
   { key: "perfil", label: "Perfil" },
@@ -36,18 +43,35 @@ export default async function PessoaPerfilPage({
   const { tab } = await searchParams;
   const activeTab = TABS.some((t) => t.key === tab) ? tab! : "perfil";
 
-  const candidate = await getPerson(candidateId);
+  const [candidate, session] = await Promise.all([getPerson(candidateId), requireSession()]);
   if (!candidate) notFound();
 
-  // URL assinada e de curta duração — o bucket é privado, então o link de
+  // Versão atual + anteriores. Sem versão ainda (pessoa anterior ao
+  // versionamento e backfill não rodado), cai no arquivo legado resumePath.
+  const currentResume = candidate.resumes.find((r) => r.id === candidate.currentResumeId) ?? null;
+  const previousResumes = candidate.resumes.filter((r) => r.id !== candidate.currentResumeId);
+  const legacyPath = !currentResume && candidate.resumes.length === 0 ? candidate.resumePath : null;
+
+  // URLs assinadas e de curta duração — o bucket é privado, então o link de
   // download só funciona por um tempo curto em vez de ficar público pra
   // sempre. Só gera quando a aba Perfil está de fato aberta.
-  let resumeUrl: string | null = null;
-  if (activeTab === "perfil" && candidate.resumePath) {
-    const supabaseAdmin = createSupabaseAdminClient();
-    const { data } = await supabaseAdmin.storage.from(RESUME_BUCKET).createSignedUrl(candidate.resumePath, 300);
-    resumeUrl = data?.signedUrl ?? null;
+  const signedUrls = new Map<string, string>();
+  const pathsToSign = [
+    ...(currentResume ? [currentResume.storagePath] : []),
+    ...previousResumes.map((r) => r.storagePath),
+    ...(legacyPath ? [legacyPath] : []),
+  ];
+  if (activeTab === "perfil" && pathsToSign.length > 0) {
+    const { data } = await createSupabaseAdminClient().storage.from(RESUME_BUCKET).createSignedUrls(pathsToSign, 300);
+    for (const item of data ?? []) {
+      if (item.path && item.signedUrl) signedUrls.set(item.path, item.signedUrl);
+    }
   }
+  const resumeUrl = currentResume
+    ? signedUrls.get(currentResume.storagePath) ?? null
+    : legacyPath
+      ? signedUrls.get(legacyPath) ?? null
+      : null;
 
   return (
     <>
@@ -61,6 +85,13 @@ export default async function PessoaPerfilPage({
         ]}
       />
       <div className="fin-content">
+        {(candidate.isTest || session.role === "ADMIN") && (
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            {candidate.isTest && <Badge tone="primary">Teste</Badge>}
+            {session.role === "ADMIN" && <CandidateTestToggle candidateId={candidate.id} isTest={candidate.isTest} />}
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--border)" }}>
           {TABS.map((t) => (
             <Link
@@ -93,17 +124,59 @@ export default async function PessoaPerfilPage({
               }}
             />
 
+            {/* Reservado para o resumo por IA do currículo (Fase 3, etapa 3) —
+                fica ACIMA do currículo. Sem placeholder visível de propósito. */}
+
             {resumeUrl ? (
-              <div className="fin-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <FileText size={18} style={{ color: "var(--text-muted)" }} />
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>Currículo anexado</span>
+              <div className="fin-card" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <FileText size={18} style={{ color: "var(--text-muted)" }} />
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 500 }}>Currículo atual</div>
+                      {currentResume && (
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                          {currentResume.createdAt.toLocaleDateString("pt-BR")} ·{" "}
+                          {RESUME_SOURCE_LABELS[currentResume.source] ?? currentResume.source}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <a href={resumeUrl} target="_blank" rel="noreferrer">
+                    <Button variant="secondary">
+                      <Download size={14} /> Baixar PDF
+                    </Button>
+                  </a>
                 </div>
-                <a href={resumeUrl} target="_blank" rel="noreferrer">
-                  <Button variant="secondary">
-                    <Download size={14} /> Baixar PDF
-                  </Button>
-                </a>
+
+                {previousResumes.length > 0 && (
+                  <details>
+                    <summary style={{ fontSize: 13, color: "var(--text-secondary)", cursor: "pointer" }}>
+                      Versões anteriores ({previousResumes.length})
+                    </summary>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                      {previousResumes.map((r) => {
+                        const url = signedUrls.get(r.storagePath);
+                        return (
+                          <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
+                            <span style={{ color: "var(--text-muted)" }}>
+                              {r.createdAt.toLocaleDateString("pt-BR")} · {RESUME_SOURCE_LABELS[r.source] ?? r.source}
+                            </span>
+                            {url && (
+                              <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--action-primary-text)" }}>
+                                Baixar
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </details>
+                )}
+
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+                  <CandidateResumeUpload candidateId={candidate.id} submitLabel="Enviar nova versão" />
+                </div>
               </div>
             ) : (
               <EmptyState
@@ -113,9 +186,6 @@ export default async function PessoaPerfilPage({
                 action={<CandidateResumeUpload candidateId={candidate.id} />}
               />
             )}
-
-            {/* Reservado para o resumo por IA do currículo (fase futura) —
-                sem placeholder visível de propósito. */}
           </div>
         )}
 

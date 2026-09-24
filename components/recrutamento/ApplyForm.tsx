@@ -97,7 +97,7 @@ export function ApplyForm({ companySlug, jobId }: { companySlug: string; jobId: 
             {error}
           </div>
         )}
-        <Button type="submit" variant={submitting ? "disabled" : "primary"}>
+        <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
           {submitting ? "Enviando..." : "Enviar candidatura"}
         </Button>
       </Card>

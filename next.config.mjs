@@ -5,6 +5,12 @@ const nextConfig = {
   // estáticos (_next/*) vindos de uma origem diferente de localhost e a
   // página nunca hidrata (os formulários ficam sem funcionar).
   allowedDevOrigins: ["192.168.2.104", "192.168.2.166"],
+  experimental: {
+    // unpdf (extração de texto do currículo, lib/ai/extract.ts) traz o
+    // pdf.js inteiro com import dinâmico — carregado direto do node_modules
+    // no servidor em vez de passar pelo bundler do Next.
+    serverComponentsExternalPackages: ["unpdf"],
+  },
 };
 
 export default nextConfig;

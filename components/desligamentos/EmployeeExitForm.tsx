@@ -119,7 +119,7 @@ export function EmployeeExitForm({
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
+          <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
             {submitting ? "Registrando..." : "Registrar desligamento"}
           </Button>
         </div>

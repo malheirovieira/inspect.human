@@ -4,11 +4,14 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTML
 export function FieldLabel({
   label,
   required,
+  error,
   children,
   className,
 }: {
   label: string;
   required?: boolean;
+  // Mensagem de validação embaixo do campo (passe também aria-invalid no input).
+  error?: string;
   children: ReactNode;
   className?: string;
 }) {
@@ -19,6 +22,7 @@ export function FieldLabel({
         {required && <span style={{ color: "var(--danger)" }}> *</span>}
       </span>
       {children}
+      {error && <span className="fin-field-error">{error}</span>}
     </label>
   );
 }

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { logApplicationEvent } from "@/services/applicationEvents";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { zodFieldErrors, type FieldErrors } from "@/lib/fieldErrors";
+import { validateResumeFile } from "@/lib/resumes/files";
+import { storeResumeVersion } from "@/lib/resumes/storeResumeVersion";
 import {
   CANDIDATE_STAGES,
   CANDIDATE_TAGS,
@@ -15,9 +17,6 @@ import {
 } from "@/schemas/candidate";
 
 export type ActionResult = { error: string } | { success: true };
-
-const RESUME_BUCKET = "resumes";
-const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 // Candidate é a pessoa, reaproveitada entre candidaturas — antes de criar
 // uma nova, procura por e-mail dentro da empresa. Sem constraint de unicidade
@@ -188,16 +187,26 @@ export async function setKanbanStageLabel(
   return { success: true };
 }
 
+export type SetTagResult = { error: string } | { success: true; stage: (typeof CANDIDATE_STAGES)[number] };
+
+// A reprovação por tag é feita AQUI (não só no client) de propósito: se
+// dependesse do componente fazer duas chamadas em sequência (tag + depois
+// mover etapa), qualquer outro caminho que chame setCandidateTag deixaria
+// a candidatura com tag "Perfil incompatível" e etapa não-REJECTED — exatamente
+// o estado inconsistente que já aconteceu uma vez. Aqui é uma escrita só,
+// atômica: não tem como setar a tag sem a etapa acompanhar.
 export async function setCandidateTag(
   applicationId: string,
   tag: (typeof CANDIDATE_TAGS)[number] | null
-): Promise<ActionResult> {
+): Promise<SetTagResult> {
   const session = await requireRole(["ADMIN", "HR"]);
 
   const application = await prisma.application.findFirst({ where: { id: applicationId, companyId: session.companyId } });
   if (!application) return { error: "Candidato não encontrado." };
 
-  await prisma.application.update({ where: { id: applicationId }, data: { qualificationTag: tag } });
+  const finalStage = tag === "RED" ? "REJECTED" : (application.stage as (typeof CANDIDATE_STAGES)[number]);
+
+  await prisma.application.update({ where: { id: applicationId }, data: { qualificationTag: tag, stage: finalStage } });
 
   if (application.qualificationTag !== tag) {
     await logApplicationEvent({
@@ -209,9 +218,20 @@ export async function setCandidateTag(
     });
   }
 
+  if (application.stage !== finalStage) {
+    await logApplicationEvent({
+      companyId: session.companyId,
+      applicationId,
+      type: "STAGE_CHANGED",
+      payload: { from: application.stage, to: finalStage },
+      actorId: session.userId,
+    });
+  }
+
+  revalidatePath("/recrutamento/banco-de-talentos");
   revalidatePath(`/recrutamento/vagas/${application.jobId}`);
   revalidatePath(`/recrutamento/vagas/${application.jobId}/candidaturas/${applicationId}`);
-  return { success: true };
+  return { success: true, stage: finalStage };
 }
 
 // Anotação da candidatura — vira só um evento (NOTE_ADDED) na timeline,
@@ -239,32 +259,57 @@ export async function addApplicationNote(applicationId: string, note: string): P
 
 // candidateId aqui é o id de verdade do Candidate (a pessoa) — a aba
 // Perfil já resolve isso direto, sem precisar passar por uma Application.
-export async function updateCandidateDados(candidateId: string, input: UpdateCandidateDadosInput): Promise<ActionResult> {
+//
+// Cada atualização que muda algo registra PROFILE_UPDATED na linha do tempo
+// de TODAS as candidaturas da pessoa, com os NOMES dos campos alterados
+// (nunca os valores — não espalha contato pelo histórico).
+export async function updateCandidateDados(
+  candidateId: string,
+  input: UpdateCandidateDadosInput
+): Promise<ActionResult | { error: string; fieldErrors: FieldErrors }> {
   const session = await requireRole(["ADMIN", "HR"]);
 
   const parsed = updateCandidateDadosSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: "Corrija os campos destacados.", fieldErrors: zodFieldErrors(parsed.error) };
   }
 
-  const { count } = await prisma.candidate.updateMany({
+  const current = await prisma.candidate.findFirst({
     where: { id: candidateId, companyId: session.companyId },
-    data: {
-      name: parsed.data.name,
-      email: parsed.data.email,
-      phone: parsed.data.phone || null,
-      linkedinUrl: parsed.data.linkedinUrl || null,
-    },
+    select: { name: true, email: true, phone: true, linkedinUrl: true, applications: { select: { id: true } } },
   });
-  if (count === 0) return { error: "Candidato não encontrado." };
+  if (!current) return { error: "Candidato não encontrado." };
+
+  const next = {
+    name: parsed.data.name,
+    email: parsed.data.email,
+    phone: parsed.data.phone || null,
+    linkedinUrl: parsed.data.linkedinUrl || null,
+  };
+  const changedFields = (Object.keys(next) as (keyof typeof next)[]).filter((k) => (current[k] ?? null) !== next[k]);
+
+  if (changedFields.length > 0) {
+    await prisma.$transaction([
+      prisma.candidate.update({ where: { id: candidateId }, data: next }),
+      prisma.applicationEvent.createMany({
+        data: current.applications.map((a) => ({
+          companyId: session.companyId,
+          applicationId: a.id,
+          type: "PROFILE_UPDATED",
+          payload: { fields: changedFields },
+          actorId: session.userId,
+        })),
+      }),
+    ]);
+  }
 
   revalidatePath(`/recrutamento/banco-de-talentos/${candidateId}`);
   return { success: true };
 }
 
-// Upload de currículo pelo recrutador (aba Perfil) — mesmo bucket privado e
-// mesmo padrão de path da candidatura pública (empresa/pessoa.pdf), só que
-// iniciado manualmente em vez de vir junto do formulário público.
+// Upload de currículo pelo recrutador (aba Perfil) — vira a versão ATUAL da
+// pessoa (versões anteriores ficam guardadas). Não mexe em
+// Application.resumeId: a versão enviada com cada candidatura é histórico.
 export async function uploadCandidateResume(candidateId: string, formData: FormData): Promise<ActionResult> {
   const session = await requireRole(["ADMIN", "HR"]);
 
@@ -273,18 +318,35 @@ export async function uploadCandidateResume(candidateId: string, formData: FormD
 
   const file = formData.get("resume");
   if (!(file instanceof File) || file.size === 0) return { error: "Selecione um arquivo." };
-  if (file.type !== "application/pdf") return { error: "O currículo precisa ser um arquivo PDF." };
-  if (file.size > MAX_RESUME_BYTES) return { error: "O PDF do currículo precisa ter até 5MB." };
+  const fileError = validateResumeFile(file);
+  if (fileError) return { error: fileError };
 
-  const path = `${session.companyId}/${candidate.id}.pdf`;
-  const supabaseAdmin = createSupabaseAdminClient();
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from(RESUME_BUCKET)
-    .upload(path, file, { contentType: "application/pdf", upsert: true });
-  if (uploadError) return { error: "Falha ao enviar o arquivo. Tente novamente." };
-
-  await prisma.candidate.update({ where: { id: candidateId }, data: { resumePath: path } });
+  const stored = await storeResumeVersion({
+    companyId: session.companyId,
+    candidateId,
+    file,
+    source: "RECRUITER",
+    uploadedById: session.userId,
+  });
+  if (!stored.ok) return { error: stored.error };
 
   revalidatePath(`/recrutamento/banco-de-talentos/${candidateId}`);
+  return { success: true };
+}
+
+// Marca/desmarca candidato de TESTE (fictício). Só ADMIN — é o que libera a
+// triagem com IA enquanto AI_ALLOW_REAL_DATA=false, então não pode ficar na
+// mão de quem só recruta.
+export async function setCandidateTestFlag(candidateId: string, isTest: boolean): Promise<ActionResult> {
+  const session = await requireRole(["ADMIN"]);
+
+  const { count } = await prisma.candidate.updateMany({
+    where: { id: candidateId, companyId: session.companyId },
+    data: { isTest },
+  });
+  if (count === 0) return { error: "Candidato não encontrado." };
+
+  revalidatePath(`/recrutamento/banco-de-talentos/${candidateId}`);
+  revalidatePath("/recrutamento/banco-de-talentos");
   return { success: true };
 }

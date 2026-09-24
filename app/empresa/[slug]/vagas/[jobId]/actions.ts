@@ -1,15 +1,13 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { validateResumeFile } from "@/lib/resumes/files";
+import { storeResumeVersion } from "@/lib/resumes/storeResumeVersion";
 import { applyToJobSchema } from "@/schemas/candidate";
 import { getPublicOpenJob } from "@/services/jobs";
 import { logApplicationEvent } from "@/services/applicationEvents";
 
 export type ApplyResult = { error: string } | { success: true };
-
-const RESUME_BUCKET = "resumes";
-const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 // Candidatura pública — sem sessão. company_id nunca vem do payload do
 // cliente: é sempre derivado da vaga buscada no servidor a partir de
@@ -38,12 +36,8 @@ export async function applyToJob(companySlug: string, jobId: string, formData: F
   const resume = resumeEntry instanceof File && resumeEntry.size > 0 ? resumeEntry : null;
 
   if (resume) {
-    if (resume.type !== "application/pdf") {
-      return { error: "O currículo precisa ser um arquivo PDF." };
-    }
-    if (resume.size > MAX_RESUME_BYTES) {
-      return { error: "O PDF do currículo precisa ter até 5MB." };
-    }
+    const fileError = validateResumeFile(resume);
+    if (fileError) return { error: fileError };
   }
 
   const found = await getPublicOpenJob(companySlug, jobId);
@@ -89,18 +83,18 @@ export async function applyToJob(companySlug: string, jobId: string, formData: F
     },
   });
 
+  // Versão nova do currículo (ou a mesma, se o arquivo for idêntico) vira a
+  // atual da pessoa e fica registrada como a enviada nesta candidatura.
   if (resume) {
-    const path = `${found.company.id}/${candidate.id}.pdf`;
-    const supabaseAdmin = createSupabaseAdminClient();
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(RESUME_BUCKET)
-      .upload(path, resume, { contentType: "application/pdf", upsert: true });
-
-    if (!uploadError) {
-      await prisma.candidate.update({ where: { id: candidate.id }, data: { resumePath: path } });
-    } else {
-      console.error("Falha ao subir currículo pro Storage:", uploadError);
-    }
+    const stored = await storeResumeVersion({
+      companyId: found.company.id,
+      candidateId: candidate.id,
+      file: resume,
+      source: "PUBLIC_FORM",
+      uploadedById: null,
+      applicationId: application.id,
+    });
+    if (!stored.ok) console.error("Currículo não salvo na candidatura pública:", stored.error);
   }
 
   return { success: true };

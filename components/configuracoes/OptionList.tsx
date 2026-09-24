@@ -79,7 +79,7 @@ export function OptionList({
               onClick={() => handleDelete(option.id)}
               aria-label={`Remover ${option.label}`}
               className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", display: "flex" }}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--action-cancel)", display: "flex" }}
             >
               <Trash2 size={14} />
             </button>

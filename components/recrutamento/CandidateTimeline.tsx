@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, ArrowRightLeft, Tag, MessageSquare, Mail, type LucideIcon } from "lucide-react";
+import { UserPlus, ArrowRightLeft, Tag, MessageSquare, Mail, Pencil, type LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
@@ -31,6 +31,13 @@ function tagLabel(tag: string | null): string {
   return TAG_LABELS[tag as (typeof CANDIDATE_TAGS)[number]] ?? tag;
 }
 
+const PROFILE_FIELD_LABELS: Record<string, string> = {
+  name: "Nome",
+  email: "E-mail",
+  phone: "Telefone",
+  linkedinUrl: "LinkedIn",
+};
+
 const SOURCE_LABELS: Record<string, string> = {
   PUBLIC_FORM: "formulário público da vaga",
   MANUAL: "cadastro manual",
@@ -56,6 +63,12 @@ function describeEvent(event: EventRow): { icon: LucideIcon; text: string } {
       };
     case "NOTE_ADDED":
       return { icon: MessageSquare, text: payload.note as string };
+    case "PROFILE_UPDATED": {
+      // Só os nomes dos campos (valores não ficam no histórico).
+      const fields = Array.isArray(payload.fields) ? (payload.fields as string[]) : [];
+      const names = fields.map((f) => PROFILE_FIELD_LABELS[f] ?? f).join(", ");
+      return { icon: Pencil, text: names ? `Dados do candidato atualizados: ${names}` : "Dados do candidato atualizados" };
+    }
     case "EMAIL_QUEUED":
     case "EMAIL_SENT":
     case "EMAIL_FAILED":
@@ -104,7 +117,7 @@ export function CandidateTimeline({ applicationId, events }: { applicationId: st
         />
         {error && <div style={{ fontSize: 12, color: "var(--danger)" }}>{error}</div>}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
+          <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
             {submitting ? "Salvando..." : "Adicionar anotação"}
           </Button>
         </div>

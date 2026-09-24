@@ -41,7 +41,7 @@ export function JobDeleteButton({ jobId, title }: { jobId: string; title: string
         borderRadius: "var(--radius-md)",
         border: "1px solid var(--border)",
         background: "var(--surface)",
-        color: "var(--danger)",
+        color: "var(--action-cancel)",
         cursor: deleting ? "not-allowed" : "pointer",
       }}
     >

@@ -3,63 +3,98 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { EditLockActions, useEditLock } from "@/components/ui/EditLock";
 import { FieldLabel, Input } from "@/components/ui/Field";
+import { zodFieldErrors } from "@/lib/fieldErrors";
 import { formatPhone } from "@/lib/phoneMask";
+import { updateCandidateDadosSchema } from "@/schemas/candidate";
 import { updateCandidateDados } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
+
+type ProfileValues = { name: string; email: string; phone: string; linkedinUrl: string };
 
 // Dados da PESSOA (nome/e-mail/telefone/LinkedIn) — etapa e tag de
 // qualificação não moram mais aqui, são da candidatura (ver a página de
 // detalhe da candidatura, /recrutamento/vagas/[jobId]/candidaturas/[id]).
-export function CandidateProfileForm({
-  candidateId,
-  initial,
-}: {
-  candidateId: string;
-  initial: { name: string; email: string; phone: string; linkedinUrl: string };
-}) {
+// Abre BLOQUEADO — mesmo padrão do cadastro da vaga (components/ui/EditLock).
+export function CandidateProfileForm({ candidateId, initial }: { candidateId: string; initial: ProfileValues }) {
   const router = useRouter();
-  const [form, setForm] = useState({ ...initial, phone: formatPhone(initial.phone) });
+  const lock = useEditLock<ProfileValues>({ ...initial, phone: formatPhone(initial.phone) }, true);
+  const { values: form, setValues: setForm, locked, fieldErrors } = lock;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    setSubmitting(true);
+    if (locked) return;
     setError(null);
 
-    const result = await updateCandidateDados(candidateId, { ...form, phone: form.phone.replace(/\D/g, "") });
-
-    setSubmitting(false);
-    if ("error" in result) {
-      setError(result.error);
+    const payload = { ...form, phone: form.phone.replace(/\D/g, "") };
+    // Mesma validação do servidor, antes de enviar — erro fica embaixo do
+    // campo e nada do que foi digitado se perde.
+    const check = updateCandidateDadosSchema.safeParse(payload);
+    if (!check.success) {
+      lock.setFieldErrors(zodFieldErrors(check.error));
       return;
     }
+
+    setSubmitting(true);
+    const result = await updateCandidateDados(candidateId, payload);
+    setSubmitting(false);
+
+    if ("error" in result) {
+      if ("fieldErrors" in result) lock.setFieldErrors(result.fieldErrors);
+      else setError(result.error);
+      return;
+    }
+    lock.commit(form);
     router.refresh();
   }
 
+  const set = (key: keyof ProfileValues, value: string) => {
+    setForm((p) => ({ ...p, [key]: value }));
+    if (fieldErrors[key]) lock.setFieldErrors(({ [key]: _removed, ...rest }) => rest);
+  };
+
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} noValidate>
       <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <span className="fin-eyebrow">PERFIL</span>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
-          <FieldLabel label="Nome completo" required>
-            <Input required value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+          <FieldLabel label="Nome completo" required error={fieldErrors.name}>
+            <Input
+              disabled={locked}
+              aria-invalid={Boolean(fieldErrors.name)}
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+            />
           </FieldLabel>
-          <FieldLabel label="E-mail" required>
-            <Input type="email" required value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+          <FieldLabel label="E-mail" required error={fieldErrors.email}>
+            <Input
+              type="email"
+              disabled={locked}
+              aria-invalid={Boolean(fieldErrors.email)}
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+            />
           </FieldLabel>
-          <FieldLabel label="Telefone">
+          <FieldLabel label="Telefone" error={fieldErrors.phone}>
             <Input
               type="tel"
               placeholder="(11) 91234-5678"
               maxLength={15}
+              disabled={locked}
+              aria-invalid={Boolean(fieldErrors.phone)}
               value={form.phone}
-              onChange={(e) => setForm((p) => ({ ...p, phone: formatPhone(e.target.value) }))}
+              onChange={(e) => set("phone", formatPhone(e.target.value))}
             />
           </FieldLabel>
-          <FieldLabel label="LinkedIn">
-            <Input value={form.linkedinUrl} onChange={(e) => setForm((p) => ({ ...p, linkedinUrl: e.target.value }))} />
+          <FieldLabel label="LinkedIn" error={fieldErrors.linkedinUrl}>
+            <Input
+              disabled={locked}
+              aria-invalid={Boolean(fieldErrors.linkedinUrl)}
+              value={form.linkedinUrl}
+              onChange={(e) => set("linkedinUrl", e.target.value)}
+            />
           </FieldLabel>
         </div>
 
@@ -70,9 +105,16 @@ export function CandidateProfileForm({
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="submit" variant={submitting ? "disabled" : "primary"}>
-            {submitting ? "Salvando..." : "Salvar alterações"}
-          </Button>
+          <EditLockActions
+            isExisting
+            locked={locked}
+            submitting={submitting}
+            onEdit={lock.startEdit}
+            onCancel={() => {
+              setError(null);
+              lock.cancel();
+            }}
+          />
         </div>
       </Card>
     </form>

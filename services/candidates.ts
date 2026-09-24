@@ -20,7 +20,14 @@ function flattenApplication<
     hiredAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
-    candidate: { name: string; email: string; phone: string | null; linkedinUrl: string | null; resumePath: string | null };
+    candidate: {
+      name: string;
+      email: string;
+      phone: string | null;
+      linkedinUrl: string | null;
+      currentResumeId: string | null;
+      isTest: boolean;
+    };
     job: { title: string };
   },
 >(app: T) {
@@ -51,7 +58,7 @@ export async function listCandidates(filters: CandidateFilters = {}) {
     },
     orderBy: { createdAt: "desc" },
     include: {
-      candidate: { select: { name: true, email: true, phone: true, linkedinUrl: true, resumePath: true } },
+      candidate: { select: { name: true, email: true, phone: true, linkedinUrl: true, currentResumeId: true, isTest: true } },
       job: { select: { title: true } },
     },
   });
@@ -59,13 +66,18 @@ export async function listCandidates(filters: CandidateFilters = {}) {
   return applications.map(flattenApplication);
 }
 
-// A PESSOA (perfil no Banco de Talentos) — dados de contato + currículo +
-// a lista de todas as candidaturas dela (aba "Candidaturas").
+// A PESSOA (perfil no Banco de Talentos) — dados de contato + currículo
+// (versão atual + anteriores) + a lista de todas as candidaturas dela (aba
+// "Candidaturas").
 export async function getPerson(candidateId: string) {
   const session = await requireRole(["ADMIN", "HR"]);
   const candidate = await prisma.candidate.findFirst({
     where: { id: candidateId, companyId: session.companyId },
     include: {
+      resumes: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, storagePath: true, source: true, sizeBytes: true, createdAt: true },
+      },
       applications: {
         orderBy: { createdAt: "desc" },
         select: {

@@ -43,15 +43,11 @@ export function ApplicationHeader({
 
   async function handleTagChange(next: Tag | "") {
     setCurrentTag(next);
-    await setCandidateTag(applicationId, next || null);
-
-    // Tag "Reprovado" na triagem já é a decisão — reprova a candidatura
-    // direto, sem precisar de um segundo passo manual pra mover a etapa.
-    if (next === "RED") {
-      setCurrentStage("REJECTED");
-      await moveCandidateStage(applicationId, "REJECTED");
-    }
-
+    // A action já reprova a candidatura sozinha quando a tag é "Perfil
+    // incompatível" (atômico, ver setCandidateTag) — só reflete o
+    // resultado aqui, sem precisar de uma segunda chamada.
+    const result = await setCandidateTag(applicationId, next || null);
+    if ("stage" in result) setCurrentStage(result.stage);
     router.refresh();
   }
 

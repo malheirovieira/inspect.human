@@ -61,7 +61,7 @@ export function ColaboradorRowActions({ colaboradorId, name }: { colaboradorId: 
           borderRadius: "var(--radius-sm)",
           border: "none",
           background: "none",
-          color: "var(--danger)",
+          color: "var(--action-cancel)",
           cursor: deleting ? "not-allowed" : "pointer",
         }}
       >

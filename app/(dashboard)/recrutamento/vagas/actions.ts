@@ -4,16 +4,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
+import { zodFieldErrors, type FieldErrors } from "@/lib/fieldErrors";
 import { jobSchema, JOB_STATUSES, type JobInput } from "@/schemas/job";
 
-export type ActionResult = { error: string } | { success: true };
+// fieldErrors: erro por campo (validação) — o formulário mostra embaixo do campo.
+export type ActionResult = { error: string; fieldErrors?: FieldErrors } | { success: true };
 
 export async function createJob(input: JobInput): Promise<ActionResult | never> {
   const session = await requireRole(["ADMIN", "HR"]);
 
   const parsed = jobSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: "Corrija os campos destacados.", fieldErrors: zodFieldErrors(parsed.error) };
   }
 
   const job = await prisma.job.create({
@@ -42,7 +44,7 @@ export async function updateJob(jobId: string, input: JobInput): Promise<ActionR
 
   const parsed = jobSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+    return { error: "Corrija os campos destacados.", fieldErrors: zodFieldErrors(parsed.error) };
   }
 
   const job = await prisma.job.findFirst({ where: { id: jobId, companyId: session.companyId } });

@@ -55,6 +55,9 @@ export default async function VagaDetalhePage({
     const { candidate, ...rest } = a;
     return { ...rest, ...candidate, job: { title: job.title } };
   });
+  // Reprovado não conta como candidato "em aberto" — mesma régua usada no
+  // filtro "Mostrar reprovados" logo abaixo.
+  const activeApplicationsCount = job.applications.filter((a) => a.stage !== "REJECTED").length;
 
   return (
     <>
@@ -74,7 +77,7 @@ export default async function VagaDetalhePage({
               {job.status === "OPEN" ? "Aberta" : job.status === "CLOSED" ? "Fechada" : "Rascunho"}
             </Badge>
             <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              {job.applications.length} candidato(s) recebido(s)
+              {activeApplicationsCount} candidato(s) recebido(s)
               {job.department ? ` · ${job.department}` : ""}
               {job.createdBy ? ` · Criada por ${job.createdBy.name}` : ""}
             </span>
@@ -124,7 +127,7 @@ export default async function VagaDetalhePage({
               }}
             >
               {t.label}
-              {t.key === "candidatos" ? ` (${job.applications.length})` : ""}
+              {t.key === "candidatos" ? ` (${activeApplicationsCount})` : ""}
             </Link>
           ))}
         </div>

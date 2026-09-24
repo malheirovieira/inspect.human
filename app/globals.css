@@ -50,6 +50,13 @@
   --action-primary-hover: var(--focus-ring);
   --action-primary-text: var(--green-900);
   --on-action-primary: var(--white);
+  /* Regra do sistema: TODO botão de salvar/confirmar/atualizar usa
+     --action-confirm (verde); TODO botão de cancelar/excluir/remover usa
+     --action-cancel (vermelho). Espelhado em tailwind.config.ts. */
+  --action-confirm: #177f0f;
+  --action-confirm-hover: #11630b;
+  --action-cancel: #fe0401;
+  --action-cancel-hover: #d10301;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -530,6 +537,37 @@ body {
   color: var(--white);
   cursor: not-allowed;
 }
+/* Salvar / confirmar / atualizar */
+.fin-btn--confirm {
+  background: var(--action-confirm);
+  color: var(--white);
+}
+.fin-btn--confirm:hover {
+  background: var(--action-confirm-hover);
+}
+/* Cancelar / excluir (com texto) */
+.fin-btn--danger {
+  background: var(--action-cancel);
+  color: var(--white);
+}
+.fin-btn--danger:hover {
+  background: var(--action-cancel-hover);
+}
+/* "X" de cancelar edição, ao lado do Editar/Atualizar — mesma altura do botão */
+.fin-btn--icon-cancel {
+  width: 44px;
+  padding: 0;
+  flex-shrink: 0;
+  background: var(--action-cancel);
+  color: var(--white);
+}
+.fin-btn--icon-cancel:hover {
+  background: var(--action-cancel-hover);
+}
+/* Ícone de excluir/remover sem fundo (lixeira em linhas de lista) */
+.fin-icon-danger {
+  color: var(--action-cancel);
+}
 /* ---- Botão redondo (toggle incluir/cancelar ao lado dos filtros) ---- */
 .fin-btn--round {
   width: 44px;
@@ -551,7 +589,7 @@ body {
   color: var(--white);
 }
 .fin-btn.fin-btn--round-cancel {
-  background: var(--danger);
+  background: var(--action-cancel);
   color: var(--white);
 }
 /* ---- Filtro de lista (select ao lado da busca) — pílula, sem contorno azul ---- */
@@ -741,6 +779,14 @@ body {
   background: var(--surface-muted);
   color: var(--text-muted);
   cursor: not-allowed;
+}
+/* Campo com erro de validação (FieldLabel com `error`) */
+.fin-input[aria-invalid="true"] {
+  box-shadow: 0 0 0 1px var(--danger);
+}
+.fin-field-error {
+  font-size: 12px;
+  color: var(--danger);
 }
 /* Seta nativa do <select> fica colada na borda por padrão do navegador —
    troca por uma seta cinza com mais respiro (mesma ideia do .fin-filter-select,
