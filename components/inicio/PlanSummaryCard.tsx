@@ -1,37 +1,39 @@
 import Link from "next/link";
 import { formatPlanPrice, type Plan } from "@/lib/plans";
 
-// Card "Seu plano" da Início — mesmo estilo do card de preço da página
-// Planos (components/configuracoes/PlanCard), mais compacto.
-// Referência visual: Uiverse.io (licença MIT) — adaptado ao design system.
-// CSS em globals.css (.fin-plan-summary).
+// Card "Seu plano" da Início — IDÊNTICO ao card de referência (mesma
+// estrutura e classes Tailwind); a linha de descrição mostra o uso do mês e
+// o botão é "Ver planos" (só ADMIN). Corrigido o erro da referência
+// ("nline-flex").
+// From Uiverse.io by emmanuelh-dev (licença MIT).
 export function PlanSummaryCard({ plan, used, showPlansLink }: { plan: Plan; used: number; showPlansLink: boolean }) {
-  const pct = Math.min(100, Math.round((used / Math.max(1, plan.aiResumeLimit)) * 100));
-
   return (
-    <section className="fin-plan-summary" aria-label="Seu plano">
-      <div className="fin-plan-summary__plan">
-        <span className="fin-eyebrow">SEU PLANO</span>
-        <div className="fin-plan-summary__name">{plan.name}</div>
-        <p className="fin-plan-summary__price">
-          <span className="fin-plan-summary__amount">{formatPlanPrice(plan)}</span>
-          <span className="fin-plan-card__period"> /mês</span>
-        </p>
-      </div>
-      <div className="fin-plan-summary__usage">
-        <div className="fin-plan-summary__usage-text">
-          <strong>{used.toLocaleString("pt-BR")}</strong> de {plan.aiResumeLimit.toLocaleString("pt-BR")} currículos
-          analisados por IA
+    <section aria-label="Seu plano" className="flex max-w-sm flex-col rounded-3xl bg-white">
+      <div className={showPlansLink ? "px-6 py-8 sm:p-10 sm:pb-6" : "px-6 py-8 sm:p-10"}>
+        <div className="grid w-full grid-cols-1 items-center justify-center text-left">
+          <div>
+            <h2 className="text-lg font-medium tracking-tighter text-gray-600 lg:text-3xl">{plan.name}</h2>
+            <p className="mt-2 text-sm text-gray-500">
+              {used.toLocaleString("pt-BR")} de {plan.aiResumeLimit.toLocaleString("pt-BR")} currículos analisados por IA
+            </p>
+          </div>
+          <div className="mt-6">
+            <p>
+              <span className="text-5xl font-light tracking-tight text-black">{formatPlanPrice(plan)}</span>
+              <span className="text-base font-medium text-gray-500"> /mês </span>
+            </p>
+          </div>
         </div>
-        <div className="fin-bar__track" role="progressbar" aria-valuemin={0} aria-valuemax={plan.aiResumeLimit} aria-valuenow={used}>
-          <div className="fin-bar__fill" style={{ width: `${pct}%` }} />
-        </div>
-        <span className="fin-plan-summary__hint">Uso deste mês</span>
       </div>
       {showPlansLink && (
-        <Link href="/configuracoes/planos" className="fin-plan-summary__link">
-          Ver planos
-        </Link>
+        <div className="flex px-6 pb-8 sm:px-8">
+          <Link
+            href="/configuracoes/planos"
+            className="flex w-full items-center justify-center rounded-full border-2 border-black bg-black px-6 py-2.5 text-center text-sm text-white duration-200 hover:border-black hover:bg-transparent hover:text-black focus:outline-none focus-visible:outline-black focus-visible:ring-black"
+          >
+            Ver planos
+          </Link>
+        </div>
       )}
     </section>
   );
