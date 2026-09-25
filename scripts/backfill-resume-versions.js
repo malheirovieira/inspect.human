@@ -8,7 +8,8 @@
 // - Por padrão só SIMULA (nada é gravado). Pra gravar: --apply
 // - Idempotente: rodar de novo pula quem já tem versão.
 // - NÃO apaga o arquivo legado nem a coluna resume_path — isso é a migration
-//   0023, depois de conferir o resultado daqui.
+//   próxima migration livre (a 0023 virou o plano da empresa), depois de
+//   conferir o resultado daqui.
 // - applications.resume_id fica null nas candidaturas antigas: o arquivo
 //   legado era sobrescrito a cada upload, então não dá pra saber qual versão
 //   foi enviada com cada uma.

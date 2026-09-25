@@ -171,7 +171,8 @@ estar assim; confirme antes de assumir o contrário.
   sobrescrito) ainda existe e é só **lido** como alternativa no perfil
   enquanto a pessoa não tiver versão. Passos: rodar
   `node scripts/backfill-resume-versions.js` (simula) → conferir →
-  `--apply` → migration `0023` remove a coluna e os arquivos legados.
+  `--apply` → próxima migration livre remove a coluna e os arquivos legados
+  (a `0023` virou o plano da empresa).
 - **Retenção**: versão substituída apagada 12 meses depois de deixar de ser
   a atual (`lib/resumes/retention.ts`) — **valor provisório, pendente de
   validação jurídica**. A limpeza em si entra na etapa 2 da Fase 3.
@@ -469,6 +470,16 @@ npm run test:db          # integração da fila no projeto de TESTE
   Supabase antes de rodar de novo.
 - Sem `TEST_DATABASE_URL`, `test:db` pula tudo com aviso (não falha).
 
+## Planos (`lib/plans.ts`)
+
+Fonte ÚNICA dos planos: id, nome, preço mensal em R$, descrição, itens e
+limite mensal de currículos analisados por IA. **Todos os valores são
+PLACEHOLDER** (nomes e preços definidos pelo negócio depois). Ordem da lista
+= do mais básico ao mais alto; o primeiro é o padrão de toda empresa.
+`Company.plan` (migration `0023`, sem check constraint — id desconhecido cai
+no básico via `getPlan`). **Ainda não existe cobrança nem troca de plano**:
+o plano só muda direto no banco.
+
 ## Design system — estado atual
 
 Paleta em verde (`--green-700`/`--success` etc. em `app/globals.css`,
@@ -581,7 +592,8 @@ elevação no hover.
     nacionalidade).
 - **Retenção de versões de currículo (12 meses)**: valor provisório,
   pendente de validação jurídica (`lib/resumes/retention.ts`).
-- **Backfill + migration `0023`**: rodar `scripts/backfill-resume-versions.js`
+- **Backfill + migration de remoção** (próxima livre; a `0023` virou o plano
+  da empresa): rodar `scripts/backfill-resume-versions.js`
   e só depois remover `candidates.resume_path` e os arquivos legados.
 - Arquivos do Storage não são apagados quando um candidato é excluído
   (linhas somem por cascade, PDFs ficam) — tratar junto da política geral

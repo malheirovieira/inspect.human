@@ -21,6 +21,8 @@ create table companies (
   slug text not null,
   description text,
   active boolean not null default true,
+  -- plano (lib/plans.ts, ids PLACEHOLDER) — migrations/0023; sem cobrança ainda
+  plan text not null default 'essencial',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint companies_slug_format check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
@@ -144,7 +146,7 @@ create table candidates (
   phone text,
   linkedin_url text,
   -- legado (arquivo único por pessoa) — substituído por current_resume_id
-  -- (candidate_resumes, mais abaixo); sai na migration 0023, depois do backfill
+  -- (candidate_resumes, mais abaixo); sai na próxima migration livre, depois do backfill
   resume_path text,
   -- candidato fictício (testes/demonstração) — só ADMIN edita
   is_test boolean not null default false,
