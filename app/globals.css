@@ -57,6 +57,13 @@
   --action-confirm-hover: #11630b;
   --action-cancel: #fe0401;
   --action-cancel-hover: #d10301;
+  /* Fundo ambiente da tela Início (components/layout/AmbientBackground) */
+  --ambient-base: #fafbfe;
+  --ambient-blue-strong: #7eb6fb;
+  --ambient-blue-mid: #b9dafb;
+  --ambient-blue-soft: #dcecfd;
+  --ambient-blue-top: #b3d4fb;
+  --ambient-lavender: #e3e8fb;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -84,6 +91,10 @@ body {
 .fin-app {
   display: flex;
   min-height: 100vh;
+  /* Contexto de empilhamento próprio: o fundo ambiente (primeiro filho,
+     só na tela Início) fica atrás da Sidebar e do .fin-main sem precisar
+     de z-index negativo. */
+  isolation: isolate;
 }
 
 /* ---- Sidebar ----
@@ -397,6 +408,152 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  /* Posicionado (sem z-index) pra pintar DEPOIS do fundo ambiente, que é
+     fixed e vem antes na árvore. Não muda layout. */
+  position: relative;
+}
+
+/* ---- Fundo ambiente (só tela Início) ----
+   Camada fixa atrás de tudo: base branca levemente fria + 3 brilhos, cada
+   um uma camada maior que o brilho visível, feita só com radial-gradient
+   de várias paradas (transição suave sem filter: blur). Posições e tamanhos
+   em vw/vh (porcentagem da tela) pra manter a composição em qualquer
+   largura; overflow: hidden impede barra de rolagem. Animação só de
+   transform e opacity, durações diferentes (47s, 61s, 73s) pra nunca
+   sincronizar; deslocamento de 3 a 5% da tela, escala 0.95 a 1.08. */
+.fin-ambient {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--ambient-base);
+}
+.fin-ambient__glow {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation-timing-function: ease-in-out;
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+}
+/* Principal: centro em (0%, 85%), o mais intenso. Elipse com raio de 56vw
+   x 56vh — o azul visível chega a ~40% da largura e sobe até ~55% da altura. */
+.fin-ambient__glow--main {
+  width: 112vw;
+  height: 112vh;
+  left: -56vw;
+  top: calc(85vh - 56vh);
+  /* Muitas paradas com transparência em curva suave (sem anéis visíveis). */
+  background: radial-gradient(
+    closest-side,
+    var(--ambient-blue-strong) 0%,
+    color-mix(in srgb, var(--ambient-blue-strong) 88%, var(--ambient-blue-mid)) 10%,
+    color-mix(in srgb, var(--ambient-blue-strong) 62%, var(--ambient-blue-mid)) 20%,
+    color-mix(in srgb, var(--ambient-blue-strong) 30%, var(--ambient-blue-mid)) 29%,
+    color-mix(in srgb, var(--ambient-blue-mid) 94%, transparent) 37%,
+    color-mix(in srgb, color-mix(in srgb, var(--ambient-blue-mid) 45%, var(--ambient-blue-soft)) 84%, transparent) 45%,
+    color-mix(in srgb, var(--ambient-blue-soft) 70%, transparent) 53%,
+    color-mix(in srgb, var(--ambient-blue-soft) 54%, transparent) 61%,
+    color-mix(in srgb, var(--ambient-blue-soft) 38%, transparent) 69%,
+    color-mix(in srgb, var(--ambient-blue-soft) 24%, transparent) 77%,
+    color-mix(in srgb, var(--ambient-blue-soft) 12%, transparent) 85%,
+    color-mix(in srgb, var(--ambient-blue-soft) 4%, transparent) 93%,
+    transparent 100%
+  );
+  animation-name: fin-ambient-drift-main;
+  animation-duration: 47s;
+}
+/* Secundário: centro em (92%, 5%), mais fraco — some a ~30% da largura
+   pra esquerda e ~25% da altura pra baixo. */
+.fin-ambient__glow--top {
+  width: 84vw;
+  height: 56vh;
+  left: calc(92vw - 42vw);
+  top: calc(5vh - 28vh);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--ambient-blue-top) 80%, transparent) 0%,
+    color-mix(in srgb, var(--ambient-blue-top) 72%, transparent) 12%,
+    color-mix(in srgb, var(--ambient-blue-top) 60%, transparent) 24%,
+    color-mix(in srgb, color-mix(in srgb, var(--ambient-blue-top) 50%, var(--ambient-blue-soft)) 50%, transparent) 36%,
+    color-mix(in srgb, var(--ambient-blue-soft) 38%, transparent) 48%,
+    color-mix(in srgb, var(--ambient-blue-soft) 26%, transparent) 60%,
+    color-mix(in srgb, var(--ambient-blue-soft) 15%, transparent) 72%,
+    color-mix(in srgb, var(--ambient-blue-soft) 7%, transparent) 84%,
+    color-mix(in srgb, var(--ambient-blue-soft) 2%, transparent) 93%,
+    transparent 100%
+  );
+  animation-name: fin-ambient-drift-top;
+  animation-duration: 61s;
+}
+/* Toque azul-lavanda na lateral esquerda, em (5%, 40%) — transição entre o
+   brilho de baixo e o branco. Baixa opacidade. */
+.fin-ambient__glow--lavender {
+  width: 56vw;
+  height: 60vh;
+  left: calc(5vw - 28vw);
+  top: calc(40vh - 30vh);
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--ambient-lavender) 40%, transparent) 0%,
+    color-mix(in srgb, var(--ambient-lavender) 34%, transparent) 20%,
+    color-mix(in srgb, var(--ambient-lavender) 25%, transparent) 40%,
+    color-mix(in srgb, var(--ambient-lavender) 15%, transparent) 60%,
+    color-mix(in srgb, var(--ambient-lavender) 7%, transparent) 80%,
+    transparent 100%
+  );
+  animation-name: fin-ambient-drift-lavender;
+  animation-duration: 73s;
+}
+/* Cada brilho só se move perto do próprio canto (máx. ~5% da tela). */
+@keyframes fin-ambient-drift-main {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(3vw, -2.5vh) scale(1.06);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(1vw, -4.5vh) scale(0.97);
+    opacity: 1;
+  }
+}
+@keyframes fin-ambient-drift-top {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: translate(-3.5vw, 2vh) scale(1.08);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(-1.5vw, 4vh) scale(0.95);
+    opacity: 1;
+  }
+}
+@keyframes fin-ambient-drift-lavender {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(2.5vw, 3vh) scale(1.05);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-1vw, 4.5vh) scale(0.96);
+    opacity: 0.85;
+  }
+}
+/* Movimento reduzido: fundo estático na posição da referência. */
+@media (prefers-reduced-motion: reduce) {
+  .fin-ambient__glow {
+    animation: none;
+    will-change: auto;
+  }
 }
 /* Header/conteúdo ficam centralizados (mesma largura do .fin-topbar__inner
    acima) — só a faixa do topbar em si (fundo/borda) ocupa a página toda. */
