@@ -1012,21 +1012,86 @@ body {
 /* ---- Início: faixa de depoimentos (components/inicio/TestimonialsStrip) ----
    Card IDÊNTICO à referência — From Uiverse.io by Yaya12085 (licença MIT):
    .task → .fin-testimonial, .tags, .tag, .options, p, .stats (+ div e svg),
-   .viewer span. Única diferença: cursor default no card (botões: pointer).
-   Grade: 4 por linha no desktop, 2 no tablet, 1 no celular. */
+   .viewer span. Diferenças pedidas: cursor default no card (botões:
+   pointer), sem contorno no hover, "X" (Fechar) no lugar dos três pontos.
+   Carrossel: 4 cards por vez no desktop, 2 no tablet, 1 no celular; scroll
+   horizontal com encaixe card a card, sem barra de rolagem visível. */
+.fin-testimonials-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.fin-testimonials-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fin-testimonials-section__arrows {
+  display: flex;
+  gap: 8px;
+}
+.fin-testimonials-section__arrows button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+.fin-testimonials-section__arrows button:hover:not(:disabled) {
+  background: var(--gray-50);
+}
+.fin-testimonials-section__arrows button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.fin-testimonials-section__arrows button:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: 2px;
+}
+/* Trilho: o padding de 8px (compensado pela margem negativa) deixa a sombra
+   dos cards aparecer sem ser cortada pelo overflow. */
 .fin-testimonials {
-  display: grid;
-  grid-template-columns: minmax(0, 350px);
+  display: flex;
   column-gap: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 8px;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  padding: 8px 8px 0;
+  margin: -8px -8px 0;
+}
+.fin-testimonials::-webkit-scrollbar {
+  display: none;
+}
+.fin-testimonials:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.fin-testimonials__item {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  scroll-snap-align: start;
 }
 @media (min-width: 640px) {
-  .fin-testimonials {
-    grid-template-columns: repeat(2, minmax(0, 350px));
+  .fin-testimonials__item {
+    flex-basis: calc((100% - 1rem) / 2);
   }
 }
 @media (min-width: 1024px) {
-  .fin-testimonials {
-    grid-template-columns: repeat(4, minmax(0, 350px));
+  .fin-testimonials__item {
+    flex-basis: calc((100% - 3rem) / 4);
   }
 }
 .fin-testimonial {
@@ -1044,6 +1109,7 @@ body {
   margin-bottom: 1rem;
   border: 3px dashed transparent;
   max-width: 350px;
+  width: 100%;
 }
 /* Hover: só a sombra — sem o contorno tracejado da referência (removido a
    pedido do usuário). */
@@ -1072,8 +1138,8 @@ body {
   display: flex;
   cursor: pointer;
 }
+/* "X" (Fechar) no lugar dos três pontos: mesma cor #9fa4aa e mesmo tamanho. */
 .fin-testimonial__options svg {
-  fill: #9fa4aa;
   stroke: #9fa4aa;
   width: 20px;
   height: auto;

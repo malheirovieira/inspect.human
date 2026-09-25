@@ -13,27 +13,29 @@ function formatHeaderDate(date: Date): string {
 // quando o usuário está nesta página). O fundo ambiente vem do layout
 // (components/layout/AmbientBackground).
 //
-// Ordem: título → faixa "O que dizem sobre o Inspect Talent" (depoimentos
-// FICTÍCIOS de lib/testimonials.ts). Só ADMIN e HR veem a faixa (EMPLOYEE vê
-// só o título). O card "Seu plano" saiu da Início em 2026-09-25.
+// Título = saudação neutra (serve pra qualquer gênero) com o primeiro nome;
+// o item do menu ("Início"), a aba do navegador e o rótulo acima do título
+// continuam iguais. Abaixo, a faixa de depoimentos FICTÍCIOS
+// (lib/testimonials.ts) — só ADMIN e HR; EMPLOYEE vê só o título.
 //
 // "Precisa da sua atenção" saiu da tela, mas a lógica continua pronta pra
 // uso futuro em outro lugar: services/attention.ts + AttentionCard.
 export default async function InicioPage() {
   const session = await requireSession();
-  const header = <Header title="Início" date={formatHeaderDate(new Date())} />;
+  const firstName = session.name.trim().split(/\s+/)[0] ?? "";
+  const header = (
+    <Header
+      title={firstName ? `Que bom ter você de volta, ${firstName}` : "Que bom ter você de volta"}
+      date={formatHeaderDate(new Date())}
+    />
+  );
   if (session.role !== "ADMIN" && session.role !== "HR") return header;
 
   return (
     <>
       {header}
       <div className="fin-content">
-        <section aria-labelledby="depoimentos-titulo" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 id="depoimentos-titulo" className="fin-heading" style={{ margin: 0 }}>
-            O que dizem sobre o Inspect Talent
-          </h2>
-          <TestimonialsStrip items={[...TESTIMONIALS]} />
-        </section>
+        <TestimonialsStrip items={[...TESTIMONIALS]} />
       </div>
     </>
   );

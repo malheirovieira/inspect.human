@@ -48,8 +48,11 @@ pra recriar no futuro.
   com tokens espelhados em `tailwind.config.ts` — os dois precisam ser
   editados juntos quando a paleta muda.
 - `@dnd-kit/*` (kanban de candidatos), `zod` (validação de schemas).
-  `framer-motion` e `recharts` foram removidos (framer-motion virou CSS
-  puro na transição de página; recharts só existia pro Budget, que saiu).
+  `recharts` foi removido (só existia pro Budget, que saiu). `framer-motion`
+  saiu da transição de página (virou CSS puro — com Server Components/
+  streaming dava um "piscar") e VOLTOU em 2026-09-25 só pra faixa de
+  depoimentos da Início (AnimatePresence + animação de layout, componente
+  client). Não usar na transição de página.
 - **Vitest 4** (testes — ver seção "Testes"). Fixado na 4 porque a 5 exige
   `@types/node` >= 22 e o projeto está no 20.
 - Hospedagem: **Vercel Hobby** + **Supabase free** (ver "Pendências antes do
@@ -505,22 +508,34 @@ npm run test:db          # integração da fila no projeto de TESTE
 
 ## Tela Início (`app/(dashboard)/dashboard/page.tsx`)
 
-Ordem: título → faixa "O que dizem sobre o Inspect Talent". A faixa só
-aparece pra ADMIN e HR (EMPLOYEE vê só o título). O card "Seu plano" SAIU
+Título = saudação neutra "Que bom ter você de volta, {primeiro nome}" (sem
+emoji nem exclamação); o item do menu ("Início"), a aba do navegador e o
+rótulo acima do título continuam iguais. Abaixo, a faixa "O que dizem sobre
+o Inspect Talent" — só ADMIN e HR (EMPLOYEE vê só o título). O card "Seu plano" SAIU
 da Início em 2026-09-25 (a pedido); `getMonthlyAiUsage` continua, pra etapa
 4 (Configurações).
 
 - **Depoimentos** (`components/inicio/TestimonialsStrip.tsx`, dados de
   `lib/testimonials.ts`): **FICTÍCIOS e provisórios** — pessoas e empresas
   inventadas, serão trocados pelos comentários reais com a MESMA estrutura
-  (`Testimonial`). 4 por linha no desktop, 2 no tablet, 1 no celular. Card
-  IDÊNTICO à referência (From Uiverse.io by Yaya12085): etiqueta com o
-  segmento, ⋮, depoimento entre aspas + nome · cargo · empresa, ações Amei /
+  (`Testimonial`). 10 depoimentos num CARROSSEL: 4 por vez no desktop, 2 no
+  tablet, 1 no celular; setas anterior/próximo à direita do título
+  (desativadas nas pontas, Tab + aria-label), arraste com o dedo/touchpad
+  (scroll horizontal com scroll-snap card a card), sem barra de rolagem.
+  Card IDÊNTICO à referência (From Uiverse.io by Yaya12085): etiqueta com o
+  segmento, "X" (Fechar, no lugar dos três pontos), depoimento entre aspas + nome · cargo · empresa, ações Amei /
   Comentar / Fixar e avatar com INICIAIS (nunca foto de pessoa real; se um
   dia houver `avatarUrl`, mostra a imagem). Diferenças: cursor default no
   card, sem contorno tracejado no hover (a pedido), ações alinhadas no fim.
   Comportamento só em memória (recarregou, voltou): Amei soma/subtrai 1,
-  Fixar leva o card pro início, Comentar e ⋮ mostram "Em breve".
+  Fixar leva o card pro início, Comentar mostra "Em breve".
+  **Fechar (X)**: o card some (opacidade + escala, ~250ms) e os seguintes
+  deslizam (framer-motion, AnimatePresence + layout); com
+  prefers-reduced-motion só desaparece. Os fechados ficam no localStorage
+  (`inspect-talent:dismissed-testimonials`, leitura/escrita em try/catch) e
+  continuam fechados ao recarregar; todos fechados = a seção some. **Quando
+  os comentários forem reais, os fechamentos passam a ser salvos POR
+  USUÁRIO no banco** (o localStorage é só provisório).
 
 - **Uso mensal da IA**: contagem ÚNICA em `getMonthlyAiUsage` (`services/resumeAnalyses.ts`): análises
   `DONE` com IA real (`is_mock = false`) no mês corrente, fuso de São Paulo

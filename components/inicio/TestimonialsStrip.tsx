@@ -1,20 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Heart, MessageCircle, MoreVertical, Pin } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ChevronLeft, ChevronRight, Heart, MessageCircle, Pin, X } from "lucide-react";
 import type { Testimonial } from "@/lib/testimonials";
 
-// Faixa "O que dizem sobre o Inspect Talent" (tela Início).
+// Faixa "O que dizem sobre o Inspect Talent" (tela Início) — carrossel.
 // Card IDÊNTICO à referência — From Uiverse.io by Yaya12085 (licença MIT):
 // .task/.tags/.tag/.options/p/.stats/.viewer (CSS em globals.css,
-// .fin-testimonial). Única diferença: cursor default no card (os botões têm
-// cursor pointer).
+// .fin-testimonial). Diferenças pedidas: cursor default no card (botões com
+// pointer), sem contorno no hover, "X" (Fechar) no lugar dos três pontos.
 //
-// Comportamento PROVISÓRIO, só em memória (nada é salvo; recarregou,
-// voltou ao normal): Amei alterna e soma/subtrai 1; Fixar alterna e leva o
-// card pro início da faixa; Comentar e ⋮ mostram "Em breve".
-// Recebe só DADOS (armadilha nº 1 do CONTEXT.md: nunca função vinda de
-// Server Component).
+// Carrossel: 4 cards por vez no desktop, 2 no tablet, 1 no celular (largura
+// no CSS). Scroll horizontal com scroll-snap card a card (dedo/touchpad),
+// setas anterior/próximo (Tab + aria-label), sem barra de rolagem visível.
+//
+// Comportamento PROVISÓRIO: Amei/Fixar só em memória (recarregou, voltou);
+// Comentar mostra "Em breve". Fechar ("X") guarda o id no localStorage
+// (DISMISSED_KEY) — quando os comentários forem reais, isso vira por
+// usuário no banco (CONTEXT.md). Todos fechados = a seção some.
+// Recebe só DADOS (armadilha nº 1 do CONTEXT.md).
+
+const DISMISSED_KEY = "inspect-talent:dismissed-testimonials";
+
+function readDismissed(): string[] {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
+  } catch {
+    return []; // localStorage indisponível ou valor corrompido
+  }
+}
+
+function writeDismissed(ids: string[]) {
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids));
+  } catch {
+    // modo privado/cota cheia — o fechamento vale só nesta visita
+  }
+}
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -27,12 +52,14 @@ function TestimonialCard({
   pinned,
   onLike,
   onPin,
+  onClose,
 }: {
   item: Testimonial;
   liked: boolean;
   pinned: boolean;
   onLike: () => void;
   onPin: () => void;
+  onClose: () => void;
 }) {
   const [notice, setNotice] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();
@@ -48,8 +75,8 @@ function TestimonialCard({
     <article className="fin-testimonial" aria-label={`Depoimento de ${item.name}`}>
       <div className="fin-testimonial__tags">
         <span className="fin-testimonial__tag">{item.segment}</span>
-        <button type="button" className="fin-testimonial__options" aria-label="Mais opções" onClick={soon}>
-          <MoreVertical />
+        <button type="button" className="fin-testimonial__options" aria-label="Fechar" onClick={onClose}>
+          <X />
         </button>
       </div>
 
@@ -106,34 +133,149 @@ function TestimonialCard({
 }
 
 export function TestimonialsStrip({ items }: { items: Testimonial[] }) {
+  const reduceMotion = useReducedMotion();
+  const trackRef = useRef<HTMLDivElement>(null);
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [pinned, setPinned] = useState<string[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  // Antes de ler o localStorage (SSR e 1º render) a lista sai sem
+  // AnimatePresence — ao ler, os já fechados somem SEM animação.
+  const [ready, setReady] = useState(false);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(true);
 
-  const toggle = (set: Set<string>, id: string) => {
-    const next = new Set(set);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  };
+  useEffect(() => {
+    setDismissed(readDismissed());
+    setReady(true);
+  }, []);
 
-  // Fixados primeiro (o mais recente no topo); o resto na ordem original.
-  const ordered = useMemo(() => {
-    const pinnedItems = pinned.map((id) => items.find((t) => t.id === id)).filter((t): t is Testimonial => Boolean(t));
-    return [...pinnedItems, ...items.filter((t) => !pinned.includes(t.id))];
-  }, [items, pinned]);
+  // Fixados primeiro (o mais recente no topo); fechados saem.
+  const visible = useMemo(() => {
+    const open = items.filter((t) => !dismissed.includes(t.id));
+    const pinnedItems = pinned.map((id) => open.find((t) => t.id === id)).filter((t): t is Testimonial => Boolean(t));
+    return [...pinnedItems, ...open.filter((t) => !pinned.includes(t.id))];
+  }, [items, pinned, dismissed]);
+
+  // Setas desativadas quando não há mais cards naquela direção.
+  const updateArrows = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    setCanPrev(el.scrollLeft > 1);
+    setCanNext(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    updateArrows();
+    el.addEventListener("scroll", updateArrows, { passive: true });
+    el.addEventListener("scrollend", updateArrows);
+    const ro = new ResizeObserver(updateArrows);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateArrows);
+      el.removeEventListener("scrollend", updateArrows);
+      ro.disconnect();
+    };
+  }, [updateArrows, visible.length]);
+
+  // Um card por clique (encaixa com o scroll-snap).
+  function scrollByCard(direction: 1 | -1) {
+    const el = trackRef.current;
+    const first = el?.querySelector<HTMLElement>(".fin-testimonials__item");
+    if (!el || !first) return;
+    const gap = parseFloat(getComputedStyle(el).columnGap) || 0;
+    el.scrollBy({ left: direction * (first.offsetWidth + gap), behavior: reduceMotion ? "auto" : "smooth" });
+    // Garantia extra além do evento de scroll: reavalia as setas depois que
+    // a rolagem (suave, ~300–500ms) termina.
+    setTimeout(updateArrows, reduceMotion ? 0 : 600);
+  }
+
+  function close(id: string) {
+    setDismissed((prev) => {
+      const next = [...prev, id];
+      writeDismissed(next);
+      return next;
+    });
+    setPinned((p) => p.filter((x) => x !== id));
+  }
+
+  function togglePin(id: string) {
+    const willPin = !pinned.includes(id);
+    setPinned((p) => (p.includes(id) ? p.filter((x) => x !== id) : [id, ...p]));
+    // Fixou: volta pro início da faixa, onde o card foi parar.
+    if (willPin) trackRef.current?.scrollTo({ left: 0, behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
+  if (ready && visible.length === 0) return null;
+
+  const renderCard = (item: Testimonial) => (
+    <TestimonialCard
+      item={item}
+      liked={liked.has(item.id)}
+      pinned={pinned.includes(item.id)}
+      onLike={() =>
+        setLiked((s) => {
+          const next = new Set(s);
+          if (next.has(item.id)) next.delete(item.id);
+          else next.add(item.id);
+          return next;
+        })
+      }
+      onPin={() => togglePin(item.id)}
+      onClose={() => close(item.id)}
+    />
+  );
 
   return (
-    <div className="fin-testimonials">
-      {ordered.map((item) => (
-        <TestimonialCard
-          key={item.id}
-          item={item}
-          liked={liked.has(item.id)}
-          pinned={pinned.includes(item.id)}
-          onLike={() => setLiked((s) => toggle(s, item.id))}
-          onPin={() => setPinned((p) => (p.includes(item.id) ? p.filter((id) => id !== item.id) : [item.id, ...p]))}
-        />
-      ))}
-    </div>
+    <section className="fin-testimonials-section" aria-labelledby="depoimentos-titulo">
+      <div className="fin-testimonials-section__head">
+        <h2 id="depoimentos-titulo" className="fin-heading" style={{ margin: 0 }}>
+          O que dizem sobre o Inspect Talent
+        </h2>
+        <div className="fin-testimonials-section__arrows">
+          <button type="button" aria-label="Depoimentos anteriores" disabled={!canPrev} onClick={() => scrollByCard(-1)}>
+            <ChevronLeft size={16} />
+          </button>
+          <button type="button" aria-label="Próximos depoimentos" disabled={!canNext} onClick={() => scrollByCard(1)}>
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={trackRef}
+        className="fin-testimonials"
+        role="region"
+        aria-roledescription="carrossel"
+        aria-label="Depoimentos"
+        tabIndex={0}
+      >
+        {!ready ? (
+          visible.map((item) => (
+            <div key={item.id} className="fin-testimonials__item">
+              {renderCard(item)}
+            </div>
+          ))
+        ) : (
+          <AnimatePresence initial={false}>
+            {visible.map((item) => (
+              <motion.div
+                key={item.id}
+                className="fin-testimonials__item"
+                // Fechar: some (opacidade + leve redução de escala, ~250ms);
+                // depois os seguintes deslizam (layout). Movimento reduzido:
+                // sem animação, o card só desaparece.
+                layout={reduceMotion ? false : "position"}
+                exit={reduceMotion ? undefined : { opacity: 0, scale: 0.92, transition: { duration: 0.25, ease: "easeOut" } }}
+                transition={{ layout: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+              >
+                {renderCard(item)}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+    </section>
   );
 }

@@ -67,4 +67,70 @@ export const TESTIMONIALS: readonly Testimonial[] = [
     likes: 12,
     comments: 2,
   },
+  {
+    // FICTÍCIO
+    id: "ficticio-5",
+    segment: "Indústria",
+    text: "Antes cada gestor mandava currículo por e-mail. Hoje está tudo no mesmo lugar, com o histórico de cada candidato à vista de quem precisa.",
+    name: "Cláudio Menezes",
+    role: "Gerente Industrial",
+    company: "Plásticos Vale Inventado",
+    likes: 9,
+    comments: 1,
+  },
+  {
+    // FICTÍCIO
+    id: "ficticio-6",
+    segment: "Logística",
+    text: "Na alta temporada abrimos vinte vagas de uma vez. A página pública de candidatura aguentou o volume e a triagem não virou um gargalo.",
+    name: "Patrícia Siqueira",
+    role: "Supervisora de Operações",
+    company: "Armazéns Ponto Norte Exemplo",
+    likes: 27,
+    comments: 6,
+  },
+  {
+    // FICTÍCIO
+    id: "ficticio-7",
+    segment: "Varejo",
+    text: "Gosto de ver no kanban quem está parado em cada etapa. Ficou fácil lembrar de dar retorno para todo mundo, inclusive para quem não passou.",
+    name: "Eduardo Lins",
+    role: "Coordenador de Pessoas",
+    company: "Rede Farmácia Saúde Fictícia",
+    likes: 15,
+    comments: 4,
+  },
+  {
+    // FICTÍCIO
+    id: "ficticio-8",
+    segment: "Serviços",
+    text: "As tags de competência do resumo me poupam tempo: bato o olho e sei se vale ler o currículo inteiro com calma ou não.",
+    name: "Camila Duarte",
+    role: "Recrutadora",
+    company: "Clínica Bem-Estar Imaginária",
+    likes: 20,
+    comments: 3,
+  },
+  {
+    // FICTÍCIO
+    id: "ficticio-9",
+    segment: "Indústria",
+    text: "Somos uma empresa pequena, sem RH dedicado. O sistema organizou um processo que antes dependia só da memória do dono.",
+    name: "Sérgio Rocha",
+    role: "Sócio-proprietário",
+    company: "Marcenaria Arte Exemplo",
+    likes: 11,
+    comments: 2,
+  },
+  {
+    // FICTÍCIO
+    id: "ficticio-10",
+    segment: "Serviços",
+    text: "Quando uma vaga fecha, os bons candidatos ficam no banco de talentos. Já contratamos duas pessoas assim sem abrir processo novo.",
+    name: "Aline Carvalho",
+    role: "Analista de Departamento Pessoal",
+    company: "Contabilidade Soma Fictícia",
+    likes: 18,
+    comments: 5,
+  },
 ];
