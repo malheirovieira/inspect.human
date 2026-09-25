@@ -73,7 +73,7 @@ Dashboard (grupo (dashboard), sessão obrigatória)
                                                                 de qualquer grupo do Sidebar, sem
                                                                 checagem de role. Título + fundo
                                                                 ambiente animado; ADMIN/HR também veem
-                                                                "Seu plano" e "Precisa da sua atenção".
+                                                                depoimentos e "Seu plano" (fixo no canto).
   /pessoas, /desenvolvimento, /gestao                         reservadas pro Sidebar (group.href),
                                                                 SEM página própria ainda — os módulos
                                                                 continuam desabilitados no menu.
@@ -505,17 +505,36 @@ npm run test:db          # integração da fila no projeto de TESTE
 
 ## Tela Início (`app/(dashboard)/dashboard/page.tsx`)
 
-Ordem: título → card "Seu plano" → "Precisa da sua atenção". As duas
-seções só aparecem pra ADMIN e HR (EMPLOYEE vê só o título); "Ver planos"
-só pra ADMIN.
+Ordem: título → faixa "O que dizem sobre o Inspect Talent" → card "Seu
+plano" FIXO no canto inferior direito. As seções só aparecem pra ADMIN e HR
+(EMPLOYEE vê só o título); "Ver planos" só pra ADMIN.
+
+- **Depoimentos** (`components/inicio/TestimonialsStrip.tsx`, dados de
+  `lib/testimonials.ts`): **FICTÍCIOS e provisórios** — pessoas e empresas
+  inventadas, serão trocados pelos comentários reais com a MESMA estrutura
+  (`Testimonial`). 4 por linha no desktop, 2 no tablet, 1 no celular. Card
+  IDÊNTICO à referência (From Uiverse.io by Yaya12085): etiqueta com o
+  segmento, ⋮, depoimento entre aspas + nome · cargo · empresa, ações Amei /
+  Comentar / Fixar e avatar com INICIAIS (nunca foto de pessoa real; se um
+  dia houver `avatarUrl`, mostra a imagem). Diferenças: cursor default no
+  card, sem contorno tracejado no hover (a pedido), ações alinhadas no fim.
+  Comportamento só em memória (recarregou, voltou): Amei soma/subtrai 1,
+  Fixar leva o card pro início, Comentar e ⋮ mostram "Em breve".
+- **"Seu plano" fixo** (`components/inicio/CornerDock.tsx`): ≥768px fica
+  `position: fixed` a 24px do canto inferior direito, visível ao rolar, via
+  portal no `<body>` (o `transform` do PageTransition prenderia o fixed ao
+  container); espaçador no fim da página evita esconder conteúdo. <768px:
+  no fluxo, no fim da página.
 
 - **"Seu plano"** (`components/inicio/PlanSummaryCard.tsx`): nome e valor do
   plano + uso do mês "N de LIMITE currículos analisados por IA". Contagem
   ÚNICA em `getMonthlyAiUsage` (`services/resumeAnalyses.ts`): análises
   `DONE` com IA real (`is_mock = false`) no mês corrente, fuso de São Paulo
   — resultado do mock NÃO conta. A etapa 4 (Configurações) usa a mesma.
-- **"Precisa da sua atenção"** (`services/attention.ts` +
-  `components/inicio/AttentionCard.tsx`), dados reais, uma pendência por
+- **"Precisa da sua atenção" — FORA DA TELA desde 2026-09-25** (trocado
+  pelos depoimentos), mas a lógica continua pronta pra uso futuro em outro
+  lugar: `services/attention.ts` + `components/inicio/AttentionCard.tsx`.
+  Dados reais, uma pendência por
   vaga e tipo, as mais antigas primeiro, máx. 6; sem nenhuma: "Tudo em dia".
   - *Candidaturas novas*: criadas nos últimos 7 dias.
   - *Candidatos parados*: vaga aberta, etapa diferente de Contratado/
@@ -682,6 +701,10 @@ elevação no hover.
 - **Supabase free pausa o projeto por inatividade e não tem backup
   automático** — migrar pro plano pago antes de ter cliente pagante (além
   do backup, evita a produção pausar num período sem acesso).
+- **Remover ou substituir os depoimentos FICTÍCIOS da Início**
+  (`lib/testimonials.ts`) — pessoas e empresas inventadas; **não podem ser
+  exibidos a clientes reais**. Substituir pela funcionalidade de comentários
+  reais (mesma estrutura de dados) ou tirar a faixa.
 - **Trocar credenciais expostas fora do ambiente local**: a
   `SUPABASE_SERVICE_ROLE_KEY`, a senha do banco de produção e a senha do
   administrador. Usar senhas **diferentes** pro banco e pro login do

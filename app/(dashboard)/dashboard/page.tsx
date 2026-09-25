@@ -1,11 +1,11 @@
-import { CheckCircle2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { PlanSummaryCard } from "@/components/inicio/PlanSummaryCard";
-import { AttentionCard } from "@/components/inicio/AttentionCard";
+import { TestimonialsStrip } from "@/components/inicio/TestimonialsStrip";
+import { CornerDock } from "@/components/inicio/CornerDock";
 import { requireSession } from "@/lib/session";
+import { TESTIMONIALS } from "@/lib/testimonials";
 import { getCompanyPlan } from "@/services/plans";
 import { getMonthlyAiUsage } from "@/services/resumeAnalyses";
-import { getAttentionItems } from "@/services/attention";
 
 function formatHeaderDate(date: Date): string {
   const dayMonth = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(date);
@@ -17,47 +17,39 @@ function formatHeaderDate(date: Date): string {
 // quando o usuário está nesta página). O fundo ambiente vem do layout
 // (components/layout/AmbientBackground).
 //
-// Ordem: título → "Precisa da sua atenção" → card "Seu plano" no CANTO
-// INFERIOR DIREITO (margin-top: auto + align-self: flex-end no .fin-content,
-// que é coluna flex e cresce até o fim da tela — fica no canto sem sobrepor
-// nada; se a página crescer, desce junto). As duas seções são de
-// recrutamento/empresa: só ADMIN e HR veem (EMPLOYEE vê só o título).
-// "Ver planos" só pra ADMIN.
+// Ordem: título → faixa "O que dizem sobre o Inspect Talent" (depoimentos
+// FICTÍCIOS de lib/testimonials.ts) → card "Seu plano" FIXO no canto
+// inferior direito (CornerDock; no celular fica no fim da página). Só ADMIN
+// e HR veem as seções (EMPLOYEE vê só o título); "Ver planos" só pra ADMIN.
+//
+// "Precisa da sua atenção" saiu da tela, mas a lógica continua pronta pra
+// uso futuro em outro lugar: services/attention.ts + AttentionCard.
 export default async function InicioPage() {
   const session = await requireSession();
   const header = <Header title="Início" date={formatHeaderDate(new Date())} />;
   if (session.role !== "ADMIN" && session.role !== "HR") return header;
 
-  const [plan, used, attention] = await Promise.all([
-    getCompanyPlan(session.companyId),
-    getMonthlyAiUsage(session.companyId),
-    getAttentionItems(session.companyId),
-  ]);
+  const [plan, used] = await Promise.all([getCompanyPlan(session.companyId), getMonthlyAiUsage(session.companyId)]);
+  const showPlansLink = session.role === "ADMIN";
 
   return (
     <>
       {header}
       <div className="fin-content">
-        <section aria-labelledby="atencao-titulo" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 id="atencao-titulo" className="fin-heading" style={{ margin: 0 }}>
-            Precisa da sua atenção
+        <section aria-labelledby="depoimentos-titulo" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h2 id="depoimentos-titulo" className="fin-heading" style={{ margin: 0 }}>
+            O que dizem sobre o Inspect Talent
           </h2>
-          {attention.length === 0 ? (
-            <p className="fin-attention-empty">
-              <CheckCircle2 size={16} aria-hidden="true" /> Tudo em dia
-            </p>
-          ) : (
-            <div className="fin-attention-grid">
-              {attention.map((item) => (
-                <AttentionCard key={`${item.type}-${item.jobId}`} item={item} />
-              ))}
-            </div>
-          )}
+          <TestimonialsStrip items={[...TESTIMONIALS]} />
         </section>
 
-        <div className="mt-auto w-full self-end sm:w-96">
-          <PlanSummaryCard plan={plan} used={used} showPlansLink={session.role === "ADMIN"} />
-        </div>
+        {/* Espaço reservado no desktop: o card fixo do canto não cobre o fim
+            da página (altura do card + 24px de margem + folga). */}
+        <div className="fin-corner-spacer" style={{ height: showPlansLink ? 320 : 250 }} aria-hidden="true" />
+
+        <CornerDock>
+          <PlanSummaryCard plan={plan} used={used} showPlansLink={showPlansLink} />
+        </CornerDock>
       </div>
     </>
   );

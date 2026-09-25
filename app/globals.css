@@ -950,9 +950,9 @@ body {
   max-width: 350px;
   text-decoration: none;
 }
+/* Hover: só a sombra, sem contorno (mesmo ajuste dos depoimentos). */
 .fin-attention-card:hover {
   box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
-  border-color: rgba(162, 179, 207, 0.2);
 }
 .fin-attention-card:focus-visible {
   outline: none;
@@ -1007,6 +1007,182 @@ body {
 }
 .fin-attention-empty svg {
   color: var(--action-confirm);
+}
+
+/* ---- Início: faixa de depoimentos (components/inicio/TestimonialsStrip) ----
+   Card IDÊNTICO à referência — From Uiverse.io by Yaya12085 (licença MIT):
+   .task → .fin-testimonial, .tags, .tag, .options, p, .stats (+ div e svg),
+   .viewer span. Única diferença: cursor default no card (botões: pointer).
+   Grade: 4 por linha no desktop, 2 no tablet, 1 no celular. */
+.fin-testimonials {
+  display: grid;
+  grid-template-columns: minmax(0, 350px);
+  column-gap: 1rem;
+}
+@media (min-width: 640px) {
+  .fin-testimonials {
+    grid-template-columns: repeat(2, minmax(0, 350px));
+  }
+}
+@media (min-width: 1024px) {
+  .fin-testimonials {
+    grid-template-columns: repeat(4, minmax(0, 350px));
+  }
+}
+.fin-testimonial {
+  /* flex coluna só pra alinhar a linha de ações no fim quando os cards da
+     mesma linha têm alturas iguais (textos de tamanhos diferentes). */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  color: #2e2e2f;
+  cursor: default;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  margin-bottom: 1rem;
+  border: 3px dashed transparent;
+  max-width: 350px;
+}
+/* Hover: só a sombra — sem o contorno tracejado da referência (removido a
+   pedido do usuário). */
+.fin-testimonial:hover {
+  box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
+}
+.fin-testimonial__tags {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-testimonial__tag {
+  border-radius: 100px;
+  padding: 4px 13px;
+  font-size: 12px;
+  color: #ffffff;
+  background-color: #1389eb;
+}
+.fin-testimonial__options {
+  background: transparent;
+  border: 0;
+  color: #c4cad3;
+  font-size: 17px;
+  padding: 0;
+  display: flex;
+  cursor: pointer;
+}
+.fin-testimonial__options svg {
+  fill: #9fa4aa;
+  stroke: #9fa4aa;
+  width: 20px;
+  height: auto;
+}
+/* .task p — o depoimento; o nome/cargo/empresa fica logo abaixo, e o
+   espaço de 1.2rem da referência continua antes das ações. */
+.fin-testimonial__text {
+  font-size: 15px;
+  margin: 1.2rem 0 0.4rem;
+}
+.fin-testimonial__author {
+  margin-bottom: 1.2rem;
+  font-size: 12px;
+  color: #9fa4aa;
+}
+.fin-testimonial__stats {
+  margin-top: auto;
+  position: relative;
+  width: 100%;
+  color: #9fa4aa;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-testimonial__actions {
+  display: flex;
+  align-items: center;
+}
+.fin-testimonial__actions button {
+  margin-right: 1rem;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.fin-testimonial__actions svg {
+  margin-right: 5px;
+  height: 100%;
+  width: auto;
+  stroke: #9fa4aa;
+}
+.fin-testimonial__actions button.is-active svg {
+  fill: #1389eb;
+  stroke: #1389eb;
+}
+.fin-testimonial__actions button:focus-visible,
+.fin-testimonial__options:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.fin-testimonial__viewer span,
+.fin-testimonial__viewer img {
+  height: 30px;
+  width: 30px;
+  background-color: rgb(28, 117, 219);
+  margin-right: -10px;
+  border-radius: 50%;
+  border: 1px solid #fff;
+  display: grid;
+  align-items: center;
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+  padding: 2px;
+}
+.fin-testimonial__viewer img {
+  object-fit: cover;
+}
+/* Aviso discreto "Em breve" (Comentar e ⋮). */
+.fin-testimonial__notice {
+  position: absolute;
+  top: 2.6rem;
+  right: 1rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #2e2e2f;
+  color: #fff;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* ---- Início: card "Seu plano" fixo no canto (components/inicio/CornerDock) ----
+   ≥768px: fixo no canto inferior direito (24px das bordas), visível ao
+   rolar; o espaçador reserva a altura dele no fim da página. <768px: no
+   fluxo, no fim da página, e sem espaçador. */
+.fin-corner-dock {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 30;
+  width: 384px;
+}
+.fin-corner-inline {
+  width: 100%;
+}
+.fin-corner-spacer {
+  display: none;
+}
+@media (min-width: 768px) {
+  .fin-corner-spacer {
+    display: block;
+  }
 }
 
 /* ---- Aviso modal simples (<dialog>) ---- */

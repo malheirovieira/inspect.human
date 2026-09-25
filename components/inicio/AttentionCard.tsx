@@ -2,7 +2,9 @@ import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import type { AttentionItem, AttentionType } from "@/services/attention";
 
-// Card de pendência ("Precisa da sua atenção", tela Início).
+// Card de pendência ("Precisa da sua atenção"). FORA DA TELA por ora (saiu
+// da Início em 2026-09-25, trocado pelos depoimentos) — pronto pra uso futuro
+// em outro lugar, junto com services/attention.ts (getAttentionItems).
 // From Uiverse.io by Yaya12085 (licença MIT) — IDÊNTICO à referência (mesmas
 // cores, tamanhos, sombras, bordas e espaçamentos; CSS em globals.css,
 // .fin-attention-card). Únicas diferenças: cursor de link (não de arrastar)
