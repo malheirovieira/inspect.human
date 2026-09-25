@@ -57,13 +57,15 @@
   --action-confirm-hover: #11630b;
   --action-cancel: #fe0401;
   --action-cancel-hover: #d10301;
-  /* Fundo ambiente da tela Início (components/layout/AmbientBackground) */
+  /* Fundo ambiente da tela Início (components/layout/AmbientBackground) —
+     azuis clareados em 2026-09-25 (antes #7eb6fb/#b9dafb/#dcecfd/#b3d4fb/
+     #e3e8fb) pra um brilho mais leve e suave. */
   --ambient-base: #fafbfe;
-  --ambient-blue-strong: #7eb6fb;
-  --ambient-blue-mid: #b9dafb;
-  --ambient-blue-soft: #dcecfd;
-  --ambient-blue-top: #b3d4fb;
-  --ambient-lavender: #e3e8fb;
+  --ambient-blue-strong: #a4ccfc;
+  --ambient-blue-mid: #cbe3fd;
+  --ambient-blue-soft: #e5f0fe;
+  --ambient-blue-top: #c8dffd;
+  --ambient-lavender: #e9edfc;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -426,9 +428,10 @@ body {
    + 3 brilhos, cada um uma camada maior que o brilho visível, feita só com
    radial-gradient de várias paradas (sem filter: blur). Posições e tamanhos
    em % da ÁREA (mesma composição em qualquer largura); overflow: hidden
-   impede barra de rolagem. Animação só de transform e opacity, durações
-   diferentes (47s, 61s, 73s) pra nunca sincronizar; deslocamento de 3 a 5%
-   da tela, escala 0.95 a 1.08. */
+   impede barra de rolagem. Animação só de transform e opacity: cada brilho
+   PERCORRE a área (trajetórias amplas e lentas, pedido de 2026-09-25 —
+   antes só oscilava perto do canto), durações diferentes (36s, 44s, 52s,
+   alternate) pra nunca sincronizar; escala 0.95 a 1.08. */
 .fin-ambient {
   position: sticky;
   top: 0;
@@ -473,7 +476,7 @@ body {
     transparent 100%
   );
   animation-name: fin-ambient-drift-main;
-  animation-duration: 47s;
+  animation-duration: 36s;
 }
 /* Secundário: centro em (92%, 5%), mais fraco — some a ~30% da largura
    pra esquerda e ~25% da altura pra baixo. */
@@ -496,7 +499,7 @@ body {
     transparent 100%
   );
   animation-name: fin-ambient-drift-top;
-  animation-duration: 61s;
+  animation-duration: 44s;
 }
 /* Toque azul-lavanda na lateral esquerda, em (5%, 40%) — transição entre o
    brilho de baixo e o branco. Baixa opacidade. */
@@ -515,20 +518,31 @@ body {
     transparent 100%
   );
   animation-name: fin-ambient-drift-lavender;
-  animation-duration: 73s;
+  animation-duration: 52s;
 }
-/* Cada brilho só se move perto do próprio canto (máx. ~5% da tela). */
+/* Trajetórias pela área da página. O de baixo (nasce no canto inferior
+   esquerdo) sobe em diagonal até perto do centro; o de cima (canto superior
+   direito) desce cruzando pra esquerda; a lavanda percorre a lateral
+   esquerda e o meio. Alternate: vão e voltam pelo mesmo caminho, sem salto. */
 @keyframes fin-ambient-drift-main {
   0% {
     transform: translate(0, 0) scale(1);
     opacity: 1;
   }
+  25% {
+    transform: translate(22vw, -12vh) scale(1.05);
+    opacity: 0.92;
+  }
   50% {
-    transform: translate(3vw, -2.5vh) scale(1.06);
-    opacity: 0.9;
+    transform: translate(42vw, -28vh) scale(1.08);
+    opacity: 0.85;
+  }
+  75% {
+    transform: translate(26vw, -44vh) scale(1);
+    opacity: 0.92;
   }
   100% {
-    transform: translate(1vw, -4.5vh) scale(0.97);
+    transform: translate(8vw, -20vh) scale(0.96);
     opacity: 1;
   }
 }
@@ -537,12 +551,20 @@ body {
     transform: translate(0, 0) scale(1);
     opacity: 0.95;
   }
+  25% {
+    transform: translate(-24vw, 12vh) scale(1.06);
+    opacity: 0.88;
+  }
   50% {
-    transform: translate(-3.5vw, 2vh) scale(1.08);
+    transform: translate(-46vw, 30vh) scale(1.02);
     opacity: 0.85;
   }
+  75% {
+    transform: translate(-30vw, 48vh) scale(0.96);
+    opacity: 0.9;
+  }
   100% {
-    transform: translate(-1.5vw, 4vh) scale(0.95);
+    transform: translate(-10vw, 22vh) scale(1.04);
     opacity: 1;
   }
 }
@@ -551,13 +573,17 @@ body {
     transform: translate(0, 0) scale(1);
     opacity: 0.9;
   }
-  50% {
-    transform: translate(2.5vw, 3vh) scale(1.05);
+  33% {
+    transform: translate(18vw, -10vh) scale(1.05);
     opacity: 1;
   }
-  100% {
-    transform: translate(-1vw, 4.5vh) scale(0.96);
+  66% {
+    transform: translate(34vw, 14vh) scale(0.97);
     opacity: 0.85;
+  }
+  100% {
+    transform: translate(12vw, 26vh) scale(1.02);
+    opacity: 0.95;
   }
 }
 /* Movimento reduzido: fundo estático na posição da referência. */

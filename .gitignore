@@ -5,3 +5,6 @@ out
 .env.local
 *.log
 .DS_Store
+
+# Claude Code — preferências pessoais (não versionar)
+.claude/settings.local.json
