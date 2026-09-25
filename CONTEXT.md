@@ -199,8 +199,31 @@ Fluxo:
    salvo em `candidate_resumes.extracted_text`) → sem texto legível →
    `NO_TEXT`, **IA não é chamada** (OCR fora do escopo) → remove dados
    pessoais → limita a 12.000 caracteres → chama o provedor (só texto,
-   nunca o PDF) → valida com zod + checagem de termos proibidos; inválido
-   tenta mais 1 vez, depois `FAILED`/`INVALID_OUTPUT` → `DONE`.
+   nunca o PDF) → AJUSTA a resposta aos limites e valida
+   (`parseScreeningOutput`); rejeitada tenta mais 1 vez, depois
+   `FAILED`/`INVALID_OUTPUT` → `DONE`.
+
+   **Validação tolerante** (desde 2026-09-25 — antes rejeitava respostas
+   boas; o caso real foi "T.I." contado como fim de frase). AJUSTA em vez de
+   rejeitar: resumo com mais de 3 frases/600 caracteres é cortado numa frase
+   completa; base da experiência cortada em 200; tag com mais de 40
+   caracteres descartada (só ela); mais de 8 tags → as 8 primeiras; mais de
+   3 cargos → os 3 primeiros; experiência fora de 0–60 → null; campos extras
+   ignorados; campo não essencial ausente → null/vazio. REJEITA só quando:
+   não é JSON, falta o resumo (campo essencial) ou há termo proibido.
+   Contagem de frases entende abreviações ("T.I.", "Ltda.", "S.A.") e só
+   quebra antes de maiúscula. Termos proibidos são checados por PALAVRA
+   INTEIRA com suporte a acento (`(?<!\p{L})…(?!\p{L})` — o `\b` do JS
+   falha com "ç"/"ã"): "Universidade", "sexologia", "ração", "aprovação de
+   crédito" passam.
+
+   **Motivo técnico visível**: `INVALID_OUTPUT` e `INVALID_PDF` também
+   FALHAM a tarefa (`PermanentTaskError`) com o motivo em `last_error` (ex.:
+   "Resposta da IA rejeitada nas 2 tentativas (1ª: …; 2ª: …)") — aparece em
+   Configurações → Tarefas ("Motivo técnico"), só ADMIN. O motivo nunca
+   contém a resposta crua nem texto do currículo. Nessas falhas a tela
+   mostra "Abrir perfil do candidato" em vez de reenviar (a nova geração se
+   pede no card do perfil).
 3. Cada fim (DONE, NO_TEXT, FAILED) registra evento na linha do tempo:
    `AI_SUMMARY_GENERATED` / `AI_SUMMARY_NO_TEXT` / `AI_SUMMARY_FAILED`, nas
    candidaturas enviadas com aquela versão (ou na mais recente da pessoa).
@@ -240,8 +263,12 @@ como resposta inválida.
 à mão pro 429): `mock` (padrão; nenhuma chamada, exemplo fictício após
 1,5s, mesmo formato e mesma validação do real — a interface mostra
 "Exemplo simulado · sem IA"), `gemini` (Interactions API, `store:false`;
-o envelope da resposta não tem exemplo REST na doc — o parser lê
-`output_text` e aceita `outputs[]`; **confirmar na primeira chamada real**),
+**envelope confirmado em chamada real em 2026-09-24**: o texto vem em
+`steps[]` → item `type: "model_output"` → `content[].text`; antes dele há
+um passo `type: "thought"` só com assinatura (ignorado); `status` diferente
+de `"completed"` vira erro. A doc só mostra `output_text` — mantido como
+fallback. Chave nova do AI Studio (prefixo `AQ.`) funciona no header
+`x-goog-api-key`; `gemini-3.5-flash-lite` é modelo válido),
 `openai` (Responses API, json_schema estrito, `store:false`). Trocar de
 provedor = mudar env.
 

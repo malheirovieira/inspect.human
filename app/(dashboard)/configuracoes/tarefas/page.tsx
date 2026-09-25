@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
@@ -6,6 +8,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RetryTaskButton } from "@/components/configuracoes/RetryTaskButton";
 import { requireRole } from "@/lib/session";
 import { getTaskOverview } from "@/services/backgroundTasks";
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  "resume.analyze": "Resumo de currículo por IA",
+  "resume.purge_versions": "Limpeza de versões antigas de currículo",
+};
 
 const STATUS_LABELS = {
   pending: "Na fila",
@@ -69,7 +76,10 @@ export default async function TarefasPage() {
                 }}
               >
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{task.type}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>
+                    {TASK_TYPE_LABELS[task.type] ?? task.type}
+                    <span style={{ fontSize: 12, fontWeight: 400, color: "var(--text-muted)" }}> · {task.type}</span>
+                  </div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                     {dateFormat.format(new Date(task.updatedAt))} · {task.attempts}/{task.maxAttempts} tentativas
                   </div>
@@ -77,11 +87,20 @@ export default async function TarefasPage() {
                     <div
                       style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 6, overflowWrap: "anywhere" }}
                     >
+                      <span style={{ fontWeight: 600 }}>Motivo técnico: </span>
                       {task.lastError}
                     </div>
                   )}
                 </div>
-                <RetryTaskButton taskId={task.id} />
+                {task.candidateHref ? (
+                  // Resumo por IA: nova geração se pede no perfil (a análise já
+                  // foi finalizada — reenviar a tarefa não faria nada).
+                  <Link href={task.candidateHref}>
+                    <Button variant="secondary">Abrir perfil do candidato</Button>
+                  </Link>
+                ) : (
+                  <RetryTaskButton taskId={task.id} />
+                )}
               </div>
             ))}
           </Card>
