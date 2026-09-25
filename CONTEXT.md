@@ -1,9 +1,24 @@
-# Inspect Human — Contexto de desenvolvimento
+# Inspect Talent — Contexto de desenvolvimento
 
 > Este arquivo documenta o **estado real** do projeto (o que foi de fato
 > construído) — diferente do `ARCHITECTURE.md`, que é o plano original
 > pré-implementação e já está desatualizado em vários pontos. Use este
 > arquivo pra retomar contexto rápido.
+
+## Nome do sistema
+
+**Inspect Talent** (desde 2026-09-25; antes "Inspect Human"). **Não usar o
+nome antigo em nenhum texto novo** — interface, e-mails, textos de
+consentimento, documentação. Mesma grafia do contexto: "Inspect Talent" no
+texto corrido, "INSPECT TALENT" em rótulos em maiúsculas.
+
+O nome antigo só continua, de propósito, em identificadores técnicos que
+não foram trocados: pasta local `inspect.human`, repositório GitHub
+`malheirovieira/inspect.human`, valor do `CRON_SECRET` local, domínio e
+projeto na Vercel (ver "Pendências antes do primeiro cliente") e a chave
+legada `inspect-human:sidebar-collapsed` — lida uma única vez pra migrar a
+preferência do menu pra `inspect-talent:sidebar-collapsed`
+(`components/layout/Sidebar.tsx`, `readCollapsedPreference`).
 
 ## Redução de escopo
 
@@ -56,8 +71,8 @@ Públicas
 Dashboard (grupo (dashboard), sessão obrigatória)
   /dashboard                                                  "Início" — pouso fixo pós-login, fora
                                                                 de qualquer grupo do Sidebar, sem
-                                                                checagem de role. Conteúdo mínimo de
-                                                                propósito (saudação + atalhos).
+                                                                checagem de role. Só o título + fundo
+                                                                ambiente animado (AmbientBackground).
   /pessoas, /desenvolvimento, /gestao                         reservadas pro Sidebar (group.href),
                                                                 SEM página própria ainda — os módulos
                                                                 continuam desabilitados no menu.
@@ -592,6 +607,12 @@ elevação no hover.
   administrador. Usar senhas **diferentes** pro banco e pro login do
   administrador. Depois de trocar, atualizar `.env.local` e as variáveis na
   Vercel (`DATABASE_URL`/`DIRECT_URL` carregam a senha do banco).
+- **Trocar domínio e nome do projeto na Vercel pro nome novo (Inspect
+  Talent)**, com redirecionamento permanente do domínio antigo pro novo (links
+  públicos de vagas já divulgados continuam funcionando). Junto: atualizar o
+  segredo `tasks_cron_url` no Supabase Vault (senão o pg_cron para de chamar
+  a fila — ver `supabase/cron/process_tasks.sql`) e as URLs de redirecionamento
+  do Supabase Auth (Site URL / Redirect URLs).
 
 ## Rodando localmente / testando em rede
 

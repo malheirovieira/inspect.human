@@ -1,5 +1,5 @@
 -- ============================================================================
--- Inspect Human — schema PostgreSQL (MVP)
+-- Inspect Talent — schema PostgreSQL (MVP)
 -- Alvo: Supabase Postgres. Rode no SQL Editor do projeto Supabase.
 --
 -- Modelo de segurança: o acesso normal de leitura/escrita acontece via

@@ -1,6 +1,6 @@
-# Inspect Human — Arquitetura
+# Inspect Talent — Arquitetura
 
-> Referência visual: Inspect Human reaproveita o design system do Inspect Finance
+> Referência visual: Inspect Talent reaproveita o design system do Inspect Finance
 > (ver `finance-mockup.html` fornecido). Fundo claro, superfícies brancas, azul
 > como cor de ação, cantos arredondados, sombras leves, sidebar de 240px.
 

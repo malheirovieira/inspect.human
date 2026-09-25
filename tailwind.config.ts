@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 
-// Paleta do design system do Inspect Human (preto + accent verde, fundo bem
+// Paleta do design system do Inspect Talent (preto + accent verde, fundo bem
 // claro). Os mesmos hex também existem como CSS vars em app/globals.css
 // para as classes fin-* legadas; aqui expomos os tokens como cores
 // utilitárias do Tailwind para telas construídas com utility classes

@@ -6,7 +6,7 @@ import { NotificationBell } from "./NotificationBell";
 export type BreadcrumbItem = { label: string; href?: string };
 
 export function Header({
-  eyebrow = "INSPECT HUMAN",
+  eyebrow = "INSPECT TALENT",
   title,
   subtitle,
   date,

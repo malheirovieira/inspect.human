@@ -7,7 +7,7 @@ export function Logo({ tone = "dark", className }: { tone?: "dark" | "light"; cl
     <span
       className={cn("brand-wordmark", tone === "light" && "brand-wordmark--light", className)}
     >
-      Inspect Human
+      Inspect Talent
     </span>
   );
 }

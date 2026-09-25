@@ -20,8 +20,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Inspect Human",
-  description: "Gestão de pessoas simples para pequenas empresas.",
+  title: "Inspect Talent",
+  description: "Recrutamento e gestão de talentos para pequenas empresas.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

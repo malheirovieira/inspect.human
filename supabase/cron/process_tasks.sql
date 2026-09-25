@@ -12,7 +12,7 @@
 -- trabalho, nenhuma requisição sai.
 --
 -- Antes de rodar, troque os dois valores marcados com <...>:
---   <URL_DO_APP>   ex.: https://inspect-human.vercel.app
+--   <URL_DO_APP>   ex.: https://inspect-talent.vercel.app
 --   <CRON_SECRET>  o MESMO valor da variável CRON_SECRET na Vercel
 -- Os dois ficam no Supabase Vault (criptografados), não neste arquivo nem
 -- no repositório — não commitar este arquivo com os valores preenchidos.

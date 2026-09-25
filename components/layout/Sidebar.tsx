@@ -39,7 +39,25 @@ type NavGroup = {
 };
 
 const EASE = "[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]";
-const COLLAPSE_STORAGE_KEY = "inspect-human:sidebar-collapsed";
+const COLLAPSE_STORAGE_KEY = "inspect-talent:sidebar-collapsed";
+// Chave do nome antigo do sistema (Inspect Human). Lida só pra migrar a
+// preferência de quem já usava o sistema (ver readCollapsedPreference);
+// pode sair depois que todos tiverem acessado ao menos uma vez.
+const LEGACY_COLLAPSE_STORAGE_KEY = "inspect-human:sidebar-collapsed";
+
+// Lê a preferência de menu recolhido. Sem valor na chave nova, aproveita o
+// da antiga (grava na nova e apaga a antiga) — ninguém perde a preferência
+// com a troca de nome.
+function readCollapsedPreference(): boolean {
+  const current = localStorage.getItem(COLLAPSE_STORAGE_KEY);
+  if (current !== null) return current === "1";
+  const legacy = localStorage.getItem(LEGACY_COLLAPSE_STORAGE_KEY);
+  if (legacy !== null) {
+    localStorage.setItem(COLLAPSE_STORAGE_KEY, legacy);
+    localStorage.removeItem(LEGACY_COLLAPSE_STORAGE_KEY);
+  }
+  return legacy === "1";
+}
 // Label some texto que só existe quando expandida — sempre montado, só
 // desvanece via opacidade, pra acompanhar a largura animando junto em vez
 // de sumir/aparecer de golpe.
@@ -203,7 +221,7 @@ export function Sidebar({
 
   useEffect(() => {
     try {
-      setCollapsed(localStorage.getItem(COLLAPSE_STORAGE_KEY) === "1");
+      setCollapsed(readCollapsedPreference());
     } catch {
       // localStorage indisponível (modo privado etc.) — mantém expandida.
     }
