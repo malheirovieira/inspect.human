@@ -279,6 +279,7 @@ create table resume_analyses (
 );
 create index idx_resume_analyses_skills on resume_analyses using gin (skills);
 create index idx_resume_analyses_company_completed on resume_analyses (company_id, completed_at) where status = 'DONE';
+create index idx_resume_analyses_resume_status_gen on resume_analyses (resume_id, status, generation desc);
 
 -- ----------------------------------------------------------------------------
 -- consents — consentimento genérico (finalidade + versão/hash do texto
