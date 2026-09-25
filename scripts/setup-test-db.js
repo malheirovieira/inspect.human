@@ -28,13 +28,22 @@ for (const prodVar of ["DATABASE_URL", "DIRECT_URL"]) {
   }
 }
 
-// [tabela que a migration cria, arquivo] — em ordem.
+// [o que a migration cria — "schema.tabela" ou "schema.tabela.coluna", arquivo] — em ordem.
 const MIGRATIONS = [
   ["public.background_tasks", "supabase/migrations/0021_background_tasks.sql"],
   ["public.candidate_resumes", "supabase/migrations/0022_resume_versions_consents_ai.sql"],
+  ["public.companies.plan", "supabase/migrations/0023_company_plan.sql"],
 ];
 
 async function tableExists(client, name) {
+  const parts = name.split(".");
+  if (parts.length === 3) {
+    const { rows } = await client.query(
+      "select exists (select 1 from information_schema.columns where table_schema = $1 and table_name = $2 and column_name = $3) as ok",
+      parts
+    );
+    return rows[0].ok;
+  }
   const { rows } = await client.query("select to_regclass($1) is not null as ok", [name]);
   return rows[0].ok;
 }

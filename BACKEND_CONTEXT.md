@@ -1,4 +1,4 @@
-# Inspect Human — Contexto de back-end (pra revisão/padronização)
+# Inspect Talent — Contexto de back-end (pra revisão/padronização)
 
 > Gerado a partir do estado real do repositório (schema, migrations, services
 > e actions lidos diretamente dos arquivos, não de memória). Objetivo: dar

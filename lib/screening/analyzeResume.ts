@@ -75,7 +75,13 @@ export async function analyzeResume(deps: AnalyzeDeps, analysisId: string, ctx: 
   }
 
   const finishFailed = (errorCode: AnalysisErrorCode) =>
-    finish(db, analysis, { status: "FAILED", errorCode }, AI_EVENT_TYPES.FAILED, { errorCode });
+    finish(
+      db,
+      analysis,
+      { status: "FAILED", errorCode, provider: deps.provider?.name ?? null, model: deps.provider?.model ?? null },
+      AI_EVENT_TYPES.FAILED,
+      { errorCode }
+    );
 
   if (deps.config.error || !deps.provider) {
     await finishFailed("CONFIG");
@@ -110,7 +116,9 @@ export async function analyzeResume(deps: AnalyzeDeps, analysisId: string, ctx: 
 
   if (textStatus === "INVALID_PDF") {
     await finishFailed("INVALID_PDF");
-    return;
+    // Falha da TAREFA também (permanente), pra aparecer em Configurações →
+    // Tarefas com o motivo técnico.
+    throw new PermanentTaskError("PDF inválido: corrompido, protegido por senha ou não é PDF");
   }
   if (textStatus === "NO_TEXT") {
     // Sem texto legível (ex.: digitalizado): a IA NÃO é chamada.
@@ -127,8 +135,11 @@ export async function analyzeResume(deps: AnalyzeDeps, analysisId: string, ctx: 
     jsonSchema: SCREENING_JSON_SCHEMA,
   };
 
-  // Resposta fora do formato: tenta mais UMA vez; depois, falha.
+  // Resposta rejeitada (não é JSON, sem resumo, termo proibido): tenta mais
+  // UMA vez; depois, falha. Os motivos são técnicos e sem conteúdo do
+  // currículo — a resposta crua NUNCA é gravada nem logada.
   let outcome: ParseOutcome = { ok: false, reason: "sem resposta" };
+  const reasons: string[] = [];
   for (let call = 1; call <= 2 && !outcome.ok; call++) {
     let raw: string;
     try {
@@ -141,11 +152,12 @@ export async function analyzeResume(deps: AnalyzeDeps, analysisId: string, ctx: 
       throw err;
     }
     outcome = parseScreeningOutput(raw);
+    if (!outcome.ok) reasons.push(`${call}ª: ${outcome.reason}`);
   }
 
   if (!outcome.ok) {
     await finishFailed("INVALID_OUTPUT");
-    return;
+    throw new PermanentTaskError(`Resposta da IA rejeitada nas 2 tentativas (${reasons.join("; ")})`);
   }
 
   const result = { ...outcome.data, promptVersion: PROMPT_VERSION };

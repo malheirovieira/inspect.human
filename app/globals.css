@@ -57,6 +57,15 @@
   --action-confirm-hover: #11630b;
   --action-cancel: #fe0401;
   --action-cancel-hover: #d10301;
+  /* Fundo ambiente da tela Início (components/layout/AmbientBackground) —
+     azuis clareados em 2026-09-25 (antes #7eb6fb/#b9dafb/#dcecfd/#b3d4fb/
+     #e3e8fb) pra um brilho mais leve e suave. */
+  --ambient-base: #fafbfe;
+  --ambient-blue-strong: #a4ccfc;
+  --ambient-blue-mid: #cbe3fd;
+  --ambient-blue-soft: #e5f0fe;
+  --ambient-blue-top: #c8dffd;
+  --ambient-lavender: #e9edfc;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -84,6 +93,10 @@ body {
 .fin-app {
   display: flex;
   min-height: 100vh;
+  /* Contexto de empilhamento próprio: o fundo ambiente (primeiro filho,
+     só na tela Início) fica atrás da Sidebar e do .fin-main sem precisar
+     de z-index negativo. */
+  isolation: isolate;
 }
 
 /* ---- Sidebar ----
@@ -154,7 +167,11 @@ body {
 }
 .fin-topbar__inner {
   width: 100%;
-  max-width: 1440px;
+  /* 1440 menos o recuo de 40px de cada lado da .fin-topbar: assim a data
+     começa exatamente onde começam o título (.fin-header) e o conteúdo
+     (.fin-content), que têm 1440px JÁ incluindo esse recuo. Com 1440 aqui,
+     em áreas largas a data ficava até 40px à esquerda. */
+  max-width: 1360px;
   margin: 0 auto;
   height: 52px;
   display: flex;
@@ -225,12 +242,13 @@ body {
 .fin-header__bell {
   position: relative;
   border-radius: var(--radius-full);
-  background: var(--surface-muted);
+  /* Branco (pedido do usuário) — hover num cinza bem claro. */
+  background: var(--surface);
   color: var(--text-secondary);
   transition: background 0.2s ease, transform 0.15s var(--ease-out-soft);
 }
 .fin-header__bell:hover {
-  background: var(--gray-200);
+  background: var(--gray-50);
   transform: scale(1.05);
 }
 .fin-header__bell:active {
@@ -397,6 +415,183 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  /* Posicionado (sem z-index) pra pintar DEPOIS do fundo ambiente, que é
+     fixed e vem antes na árvore. Não muda layout. */
+  position: relative;
+}
+
+/* ---- Fundo ambiente (só tela Início, só na ÁREA DA PÁGINA) ----
+   A Sidebar é branca e opaca; o efeito fica só à direita dela. Camada
+   sticky do tamanho da tela como PRIMEIRO filho do .fin-main: margin-bottom
+   negativo = ocupa 0 de altura no fluxo; sticky = acompanha o scroll; a
+   largura segue o menu aberto/recolhido sozinha. Base branca levemente fria
+   + 3 brilhos, cada um uma camada maior que o brilho visível, feita só com
+   radial-gradient de várias paradas (sem filter: blur). Posições e tamanhos
+   em % da ÁREA (mesma composição em qualquer largura); overflow: hidden
+   impede barra de rolagem. Animação só de transform e opacity: cada brilho
+   PERCORRE a área (trajetórias amplas e lentas, pedido de 2026-09-25 —
+   antes só oscilava perto do canto), durações diferentes (36s, 44s, 52s,
+   alternate) pra nunca sincronizar; escala 0.95 a 1.08. */
+.fin-ambient {
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  height: 100vh;
+  margin-bottom: -100vh;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--ambient-base);
+}
+.fin-ambient__glow {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform, opacity;
+  animation-timing-function: ease-in-out;
+  animation-direction: alternate;
+  animation-iteration-count: infinite;
+}
+/* Principal: centro em (0%, 85%) da área, o mais intenso. Elipse com raio
+   de 56% x 56% — o azul visível chega a ~40% da largura e sobe até ~55% da
+   altura. */
+.fin-ambient__glow--main {
+  width: 112%;
+  height: 112%;
+  left: -56%;
+  top: 29%;
+  /* Muitas paradas com transparência em curva suave (sem anéis visíveis). */
+  background: radial-gradient(
+    closest-side,
+    var(--ambient-blue-strong) 0%,
+    color-mix(in srgb, var(--ambient-blue-strong) 88%, var(--ambient-blue-mid)) 10%,
+    color-mix(in srgb, var(--ambient-blue-strong) 62%, var(--ambient-blue-mid)) 20%,
+    color-mix(in srgb, var(--ambient-blue-strong) 30%, var(--ambient-blue-mid)) 29%,
+    color-mix(in srgb, var(--ambient-blue-mid) 94%, transparent) 37%,
+    color-mix(in srgb, color-mix(in srgb, var(--ambient-blue-mid) 45%, var(--ambient-blue-soft)) 84%, transparent) 45%,
+    color-mix(in srgb, var(--ambient-blue-soft) 70%, transparent) 53%,
+    color-mix(in srgb, var(--ambient-blue-soft) 54%, transparent) 61%,
+    color-mix(in srgb, var(--ambient-blue-soft) 38%, transparent) 69%,
+    color-mix(in srgb, var(--ambient-blue-soft) 24%, transparent) 77%,
+    color-mix(in srgb, var(--ambient-blue-soft) 12%, transparent) 85%,
+    color-mix(in srgb, var(--ambient-blue-soft) 4%, transparent) 93%,
+    transparent 100%
+  );
+  animation-name: fin-ambient-drift-main;
+  animation-duration: 36s;
+}
+/* Secundário: centro em (92%, 5%), mais fraco — some a ~30% da largura
+   pra esquerda e ~25% da altura pra baixo. */
+.fin-ambient__glow--top {
+  width: 84%;
+  height: 56%;
+  left: 50%;
+  top: -23%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--ambient-blue-top) 80%, transparent) 0%,
+    color-mix(in srgb, var(--ambient-blue-top) 72%, transparent) 12%,
+    color-mix(in srgb, var(--ambient-blue-top) 60%, transparent) 24%,
+    color-mix(in srgb, color-mix(in srgb, var(--ambient-blue-top) 50%, var(--ambient-blue-soft)) 50%, transparent) 36%,
+    color-mix(in srgb, var(--ambient-blue-soft) 38%, transparent) 48%,
+    color-mix(in srgb, var(--ambient-blue-soft) 26%, transparent) 60%,
+    color-mix(in srgb, var(--ambient-blue-soft) 15%, transparent) 72%,
+    color-mix(in srgb, var(--ambient-blue-soft) 7%, transparent) 84%,
+    color-mix(in srgb, var(--ambient-blue-soft) 2%, transparent) 93%,
+    transparent 100%
+  );
+  animation-name: fin-ambient-drift-top;
+  animation-duration: 44s;
+}
+/* Toque azul-lavanda na lateral esquerda, em (5%, 40%) — transição entre o
+   brilho de baixo e o branco. Baixa opacidade. */
+.fin-ambient__glow--lavender {
+  width: 56%;
+  height: 60%;
+  left: -23%;
+  top: 10%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--ambient-lavender) 40%, transparent) 0%,
+    color-mix(in srgb, var(--ambient-lavender) 34%, transparent) 20%,
+    color-mix(in srgb, var(--ambient-lavender) 25%, transparent) 40%,
+    color-mix(in srgb, var(--ambient-lavender) 15%, transparent) 60%,
+    color-mix(in srgb, var(--ambient-lavender) 7%, transparent) 80%,
+    transparent 100%
+  );
+  animation-name: fin-ambient-drift-lavender;
+  animation-duration: 52s;
+}
+/* Trajetórias pela área da página. O de baixo (nasce no canto inferior
+   esquerdo) sobe em diagonal até perto do centro; o de cima (canto superior
+   direito) desce cruzando pra esquerda; a lavanda percorre a lateral
+   esquerda e o meio. Alternate: vão e voltam pelo mesmo caminho, sem salto. */
+@keyframes fin-ambient-drift-main {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(22vw, -12vh) scale(1.05);
+    opacity: 0.92;
+  }
+  50% {
+    transform: translate(42vw, -28vh) scale(1.08);
+    opacity: 0.85;
+  }
+  75% {
+    transform: translate(26vw, -44vh) scale(1);
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate(8vw, -20vh) scale(0.96);
+    opacity: 1;
+  }
+}
+@keyframes fin-ambient-drift-top {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.95;
+  }
+  25% {
+    transform: translate(-24vw, 12vh) scale(1.06);
+    opacity: 0.88;
+  }
+  50% {
+    transform: translate(-46vw, 30vh) scale(1.02);
+    opacity: 0.85;
+  }
+  75% {
+    transform: translate(-30vw, 48vh) scale(0.96);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-10vw, 22vh) scale(1.04);
+    opacity: 1;
+  }
+}
+@keyframes fin-ambient-drift-lavender {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.9;
+  }
+  33% {
+    transform: translate(18vw, -10vh) scale(1.05);
+    opacity: 1;
+  }
+  66% {
+    transform: translate(34vw, 14vh) scale(0.97);
+    opacity: 0.85;
+  }
+  100% {
+    transform: translate(12vw, 26vh) scale(1.02);
+    opacity: 0.95;
+  }
+}
+/* Movimento reduzido: fundo estático na posição da referência. */
+@media (prefers-reduced-motion: reduce) {
+  .fin-ambient__glow {
+    animation: none;
+    will-change: auto;
+  }
 }
 /* Header/conteúdo ficam centralizados (mesma largura do .fin-topbar__inner
    acima) — só a faixa do topbar em si (fundo/borda) ocupa a página toda. */
@@ -434,6 +629,9 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  /* Posicionado pra pintar POR CIMA do fundo ambiente (que vem antes na
+     árvore, dentro do .fin-main). */
+  position: relative;
   animation: fin-page-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }
 
@@ -567,6 +765,534 @@ body {
 /* Ícone de excluir/remover sem fundo (lixeira em linhas de lista) */
 .fin-icon-danger {
   color: var(--action-cancel);
+}
+
+/* ---- Botão "Upgrade" da barra superior (components/layout/UpgradeButton) ----
+   Referência: Uiverse.io (licença MIT), simplificada a pedido do usuário:
+   só branco (sem a moldura cinza nem sombra), 36px de altura (o sino ao lado
+   tem 44px) e seta reta pra direita, fina, que desliza 2px no hover. */
+.fin-upgrade {
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  text-decoration: none;
+  transition: box-shadow 0.2s ease;
+}
+/* Hover: continua branco (o cinza da barra faria o botão "sumir"); só uma
+   sombra leve + a seta deslizando. */
+.fin-upgrade:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+.fin-upgrade:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.fin-upgrade__inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  transition: transform 0.2s ease;
+}
+.fin-upgrade:active .fin-upgrade__inner {
+  transform: scale(0.97);
+}
+.fin-upgrade__text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fin-upgrade__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.fin-upgrade__pro {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+.fin-upgrade__icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+.fin-upgrade:hover .fin-upgrade__icon,
+.fin-upgrade:focus-visible .fin-upgrade__icon {
+  transform: translateX(2px);
+}
+/* Celular: sem a palavra, fica o selo PRO + seta (o aria-label mantém o nome). */
+@media (max-width: 480px) {
+  .fin-upgrade__label {
+    display: none;
+  }
+}
+
+/* ---- Planos: cards de preço (components/configuracoes/PlanCard) ----
+   Referência: Uiverse.io (licença MIT) — lado a lado no desktop, empilhados
+   no celular (auto-fit). */
+.fin-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+.fin-plan-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.fin-plan-card--current {
+  border-color: var(--action-confirm);
+  box-shadow: 0 0 0 1px var(--action-confirm), var(--shadow-sm);
+}
+.fin-plan-card__top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 32px 24px 24px;
+}
+.fin-plan-card__name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  color: var(--text-secondary);
+}
+.fin-plan-card__current-tag {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--green-surface);
+  color: var(--action-confirm);
+  font-size: 11px;
+  font-weight: 600;
+}
+.fin-plan-card__description {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.fin-plan-card__price {
+  margin: 0;
+}
+.fin-plan-card__amount {
+  font-size: 44px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+.fin-plan-card__period {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.fin-plan-card__features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.fin-plan-card__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.fin-plan-card__features svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--action-confirm);
+}
+.fin-plan-card__bottom {
+  display: flex;
+  padding: 0 24px 28px;
+}
+/* Botão pílula: verde (confirmação) que fica vazado no hover. */
+.fin-plan-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  padding: 0 24px;
+  border: 2px solid var(--action-confirm);
+  border-radius: var(--radius-full);
+  background: var(--action-confirm);
+  color: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.fin-plan-card__cta:hover {
+  background: transparent;
+  color: var(--action-confirm);
+}
+.fin-plan-card__cta:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.fin-plan-card__cta:disabled {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* ---- Início: "Precisa da sua atenção" (components/inicio/AttentionCard) ----
+   IDÊNTICO à referência — From Uiverse.io by Yaya12085 (licença MIT):
+   .task → .fin-attention-card, .tags/.tag, p → __title, .stats. Mesmas cores,
+   tamanhos, sombras, bordas e espaçamentos. Únicas diferenças: cursor de
+   link (pointer, não "move" — não é arrastável) e sem o botão de opções e os
+   visualizadores (não teriam função aqui). */
+.fin-attention-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 350px));
+  column-gap: 1rem;
+}
+.fin-attention-card {
+  position: relative;
+  display: block;
+  color: #2e2e2f;
+  cursor: pointer;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  margin-bottom: 1rem;
+  border: 3px dashed transparent;
+  max-width: 350px;
+  text-decoration: none;
+}
+/* Hover: só a sombra, sem contorno (mesmo ajuste dos depoimentos). */
+.fin-attention-card:hover {
+  box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
+}
+.fin-attention-card:focus-visible {
+  outline: none;
+  border-color: rgba(162, 179, 207, 0.6);
+}
+.fin-attention-card__tags {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-attention-card__tag {
+  border-radius: 100px;
+  padding: 4px 13px;
+  font-size: 12px;
+  color: #ffffff;
+  background-color: #1389eb;
+}
+.fin-attention-card__title {
+  font-size: 15px;
+  margin: 1.2rem 0;
+}
+.fin-attention-card__stats {
+  position: relative;
+  width: 100%;
+  color: #9fa4aa;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-attention-card__stats div {
+  margin-right: 1rem;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+.fin-attention-card__stats svg {
+  margin-right: 5px;
+  height: 100%;
+  /* lucide põe width="24" no SVG; a referência só define a altura */
+  width: auto;
+  stroke: #9fa4aa;
+}
+.fin-attention-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.fin-attention-empty svg {
+  color: var(--action-confirm);
+}
+
+/* ---- Início: faixa de depoimentos (components/inicio/TestimonialsStrip) ----
+   Card com o visual da referência — From Uiverse.io by Yaya12085 (licença
+   MIT) — compacto e HORIZONTAL: ocupa 1/N da faixa, altura baixa (texto em
+   até 3 linhas + nome em 1 linha). Diferenças pedidas: cursor default no
+   card (botões: pointer), sem contorno no hover, "X" (Fechar) no lugar dos
+   três pontos. Carrossel POR PÁGINA (3/2/1 cards conforme a largura,
+   definido no componente), 32px entre os cards: a página inteira desliza,
+   sem rolagem nativa nem barra de rolagem. */
+.fin-testimonials-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.fin-testimonials-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fin-testimonials-section__arrows {
+  display: flex;
+  gap: 8px;
+}
+.fin-testimonials-section__arrows button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.fin-testimonials-section__arrows button:hover {
+  background: var(--gray-50);
+}
+.fin-testimonials-section__arrows button:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: 2px;
+}
+/* Janela do carrossel: esconde a página que entra/sai. O padding de 8px
+   (compensado pela margem negativa) deixa a sombra dos cards aparecer. */
+.fin-testimonials {
+  position: relative;
+  overflow: hidden;
+  padding: 8px;
+  margin: -8px;
+}
+/* Celular: card a 16px das bordas da tela (o conteúdo tem 40px de recuo). */
+@media (max-width: 639px) {
+  .fin-testimonials {
+    margin-inline: -32px;
+  }
+}
+.fin-testimonials:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+/* Uma página = grade com N colunas iguais (N no estilo inline), 32px entre
+   os cards. */
+.fin-testimonials__page {
+  position: relative;
+  display: grid;
+  gap: 32px;
+  /* arraste horizontal é do carrossel; o vertical continua rolando a página */
+  touch-action: pan-y;
+}
+.fin-testimonials__item {
+  display: flex;
+  min-width: 0;
+}
+.fin-testimonials__dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.fin-testimonials__dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: #c4cad3;
+  cursor: pointer;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+.fin-testimonials__dots button.is-active {
+  width: 20px;
+  background: #1389eb;
+}
+.fin-testimonials__dots button:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: 2px;
+}
+.fin-testimonial {
+  /* flex coluna: ações alinhadas no fim; todos os cards com a mesma altura
+     (texto com altura fixa de 3 linhas + nome em 1 linha). */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  color: #2e2e2f;
+  cursor: default;
+  background-color: #fff;
+  padding: 0.75rem;
+  border-radius: 8px;
+  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  border: 3px dashed transparent;
+  width: 100%;
+  user-select: none;
+}
+/* Hover: só a sombra — sem o contorno tracejado da referência (removido a
+   pedido do usuário). */
+.fin-testimonial:hover {
+  box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
+}
+.fin-testimonial__tags {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-testimonial__tag {
+  border-radius: 100px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #ffffff;
+  background-color: #1389eb;
+}
+.fin-testimonial__options {
+  background: transparent;
+  border: 0;
+  color: #c4cad3;
+  padding: 0;
+  display: flex;
+  cursor: pointer;
+}
+/* "X" (Fechar) no lugar dos três pontos: mesma cor #9fa4aa. */
+.fin-testimonial__options svg {
+  stroke: #9fa4aa;
+  width: 16px;
+  height: 16px;
+}
+/* Depoimento: 13px, até 3 linhas com reticências, altura fixa de 3 linhas
+   (cards sempre da mesma altura). */
+.fin-testimonial__text {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0.75rem 0 0.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(3 * 1.45em);
+}
+.fin-testimonial__author {
+  margin-bottom: 0.75rem;
+  font-size: 11px;
+  color: #9fa4aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-testimonial__stats {
+  margin-top: auto;
+  position: relative;
+  width: 100%;
+  color: #9fa4aa;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-testimonial__actions {
+  display: flex;
+  align-items: center;
+}
+.fin-testimonial__actions button {
+  margin-right: 0.75rem;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.fin-testimonial__actions svg {
+  margin-right: 4px;
+  height: 100%;
+  width: auto;
+  stroke: #9fa4aa;
+}
+.fin-testimonial__actions button.is-active svg {
+  fill: #1389eb;
+  stroke: #1389eb;
+}
+.fin-testimonial__actions button:focus-visible,
+.fin-testimonial__options:focus-visible {
+  outline: 2px solid #1389eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.fin-testimonial__viewer span,
+.fin-testimonial__viewer img {
+  box-sizing: border-box;
+  height: 24px;
+  width: 24px;
+  background-color: rgb(28, 117, 219);
+  border-radius: 50%;
+  border: 1px solid #fff;
+  display: grid;
+  align-items: center;
+  text-align: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: #fff;
+}
+.fin-testimonial__viewer img {
+  object-fit: cover;
+}
+/* Aviso discreto "Em breve" (Comentar). */
+.fin-testimonial__notice {
+  position: absolute;
+  top: 2.2rem;
+  right: 0.75rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #2e2e2f;
+  color: #fff;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+/* ---- Aviso modal simples (<dialog>) ---- */
+.fin-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-hover);
+}
+.fin-dialog::backdrop {
+  background: rgba(29, 29, 31, 0.35);
+}
+.fin-dialog__body {
+  padding: 20px 24px 24px;
 }
 /* ---- Botão redondo (toggle incluir/cancelar ao lado dos filtros) ---- */
 .fin-btn--round {

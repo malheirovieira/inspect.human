@@ -1,9 +1,24 @@
-# Inspect Human — Contexto de desenvolvimento
+# Inspect Talent — Contexto de desenvolvimento
 
 > Este arquivo documenta o **estado real** do projeto (o que foi de fato
 > construído) — diferente do `ARCHITECTURE.md`, que é o plano original
 > pré-implementação e já está desatualizado em vários pontos. Use este
 > arquivo pra retomar contexto rápido.
+
+## Nome do sistema
+
+**Inspect Talent** (desde 2026-09-25; antes "Inspect Human"). **Não usar o
+nome antigo em nenhum texto novo** — interface, e-mails, textos de
+consentimento, documentação. Mesma grafia do contexto: "Inspect Talent" no
+texto corrido, "INSPECT TALENT" em rótulos em maiúsculas.
+
+O nome antigo só continua, de propósito, em identificadores técnicos que
+não foram trocados: pasta local `inspect.human`, repositório GitHub
+`malheirovieira/inspect.human`, valor do `CRON_SECRET` local, domínio e
+projeto na Vercel (ver "Pendências antes do primeiro cliente") e a chave
+legada `inspect-human:sidebar-collapsed` — lida uma única vez pra migrar a
+preferência do menu pra `inspect-talent:sidebar-collapsed`
+(`components/layout/Sidebar.tsx`, `readCollapsedPreference`).
 
 ## Redução de escopo
 
@@ -33,8 +48,11 @@ pra recriar no futuro.
   com tokens espelhados em `tailwind.config.ts` — os dois precisam ser
   editados juntos quando a paleta muda.
 - `@dnd-kit/*` (kanban de candidatos), `zod` (validação de schemas).
-  `framer-motion` e `recharts` foram removidos (framer-motion virou CSS
-  puro na transição de página; recharts só existia pro Budget, que saiu).
+  `recharts` foi removido (só existia pro Budget, que saiu). `framer-motion`
+  saiu da transição de página (virou CSS puro — com Server Components/
+  streaming dava um "piscar") e VOLTOU em 2026-09-25 só pra faixa de
+  depoimentos da Início (AnimatePresence + animação de layout, componente
+  client). Não usar na transição de página.
 - **Vitest 4** (testes — ver seção "Testes"). Fixado na 4 porque a 5 exige
   `@types/node` >= 22 e o projeto está no 20.
 - Hospedagem: **Vercel Hobby** + **Supabase free** (ver "Pendências antes do
@@ -56,8 +74,9 @@ Públicas
 Dashboard (grupo (dashboard), sessão obrigatória)
   /dashboard                                                  "Início" — pouso fixo pós-login, fora
                                                                 de qualquer grupo do Sidebar, sem
-                                                                checagem de role. Conteúdo mínimo de
-                                                                propósito (saudação + atalhos).
+                                                                checagem de role. Título + fundo
+                                                                ambiente animado; ADMIN/HR também veem
+                                                                a faixa de depoimentos.
   /pessoas, /desenvolvimento, /gestao                         reservadas pro Sidebar (group.href),
                                                                 SEM página própria ainda — os módulos
                                                                 continuam desabilitados no menu.
@@ -78,6 +97,7 @@ Dashboard (grupo (dashboard), sessão obrigatória)
   /gestao/kpis
   /configuracoes
   /configuracoes/usuarios, /configuracoes/tarefas             só ADMIN
+  /configuracoes/planos                                       só ADMIN — cards de preço (lib/plans.ts)
 ```
 
 `app/exemplo-sidebar/` é um componente de exploração/rascunho, não faz parte
@@ -87,6 +107,10 @@ do fluxo real do produto.
 
 - Largura 280px expandida / 76px recolhida (`localStorage`, sobrevive a
   reload).
+- **Fundo branco opaco** (sem transparência/desfoque). O fundo animado da
+  Início (`AmbientBackground`) fica só na área da página, à direita: é o
+  primeiro filho do `.fin-main`, numa camada `sticky` do tamanho da tela, com
+  posições em % da área (acompanha o menu aberto/recolhido).
 - "Início" (antigo "Dashboard") fica **fora de `GROUPS`**, sem rótulo de
   seção acima — é o pouso fixo pós-login (sempre lá, nunca "último módulo
   visitado"), por isso nenhuma seção do menu acende quando o usuário está
@@ -156,7 +180,8 @@ estar assim; confirme antes de assumir o contrário.
   sobrescrito) ainda existe e é só **lido** como alternativa no perfil
   enquanto a pessoa não tiver versão. Passos: rodar
   `node scripts/backfill-resume-versions.js` (simula) → conferir →
-  `--apply` → migration `0023` remove a coluna e os arquivos legados.
+  `--apply` → próxima migration livre remove a coluna e os arquivos legados
+  (a `0023` virou o plano da empresa).
 - **Retenção**: versão substituída apagada 12 meses depois de deixar de ser
   a atual (`lib/resumes/retention.ts`) — **valor provisório, pendente de
   validação jurídica**. A limpeza em si entra na etapa 2 da Fase 3.
@@ -177,8 +202,31 @@ Fluxo:
    salvo em `candidate_resumes.extracted_text`) → sem texto legível →
    `NO_TEXT`, **IA não é chamada** (OCR fora do escopo) → remove dados
    pessoais → limita a 12.000 caracteres → chama o provedor (só texto,
-   nunca o PDF) → valida com zod + checagem de termos proibidos; inválido
-   tenta mais 1 vez, depois `FAILED`/`INVALID_OUTPUT` → `DONE`.
+   nunca o PDF) → AJUSTA a resposta aos limites e valida
+   (`parseScreeningOutput`); rejeitada tenta mais 1 vez, depois
+   `FAILED`/`INVALID_OUTPUT` → `DONE`.
+
+   **Validação tolerante** (desde 2026-09-25 — antes rejeitava respostas
+   boas; o caso real foi "T.I." contado como fim de frase). AJUSTA em vez de
+   rejeitar: resumo com mais de 3 frases/600 caracteres é cortado numa frase
+   completa; base da experiência cortada em 200; tag com mais de 40
+   caracteres descartada (só ela); mais de 8 tags → as 8 primeiras; mais de
+   3 cargos → os 3 primeiros; experiência fora de 0–60 → null; campos extras
+   ignorados; campo não essencial ausente → null/vazio. REJEITA só quando:
+   não é JSON, falta o resumo (campo essencial) ou há termo proibido.
+   Contagem de frases entende abreviações ("T.I.", "Ltda.", "S.A.") e só
+   quebra antes de maiúscula. Termos proibidos são checados por PALAVRA
+   INTEIRA com suporte a acento (`(?<!\p{L})…(?!\p{L})` — o `\b` do JS
+   falha com "ç"/"ã"): "Universidade", "sexologia", "ração", "aprovação de
+   crédito" passam.
+
+   **Motivo técnico visível**: `INVALID_OUTPUT` e `INVALID_PDF` também
+   FALHAM a tarefa (`PermanentTaskError`) com o motivo em `last_error` (ex.:
+   "Resposta da IA rejeitada nas 2 tentativas (1ª: …; 2ª: …)") — aparece em
+   Configurações → Tarefas ("Motivo técnico"), só ADMIN. O motivo nunca
+   contém a resposta crua nem texto do currículo. Nessas falhas a tela
+   mostra "Abrir perfil do candidato" em vez de reenviar (a nova geração se
+   pede no card do perfil).
 3. Cada fim (DONE, NO_TEXT, FAILED) registra evento na linha do tempo:
    `AI_SUMMARY_GENERATED` / `AI_SUMMARY_NO_TEXT` / `AI_SUMMARY_FAILED`, nas
    candidaturas enviadas com aquela versão (ou na mais recente da pessoa).
@@ -218,8 +266,12 @@ como resposta inválida.
 à mão pro 429): `mock` (padrão; nenhuma chamada, exemplo fictício após
 1,5s, mesmo formato e mesma validação do real — a interface mostra
 "Exemplo simulado · sem IA"), `gemini` (Interactions API, `store:false`;
-o envelope da resposta não tem exemplo REST na doc — o parser lê
-`output_text` e aceita `outputs[]`; **confirmar na primeira chamada real**),
+**envelope confirmado em chamada real em 2026-09-24**: o texto vem em
+`steps[]` → item `type: "model_output"` → `content[].text`; antes dele há
+um passo `type: "thought"` só com assinatura (ignorado); `status` diferente
+de `"completed"` vira erro. A doc só mostra `output_text` — mantido como
+fallback. Chave nova do AI Studio (prefixo `AQ.`) funciona no header
+`x-goog-api-key`; `gemini-3.5-flash-lite` é modelo válido),
 `openai` (Responses API, json_schema estrito, `store:false`). Trocar de
 provedor = mudar env.
 
@@ -454,6 +506,86 @@ npm run test:db          # integração da fila no projeto de TESTE
   Supabase antes de rodar de novo.
 - Sem `TEST_DATABASE_URL`, `test:db` pula tudo com aviso (não falha).
 
+## Tela Início (`app/(dashboard)/dashboard/page.tsx`)
+
+Título = saudação neutra "Que bom ter você de volta, {primeiro nome}" (sem
+emoji nem exclamação); o item do menu ("Início"), a aba do navegador e o
+rótulo acima do título continuam iguais. Abaixo, a faixa "O que dizem sobre
+o Inspect Talent" — só ADMIN e HR (EMPLOYEE vê só o título). O card "Seu plano" SAIU
+da Início em 2026-09-25 (a pedido); `getMonthlyAiUsage` continua, pra etapa
+4 (Configurações).
+
+- **Depoimentos** (`components/inicio/TestimonialsStrip.tsx`, dados de
+  `lib/testimonials.ts`): **FICTÍCIOS e provisórios** — pessoas e empresas
+  inventadas, serão trocados pelos comentários reais com a MESMA estrutura
+  (`Testimonial`). 10 depoimentos num CARROSSEL POR PÁGINA (framer-motion,
+  sem rolagem nativa): página = cards visíveis — 3 no desktop (qualquer
+  largura a partir de 1024px), 2 no tablet, 1 no celular; 32px entre os cards
+  (no celular, card a 16px das bordas da tela). A fileira inteira desliza
+  (~700ms, ease-in-out) na direção do movimento; depois da última volta à
+  primeira pro mesmo lado (loop); última página incompleta é completada com
+  os primeiros. Avanço automático a cada 6s, com pausa (mouse em cima, foco
+  do teclado, arraste, aba oculta, botão Pausar/Continuar). Setas passam uma
+  página, bolinhas abaixo levam à página, arrastar (dedo, mouse ou gesto
+  horizontal do touchpad) troca de página; qualquer um reinicia os 6s.
+  prefers-reduced-motion: sem avanço automático e sem animação.
+  Card com o visual da referência (From Uiverse.io by Yaya12085), compacto e
+  HORIZONTAL: ocupa 1/N da faixa (sem largura máxima), padding 0.75rem, texto 13px limitado a 3 linhas, nome/cargo/
+  empresa em 1 linha (11px), etiqueta 11px, avatar 24px, ícones 16px, todos
+  da mesma altura. Etiqueta com o
+  segmento, "X" (Fechar, no lugar dos três pontos), depoimento entre aspas + nome · cargo · empresa, ações Amei /
+  Comentar / Fixar e avatar com INICIAIS (nunca foto de pessoa real; se um
+  dia houver `avatarUrl`, mostra a imagem). Diferenças: cursor default no
+  card, sem contorno tracejado no hover (a pedido), ações alinhadas no fim.
+  Comportamento só em memória (recarregou, voltou): Amei soma/subtrai 1,
+  Fixar leva o card pro início, Comentar mostra "Em breve".
+  **Fechar (X)**: o card some (opacidade + escala, ~250ms) e os seguintes
+  deslizam (framer-motion, AnimatePresence + layout); com
+  prefers-reduced-motion só desaparece. Os fechados ficam no localStorage
+  (`inspect-talent:dismissed-testimonials`, leitura/escrita em try/catch) e
+  continuam fechados ao recarregar; todos fechados = a seção some. **Quando
+  os comentários forem reais, os fechamentos passam a ser salvos POR
+  USUÁRIO no banco** (o localStorage é só provisório).
+
+- **Uso mensal da IA**: contagem ÚNICA em `getMonthlyAiUsage` (`services/resumeAnalyses.ts`): análises
+  `DONE` com IA real (`is_mock = false`) no mês corrente, fuso de São Paulo
+  — resultado do mock NÃO conta. A etapa 4 (Configurações) usa a mesma.
+- **"Precisa da sua atenção" — FORA DA TELA desde 2026-09-25** (trocado
+  pelos depoimentos), mas a lógica continua pronta pra uso futuro em outro
+  lugar: `services/attention.ts` + `components/inicio/AttentionCard.tsx`.
+  Dados reais, uma pendência por
+  vaga e tipo, as mais antigas primeiro, máx. 6; sem nenhuma: "Tudo em dia".
+  - *Candidaturas novas*: criadas nos últimos 7 dias.
+  - *Candidatos parados*: vaga aberta, etapa diferente de Contratado/
+    Reprovado, sem mudança de etapa (`STAGE_CHANGED`) há mais de 7 dias —
+    ou, se nunca mudou, candidatura com mais de 7 dias.
+  - *Vaga sem candidaturas*: aberta há mais de 15 dias e nenhuma
+    candidatura nos últimos 15 dias (título mostra os dias).
+  Visual IDÊNTICO à referência (From Uiverse.io by Yaya12085): etiqueta
+  azul `#1389eb` em todos os tipos, card de até 350px — só sem cursor de
+  arrastar, botão de opções e visualizadores (sem função aqui).
+
+## Planos (`lib/plans.ts`)
+
+Fonte ÚNICA dos planos: id, nome, preço mensal em R$, descrição, itens e
+limite mensal de currículos analisados por IA. **Todos os valores são
+PLACEHOLDER** (nomes e preços definidos pelo negócio depois). Ordem da lista
+= do mais básico ao mais alto; o primeiro é o padrão de toda empresa.
+`Company.plan` (migration `0023`, sem check constraint — id desconhecido cai
+no básico via `getPlan`). **Ainda não existe cobrança nem troca de plano**:
+o plano só muda direto no banco.
+
+- **Botão "Upgrade"** (`components/layout/UpgradeButton.tsx`, Server
+  Component dentro do `Header`) à esquerda do sino: só ADMIN, some no plano
+  mais alto, leva a `/configuracoes/planos`. 36px de altura (o sino tem 44).
+  No celular (≤480px) mostra só o selo PRO + seta.
+- **Página Planos**: um `PlanCard` por plano, lado a lado (empilhados no
+  celular); plano atual marcado com botão "Seu plano atual" desativado;
+  "Assinar" abre o aviso "Em breve" (`<dialog>`) com contato PROVISÓRIO
+  (`PLAN_CONTACT_URL`).
+- Componentes com referência visual do Uiverse.io (licença MIT) levam um
+  comentário com a origem — manter ao editar.
+
 ## Design system — estado atual
 
 Paleta em verde (`--green-700`/`--success` etc. em `app/globals.css`,
@@ -566,7 +698,8 @@ elevação no hover.
     nacionalidade).
 - **Retenção de versões de currículo (12 meses)**: valor provisório,
   pendente de validação jurídica (`lib/resumes/retention.ts`).
-- **Backfill + migration `0023`**: rodar `scripts/backfill-resume-versions.js`
+- **Backfill + migration de remoção** (próxima livre; a `0023` virou o plano
+  da empresa): rodar `scripts/backfill-resume-versions.js`
   e só depois remover `candidates.resume_path` e os arquivos legados.
 - Arquivos do Storage não são apagados quando um candidato é excluído
   (linhas somem por cascade, PDFs ficam) — tratar junto da política geral
@@ -587,11 +720,21 @@ elevação no hover.
 - **Supabase free pausa o projeto por inatividade e não tem backup
   automático** — migrar pro plano pago antes de ter cliente pagante (além
   do backup, evita a produção pausar num período sem acesso).
+- **Remover ou substituir os depoimentos FICTÍCIOS da Início**
+  (`lib/testimonials.ts`) — pessoas e empresas inventadas; **não podem ser
+  exibidos a clientes reais**. Substituir pela funcionalidade de comentários
+  reais (mesma estrutura de dados) ou tirar a faixa.
 - **Trocar credenciais expostas fora do ambiente local**: a
   `SUPABASE_SERVICE_ROLE_KEY`, a senha do banco de produção e a senha do
   administrador. Usar senhas **diferentes** pro banco e pro login do
   administrador. Depois de trocar, atualizar `.env.local` e as variáveis na
   Vercel (`DATABASE_URL`/`DIRECT_URL` carregam a senha do banco).
+- **Trocar domínio e nome do projeto na Vercel pro nome novo (Inspect
+  Talent)**, com redirecionamento permanente do domínio antigo pro novo (links
+  públicos de vagas já divulgados continuam funcionando). Junto: atualizar o
+  segredo `tasks_cron_url` no Supabase Vault (senão o pg_cron para de chamar
+  a fila — ver `supabase/cron/process_tasks.sql`) e as URLs de redirecionamento
+  do Supabase Auth (Site URL / Redirect URLs).
 
 ## Rodando localmente / testando em rede
 

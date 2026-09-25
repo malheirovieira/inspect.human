@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { requireSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
@@ -18,6 +19,9 @@ export default async function DashboardGroupLayout({ children }: { children: Rea
     <div className="fin-app">
       <Sidebar userName={session.name} companyName={company?.name} />
       <div className="fin-main">
+        {/* Primeira camada da ÁREA DA PÁGINA (a Sidebar é branca e fica de
+            fora): fundo ambiente, só renderiza na tela Início. */}
+        <AmbientBackground />
         <PageTransition>{children}</PageTransition>
       </div>
     </div>

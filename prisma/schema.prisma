@@ -28,6 +28,9 @@ model Company {
   slug        String   @unique
   description String?
   active      Boolean  @default(true)
+  // Plano (id de lib/plans.ts — hoje PLACEHOLDER). Sem check constraint:
+  // valor desconhecido cai no plano básico (getPlan). Sem cobrança ainda.
+  plan        String   @default("essencial")
   // Chave "Triagem com IA" (Configurações). Desligada por padrão e bloqueada
   // enquanto AI_ALLOW_REAL_DATA=false (ver lib/ai).
   aiScreeningEnabled   Boolean   @default(false) @map("ai_screening_enabled")
@@ -218,7 +221,7 @@ model Candidate {
   // LEGADO (arquivo único por pessoa, sobrescrito a cada upload). Não gravar
   // mais — currículo agora é versionado em CandidateResume. Só lido como
   // fallback até o backfill (scripts/backfill-resume-versions.js); sai na
-  // migration 0023.
+  // próxima migration livre (a 0023 virou o plano da empresa).
   resumePath  String?  @map("resume_path")
   // Versão ATUAL do currículo da pessoa (perfil). null = sem currículo.
   currentResumeId String? @map("current_resume_id") @db.Uuid

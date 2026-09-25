@@ -3,7 +3,7 @@ import { AI_BLOCK_REASON_LABELS, getAiBlockReason } from "@/lib/ai/availability"
 import { parseAiConfig } from "@/lib/ai/config";
 import { createAiProvider } from "@/lib/ai/providers";
 import { MOCK_RESULT } from "@/lib/ai/providers/mock";
-import { SCREENING_SYSTEM_PROMPT, dedupeTags, parseScreeningOutput } from "@/lib/ai/screening";
+import { SCREENING_SYSTEM_PROMPT, dedupeTags, parseScreeningOutput, splitSentences } from "@/lib/ai/screening";
 
 const valid = () => structuredClone(MOCK_RESULT) as Record<string, unknown>;
 const parse = (obj: unknown) => parseScreeningOutput(JSON.stringify(obj));
@@ -23,19 +23,83 @@ describe("validação da resposta da IA", () => {
     expect(parseScreeningOutput("")).toMatchObject({ ok: false });
   });
 
-  it("resumo com mais de 3 frases é recusado", () => {
-    expect(parse({ ...valid(), resumo: "Um. Dois. Três. Quatro." })).toMatchObject({ ok: false });
+  // Caso real (2026-09-25): resumo com "T.I." foi contado como 5 frases e a
+  // base da experiência passou de 200 caracteres — as duas respostas eram boas.
+  it("resposta real que falhava por 'T.I.' e base longa agora é aceita e ajustada", () => {
+    const out = parse({
+      ...valid(),
+      resumo:
+        "Profissional de T.I. com experiência em implantação de sistemas e suporte técnico. Combina conhecimento técnico com visão de processos. Possui perfil comunicativo e analítico.",
+      experienciaAnos: 5.4,
+      experienciaBase:
+        "Soma dos períodos informados: Abr/2026 a Atual (aprox. 0,4 anos), Jan/2024 a Mar/2026 (2 anos e 3 meses), Mai/2023 a Ago/2023 (4 meses), Mar/2022 a Mai/2023 (1 ano e 3 meses) e Jun/2019 a Out/2020 (1 ano e 5 meses).",
+    });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.data.resumo).toContain("T.I. com experiência");
+    expect(splitSentences(out.data.resumo)).toHaveLength(3);
+    expect(out.data.experienciaBase!.length).toBeLessThanOrEqual(200);
+    expect(out.data.experienciaBase!.endsWith("…")).toBe(true);
   });
 
-  it("mais de 8 competências ou 3 cargos é recusado", () => {
-    expect(parse({ ...valid(), competencias: Array.from({ length: 9 }, (_, i) => `T${i}`) }).ok).toBe(false);
-    expect(parse({ ...valid(), ultimosCargos: Array.from({ length: 4 }, () => ({ cargo: "A", empresa: null })) }).ok).toBe(false);
+  it("abreviações não contam como fim de frase", () => {
+    expect(splitSentences("Analista de T.I. na Empresa X Ltda. Atua com SQL.")).toHaveLength(1);
+    expect(splitSentences("Formado pela U.F.M.G. em 2010. Atua com dados.")).toHaveLength(2);
+    expect(splitSentences("Um. Dois. Três. Quatro.")).toHaveLength(4);
   });
 
-  it("campo a mais ou faltando é recusado", () => {
-    expect(parse({ ...valid(), nota: 9 }).ok).toBe(false);
-    const { formacao: _f, ...semFormacao } = valid();
-    expect(parse(semFormacao).ok).toBe(false);
+  it("resumo com mais de 3 frases é CORTADO na 3ª frase completa", () => {
+    const out = parse({ ...valid(), resumo: "Frase um. Frase dois. Frase três. Frase quatro." });
+    expect(out).toMatchObject({ ok: true, data: { resumo: "Frase um. Frase dois. Frase três." } });
+  });
+
+  it("resumo acima de 600 caracteres termina numa frase completa", () => {
+    const long = `${"A".repeat(250)} termina aqui. ${"B".repeat(250)} termina aqui. ${"C".repeat(250)} termina aqui.`;
+    const out = parse({ ...valid(), resumo: long });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.data.resumo.length).toBeLessThanOrEqual(600);
+    expect(out.data.resumo.endsWith("termina aqui.")).toBe(true);
+    expect(splitSentences(out.data.resumo)).toHaveLength(2);
+  });
+
+  it("mais de 8 competências: mantém as 8 primeiras; tag longa: descarta só ela", () => {
+    const longa = "Competência com nome absurdamente comprido demais";
+    const out = parse({ ...valid(), competencias: ["T0", longa, ...Array.from({ length: 9 }, (_, i) => `T${i + 1}`)] });
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.data.competencias).toEqual(["T0", "T1", "T2", "T3", "T4", "T5", "T6", "T7"]);
+  });
+
+  it("mais de 3 cargos: mantém os 3 primeiros; cargo vazio é descartado", () => {
+    const cargos = [{ cargo: "", empresa: "X" }, ...Array.from({ length: 4 }, (_, i) => ({ cargo: `C${i}`, empresa: null }))];
+    const out = parse({ ...valid(), ultimosCargos: cargos });
+    expect(out.ok).toBe(true);
+    if (out.ok) expect(out.data.ultimosCargos.map((c) => c.cargo)).toEqual(["C0", "C1", "C2"]);
+  });
+
+  it("campo extra é ignorado (nunca gravado) e campo não essencial ausente vira null/vazio", () => {
+    const { formacao: _f, competencias: _c, ...parcial } = valid();
+    const out = parse({ ...parcial, nota: 9 });
+    expect(out.ok).toBe(true);
+    if (!out.ok) return;
+    expect(out.data).not.toHaveProperty("nota");
+    expect(out.data.formacao).toBeNull();
+    expect(out.data.competencias).toEqual([]);
+  });
+
+  it("experiência fora da faixa ou não numérica vira null (com a base junto)", () => {
+    for (const experienciaAnos of [-1, 80, "muitos"]) {
+      const out = parse({ ...valid(), experienciaAnos });
+      expect(out).toMatchObject({ ok: true, data: { experienciaAnos: null, experienciaBase: null } });
+    }
+    expect(parse({ ...valid(), experienciaAnos: "6,5" })).toMatchObject({ ok: true, data: { experienciaAnos: 6.5 } });
+  });
+
+  it("REJEITA quando falta o resumo (campo essencial)", () => {
+    const { resumo: _r, ...semResumo } = valid();
+    expect(parse(semResumo)).toMatchObject({ ok: false, reason: "campo essencial ausente: resumo" });
+    expect(parse({ ...valid(), resumo: "   " })).toMatchObject({ ok: false });
+    expect(parse([1, 2])).toMatchObject({ ok: false });
   });
 
   it("aceita nulls quando a informação não está no currículo", () => {
@@ -66,6 +130,21 @@ describe("validação da resposta da IA", () => {
     ["nota", "Perfil com nota 9 em aderência técnica."],
   ])("recusa resumo que menciona %s", (_label, resumo) => {
     expect(parse({ ...valid(), resumo })).toMatchObject({ ok: false });
+  });
+
+  it("termo proibido é checado por palavra inteira, inclusive com acento", () => {
+    // Contêm o trecho proibido dentro de outra palavra — não podem reprovar:
+    // univers-IDADE, qual-IDADE, SEXO-logia, RAÇ-ão, APROVA-ção, NOTA-s.
+    for (const resumo of [
+      "Coordenou a Universidade Corporativa e o programa de Qualidade.",
+      "Atuou em sexologia clínica e educação em saúde.",
+      "Supervisionou a produção de ração animal.",
+      "Responsável pela aprovação de crédito e emissão de notas fiscais.",
+    ]) {
+      expect(parse({ ...valid(), resumo }).ok, resumo).toBe(true);
+    }
+    expect(parse({ ...valid(), resumo: "Profissional com deficiência auditiva." }).ok).toBe(false);
+    expect(parse({ ...valid(), resumo: "Estado civil informado no currículo." }).ok).toBe(false);
   });
 
   it("não confunde termos proibidos com fatos profissionais", () => {

@@ -7,7 +7,7 @@ import { purgeSupersededResumes } from "@/lib/resumes/purge";
 import { storeResumeVersionWith } from "@/lib/resumes/versioning";
 import { analyzeResume, type AnalyzeDeps } from "@/lib/screening/analyzeResume";
 import { RESUME_ANALYZE_TASK, requestResumeAnalysis, resumeAnalyzePayloadSchema } from "@/lib/screening/request";
-import { TransientTaskError } from "@/lib/tasks/errors";
+import { PermanentTaskError, TransientTaskError } from "@/lib/tasks/errors";
 import { createTaskRegistry, defineTask, type TaskContext } from "@/lib/tasks/registry";
 import { FICTITIOUS_CANDIDATE_NAME, imageOnlyPdf, textResumePdf } from "../fixtures/resumes";
 import { createTestClient, skipReason } from "./helpers";
@@ -174,12 +174,15 @@ describe.skipIf(!!skipReason)("triagem com IA (Postgres real)", () => {
     expect((await db.applicationEvent.findMany({ where: { applicationId } })).map((e) => e.type)).toEqual(["AI_SUMMARY_NO_TEXT"]);
   });
 
-  it("resposta inválida: tenta uma vez de novo e depois marca falha", async () => {
+  it("resposta inválida: tenta uma vez de novo, marca falha e a tarefa falha com o motivo técnico", async () => {
     const resumeId = await upload(await textResumePdf());
     const analysis = (await latestAnalysis(resumeId))!;
     const provider = new ScriptedProvider(() => "isto não é json");
 
-    await analyzeResume(deps(provider), analysis.id, CTX);
+    const err = await analyzeResume(deps(provider), analysis.id, CTX).catch((e) => e);
+    expect(err).toBeInstanceOf(PermanentTaskError);
+    expect(err.message).toContain("1ª: resposta não é JSON válido; 2ª: resposta não é JSON válido");
+    expect(err.message).not.toContain("isto não é json"); // nunca a resposta crua
 
     expect(provider.calls).toHaveLength(2);
     expect(await db.resumeAnalysis.findUniqueOrThrow({ where: { id: analysis.id } })).toMatchObject({
