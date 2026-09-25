@@ -47,7 +47,17 @@ export default async function PessoaPerfilPage({
 
   const [candidate, session] = await Promise.all([getPerson(candidateId), requireSession()]);
   if (!candidate) notFound();
-  const aiState = activeTab === "perfil" ? await getProfileAiState(candidate.id) : null;
+  // Passa os campos já buscados pelo getPerson() para evitar uma segunda
+  // query ao banco (candidate.findFirst dentro do getProfileAiState).
+  const aiState =
+    activeTab === "perfil"
+      ? await getProfileAiState({
+          id: candidate.id,
+          isTest: candidate.isTest,
+          currentResumeId: candidate.currentResumeId,
+          company: candidate.company,
+        })
+      : null;
 
   // Versão atual + anteriores. Sem versão ainda (pessoa anterior ao
   // versionamento e backfill não rodado), cai no arquivo legado resumePath.

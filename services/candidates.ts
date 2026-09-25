@@ -85,6 +85,9 @@ export async function getPerson(candidateId: string) {
   const candidate = await prisma.candidate.findFirst({
     where: { id: candidateId, companyId: session.companyId },
     include: {
+      // company.aiScreeningEnabled incluído para que a página de perfil possa
+      // repassar para getProfileAiState sem uma segunda query ao banco.
+      company: { select: { aiScreeningEnabled: true } },
       resumes: {
         orderBy: { createdAt: "desc" },
         select: { id: true, storagePath: true, source: true, sizeBytes: true, createdAt: true },
