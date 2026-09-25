@@ -3,7 +3,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { getCompany } from "@/services/company";
 
 export default async function DashboardGroupLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
@@ -13,7 +13,7 @@ export default async function DashboardGroupLayout({ children }: { children: Rea
   // deste grupo de rotas (como /login), então não entra nesse redirect.
   if (session.mustChangePassword) redirect("/trocar-senha");
 
-  const company = await prisma.company.findUnique({ where: { id: session.companyId } });
+  const company = await getCompany(session.companyId);
 
   return (
     <div className="fin-app">

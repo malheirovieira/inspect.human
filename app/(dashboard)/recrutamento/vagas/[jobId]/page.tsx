@@ -11,7 +11,7 @@ import { CandidatesBoard } from "@/components/recrutamento/CandidatesBoard";
 import { KanbanBoard } from "@/components/recrutamento/KanbanBoard";
 import { getJob } from "@/services/jobs";
 import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { getCompany } from "@/services/company";
 import { setJobStatus } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { listCompanyOptions } from "@/services/companyOptions";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
@@ -41,9 +41,11 @@ export default async function VagaDetalhePage({
   const visibleStages = showRejected ? CANDIDATE_STAGES : CANDIDATE_STAGES.filter((s) => s !== "REJECTED");
 
   const session = await requireSession();
+  // getCompany() é cacheada por React: se o layout já buscou a empresa nesta
+  // requisição, retorna do cache sem nova query ao banco.
   const [job, company, employmentTypes, departments, stageLabels] = await Promise.all([
     getJob(jobId),
-    prisma.company.findUnique({ where: { id: session.companyId } }),
+    getCompany(session.companyId),
     listCompanyOptions("MODALIDADE_CONTRATACAO"),
     listCompanyOptions("SETOR"),
     getKanbanStageLabels(),
