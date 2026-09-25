@@ -165,7 +165,11 @@ body {
 }
 .fin-topbar__inner {
   width: 100%;
-  max-width: 1440px;
+  /* 1440 menos o recuo de 40px de cada lado da .fin-topbar: assim a data
+     começa exatamente onde começam o título (.fin-header) e o conteúdo
+     (.fin-content), que têm 1440px JÁ incluindo esse recuo. Com 1440 aqui,
+     em áreas largas a data ficava até 40px à esquerda. */
+  max-width: 1360px;
   margin: 0 auto;
   height: 52px;
   display: flex;
