@@ -1162,29 +1162,6 @@ body {
   pointer-events: none;
 }
 
-/* ---- Início: card "Seu plano" fixo no canto (components/inicio/CornerDock) ----
-   ≥768px: fixo no canto inferior direito (24px das bordas), visível ao
-   rolar; o espaçador reserva a altura dele no fim da página. <768px: no
-   fluxo, no fim da página, e sem espaçador. */
-.fin-corner-dock {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 30;
-  width: 384px;
-}
-.fin-corner-inline {
-  width: 100%;
-}
-.fin-corner-spacer {
-  display: none;
-}
-@media (min-width: 768px) {
-  .fin-corner-spacer {
-    display: block;
-  }
-}
-
 /* ---- Aviso modal simples (<dialog>) ---- */
 .fin-dialog {
   width: min(420px, calc(100vw - 32px));

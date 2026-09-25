@@ -73,7 +73,7 @@ Dashboard (grupo (dashboard), sessão obrigatória)
                                                                 de qualquer grupo do Sidebar, sem
                                                                 checagem de role. Título + fundo
                                                                 ambiente animado; ADMIN/HR também veem
-                                                                depoimentos e "Seu plano" (fixo no canto).
+                                                                a faixa de depoimentos.
   /pessoas, /desenvolvimento, /gestao                         reservadas pro Sidebar (group.href),
                                                                 SEM página própria ainda — os módulos
                                                                 continuam desabilitados no menu.
@@ -505,9 +505,10 @@ npm run test:db          # integração da fila no projeto de TESTE
 
 ## Tela Início (`app/(dashboard)/dashboard/page.tsx`)
 
-Ordem: título → faixa "O que dizem sobre o Inspect Talent" → card "Seu
-plano" FIXO no canto inferior direito. As seções só aparecem pra ADMIN e HR
-(EMPLOYEE vê só o título); "Ver planos" só pra ADMIN.
+Ordem: título → faixa "O que dizem sobre o Inspect Talent". A faixa só
+aparece pra ADMIN e HR (EMPLOYEE vê só o título). O card "Seu plano" SAIU
+da Início em 2026-09-25 (a pedido); `getMonthlyAiUsage` continua, pra etapa
+4 (Configurações).
 
 - **Depoimentos** (`components/inicio/TestimonialsStrip.tsx`, dados de
   `lib/testimonials.ts`): **FICTÍCIOS e provisórios** — pessoas e empresas
@@ -520,15 +521,8 @@ plano" FIXO no canto inferior direito. As seções só aparecem pra ADMIN e HR
   card, sem contorno tracejado no hover (a pedido), ações alinhadas no fim.
   Comportamento só em memória (recarregou, voltou): Amei soma/subtrai 1,
   Fixar leva o card pro início, Comentar e ⋮ mostram "Em breve".
-- **"Seu plano" fixo** (`components/inicio/CornerDock.tsx`): ≥768px fica
-  `position: fixed` a 24px do canto inferior direito, visível ao rolar, via
-  portal no `<body>` (o `transform` do PageTransition prenderia o fixed ao
-  container); espaçador no fim da página evita esconder conteúdo. <768px:
-  no fluxo, no fim da página.
 
-- **"Seu plano"** (`components/inicio/PlanSummaryCard.tsx`): nome e valor do
-  plano + uso do mês "N de LIMITE currículos analisados por IA". Contagem
-  ÚNICA em `getMonthlyAiUsage` (`services/resumeAnalyses.ts`): análises
+- **Uso mensal da IA**: contagem ÚNICA em `getMonthlyAiUsage` (`services/resumeAnalyses.ts`): análises
   `DONE` com IA real (`is_mock = false`) no mês corrente, fuso de São Paulo
   — resultado do mock NÃO conta. A etapa 4 (Configurações) usa a mesma.
 - **"Precisa da sua atenção" — FORA DA TELA desde 2026-09-25** (trocado
