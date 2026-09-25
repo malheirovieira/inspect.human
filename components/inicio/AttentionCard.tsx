@@ -3,10 +3,10 @@ import { CalendarDays } from "lucide-react";
 import type { AttentionItem, AttentionType } from "@/services/attention";
 
 // Card de pendência ("Precisa da sua atenção", tela Início).
-// Referência visual: Uiverse.io (licença MIT) — adaptado ao design system:
-// sem cursor de arrastar (é um link), sem visualizadores e sem menu de
-// opções; etiqueta com uma cor por tipo (tokens --attention-* em
-// globals.css, .fin-attention-card).
+// From Uiverse.io by Yaya12085 (licença MIT) — IDÊNTICO à referência (mesmas
+// cores, tamanhos, sombras, bordas e espaçamentos; CSS em globals.css,
+// .fin-attention-card). Únicas diferenças: cursor de link (não de arrastar)
+// e sem botão de opções e visualizadores, que não teriam função aqui.
 
 const TAG_LABEL: Record<AttentionType, string> = {
   NEW_APPLICATIONS: "Candidaturas novas",
@@ -47,13 +47,15 @@ export function AttentionCard({ item }: { item: AttentionItem }) {
 
   return (
     <Link href={href} className="fin-attention-card">
-      <span className={`fin-attention-card__tag fin-attention-card__tag--${item.type.toLowerCase().replace("_", "-")}`}>
-        {TAG_LABEL[item.type]}
-      </span>
+      <div className="fin-attention-card__tags">
+        <span className="fin-attention-card__tag">{TAG_LABEL[item.type]}</span>
+      </div>
       <p className="fin-attention-card__title">{title(item)}</p>
       <div className="fin-attention-card__stats">
-        <CalendarDays size={14} aria-hidden="true" />
-        {footer(item)}
+        <div>
+          <CalendarDays aria-hidden="true" />
+          {footer(item)}
+        </div>
       </div>
     </Link>
   );

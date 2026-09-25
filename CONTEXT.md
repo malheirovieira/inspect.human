@@ -496,7 +496,9 @@ só pra ADMIN.
     ou, se nunca mudou, candidatura com mais de 7 dias.
   - *Vaga sem candidaturas*: aberta há mais de 15 dias e nenhuma
     candidatura nos últimos 15 dias (título mostra os dias).
-  Cor da etiqueta por tipo em `--attention-*` (`globals.css`).
+  Visual IDÊNTICO à referência (From Uiverse.io by Yaya12085): etiqueta
+  azul `#1389eb` em todos os tipos, card de até 350px — só sem cursor de
+  arrastar, botão de opções e visualizadores (sem função aqui).
 
 ## Planos (`lib/plans.ts`)
 

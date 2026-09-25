@@ -64,11 +64,6 @@
   --ambient-blue-soft: #dcecfd;
   --ambient-blue-top: #b3d4fb;
   --ambient-lavender: #e3e8fb;
-  /* Etiquetas de "Precisa da sua atenção" (tela Início) — uma cor por tipo,
-     todas com contraste suficiente pra texto branco de 12px. */
-  --attention-new: var(--focus-ring);
-  --attention-stalled: #a1560a;
-  --attention-no-applications: var(--gray-700);
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -931,63 +926,76 @@ body {
 }
 
 /* ---- Início: "Precisa da sua atenção" (components/inicio/AttentionCard) ----
-   Referência: Uiverse.io (licença MIT) — card clicável (cursor pointer, não
-   de arrastar), sem visualizadores e sem menu de opções. Grade responsiva. */
+   IDÊNTICO à referência — From Uiverse.io by Yaya12085 (licença MIT):
+   .task → .fin-attention-card, .tags/.tag, p → __title, .stats. Mesmas cores,
+   tamanhos, sombras, bordas e espaçamentos. Únicas diferenças: cursor de
+   link (pointer, não "move" — não é arrastável) e sem o botão de opções e os
+   visualizadores (não teriam função aqui). */
 .fin-attention-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 350px));
+  column-gap: 1rem;
 }
 .fin-attention-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 16px;
-  background: var(--surface);
-  border: 2px dashed transparent;
-  border-radius: var(--radius-md);
-  box-shadow: 0 2px 8px rgba(99, 99, 99, 0.1);
-  color: var(--text-primary);
-  text-decoration: none;
+  position: relative;
+  display: block;
+  color: #2e2e2f;
   cursor: pointer;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  background-color: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  margin-bottom: 1rem;
+  border: 3px dashed transparent;
+  max-width: 350px;
+  text-decoration: none;
 }
 .fin-attention-card:hover {
-  box-shadow: 0 2px 8px rgba(99, 99, 99, 0.24);
-  border-color: rgba(162, 179, 207, 0.35);
+  box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
+  border-color: rgba(162, 179, 207, 0.2);
 }
 .fin-attention-card:focus-visible {
   outline: none;
-  border-color: var(--focus-ring);
+  border-color: rgba(162, 179, 207, 0.6);
 }
-.fin-attention-card__tag {
-  padding: 3px 12px;
-  border-radius: var(--radius-full);
-  color: var(--white);
-  font-size: 12px;
-  font-weight: 500;
-}
-.fin-attention-card__tag--new-applications {
-  background: var(--attention-new);
-}
-.fin-attention-card__tag--stalled {
-  background: var(--attention-stalled);
-}
-.fin-attention-card__tag--no-applications {
-  background: var(--attention-no-applications);
-}
-.fin-attention-card__title {
-  margin: 14px 0;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-.fin-attention-card__stats {
+.fin-attention-card__tags {
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+}
+.fin-attention-card__tag {
+  border-radius: 100px;
+  padding: 4px 13px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #ffffff;
+  background-color: #1389eb;
+}
+.fin-attention-card__title {
+  font-size: 15px;
+  margin: 1.2rem 0;
+}
+.fin-attention-card__stats {
+  position: relative;
+  width: 100%;
+  color: #9fa4aa;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fin-attention-card__stats div {
+  margin-right: 1rem;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+.fin-attention-card__stats svg {
+  margin-right: 5px;
+  height: 100%;
+  /* lucide põe width="24" no SVG; a referência só define a altura */
+  width: auto;
+  stroke: #9fa4aa;
 }
 .fin-attention-empty {
   display: inline-flex;
