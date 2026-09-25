@@ -62,6 +62,22 @@ export async function listSkillOptions(): Promise<string[]> {
   return rows.map((r) => r.skill);
 }
 
+// Uso mensal da triagem com IA — contagem ÚNICA (card "Seu plano" da Início
+// e, na etapa 4, Configurações). Conta análises CONCLUÍDAS com IA real no mês
+// corrente no fuso de São Paulo; resultado do modo mock ("Exemplo simulado ·
+// sem IA") NÃO conta — não é IA e não consome o limite do plano.
+export async function getMonthlyAiUsage(companyId: string): Promise<number> {
+  const rows = await prisma.$queryRaw<{ n: number }[]>`
+    select count(*)::int as n
+    from public.resume_analyses
+    where company_id = ${companyId}::uuid
+      and status = 'DONE'
+      and is_mock = false
+      and completed_at >= (date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo')
+  `;
+  return rows[0]?.n ?? 0;
+}
+
 export async function getAiSnippetsForSession(candidateIds: string[]): Promise<Map<string, AiSnippet>> {
   const session = await requireRole(["ADMIN", "HR"]);
   return getAiSnippets(session.companyId, candidateIds);

@@ -71,8 +71,9 @@ Públicas
 Dashboard (grupo (dashboard), sessão obrigatória)
   /dashboard                                                  "Início" — pouso fixo pós-login, fora
                                                                 de qualquer grupo do Sidebar, sem
-                                                                checagem de role. Só o título + fundo
-                                                                ambiente animado (AmbientBackground).
+                                                                checagem de role. Título + fundo
+                                                                ambiente animado; ADMIN/HR também veem
+                                                                "Seu plano" e "Precisa da sua atenção".
   /pessoas, /desenvolvimento, /gestao                         reservadas pro Sidebar (group.href),
                                                                 SEM página própria ainda — os módulos
                                                                 continuam desabilitados no menu.
@@ -470,6 +471,28 @@ npm run test:db          # integração da fila no projeto de TESTE
   `Tenant or user not found`, timeout), reativar o projeto no painel do
   Supabase antes de rodar de novo.
 - Sem `TEST_DATABASE_URL`, `test:db` pula tudo com aviso (não falha).
+
+## Tela Início (`app/(dashboard)/dashboard/page.tsx`)
+
+Ordem: título → card "Seu plano" → "Precisa da sua atenção". As duas
+seções só aparecem pra ADMIN e HR (EMPLOYEE vê só o título); "Ver planos"
+só pra ADMIN.
+
+- **"Seu plano"** (`components/inicio/PlanSummaryCard.tsx`): nome e valor do
+  plano + uso do mês "N de LIMITE currículos analisados por IA". Contagem
+  ÚNICA em `getMonthlyAiUsage` (`services/resumeAnalyses.ts`): análises
+  `DONE` com IA real (`is_mock = false`) no mês corrente, fuso de São Paulo
+  — resultado do mock NÃO conta. A etapa 4 (Configurações) usa a mesma.
+- **"Precisa da sua atenção"** (`services/attention.ts` +
+  `components/inicio/AttentionCard.tsx`), dados reais, uma pendência por
+  vaga e tipo, as mais antigas primeiro, máx. 6; sem nenhuma: "Tudo em dia".
+  - *Candidaturas novas*: criadas nos últimos 7 dias.
+  - *Candidatos parados*: vaga aberta, etapa diferente de Contratado/
+    Reprovado, sem mudança de etapa (`STAGE_CHANGED`) há mais de 7 dias —
+    ou, se nunca mudou, candidatura com mais de 7 dias.
+  - *Vaga sem candidaturas*: aberta há mais de 15 dias e nenhuma
+    candidatura nos últimos 15 dias (título mostra os dias).
+  Cor da etiqueta por tipo em `--attention-*` (`globals.css`).
 
 ## Planos (`lib/plans.ts`)
 
