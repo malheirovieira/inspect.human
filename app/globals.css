@@ -241,12 +241,13 @@ body {
 .fin-header__bell {
   position: relative;
   border-radius: var(--radius-full);
-  background: var(--surface-muted);
+  /* Branco (pedido do usuário) — hover num cinza bem claro. */
+  background: var(--surface);
   color: var(--text-secondary);
   transition: background 0.2s ease, transform 0.15s var(--ease-out-soft);
 }
 .fin-header__bell:hover {
-  background: var(--gray-200);
+  background: var(--gray-50);
   transform: scale(1.05);
 }
 .fin-header__bell:active {
