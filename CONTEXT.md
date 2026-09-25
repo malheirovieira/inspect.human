@@ -93,6 +93,7 @@ Dashboard (grupo (dashboard), sessão obrigatória)
   /gestao/kpis
   /configuracoes
   /configuracoes/usuarios, /configuracoes/tarefas             só ADMIN
+  /configuracoes/planos                                       só ADMIN — cards de preço (lib/plans.ts)
 ```
 
 `app/exemplo-sidebar/` é um componente de exploração/rascunho, não faz parte
@@ -479,6 +480,17 @@ PLACEHOLDER** (nomes e preços definidos pelo negócio depois). Ordem da lista
 `Company.plan` (migration `0023`, sem check constraint — id desconhecido cai
 no básico via `getPlan`). **Ainda não existe cobrança nem troca de plano**:
 o plano só muda direto no banco.
+
+- **Botão "Upgrade"** (`components/layout/UpgradeButton.tsx`, Server
+  Component dentro do `Header`) à esquerda do sino: só ADMIN, some no plano
+  mais alto, leva a `/configuracoes/planos`. 36px de altura (o sino tem 44).
+  No celular (≤480px) mostra só o selo PRO + seta.
+- **Página Planos**: um `PlanCard` por plano, lado a lado (empilhados no
+  celular); plano atual marcado com botão "Seu plano atual" desativado;
+  "Assinar" abre o aviso "Em breve" (`<dialog>`) com contato PROVISÓRIO
+  (`PLAN_CONTACT_URL`).
+- Componentes com referência visual do Uiverse.io (licença MIT) levam um
+  comentário com a origem — manter ao editar.
 
 ## Design system — estado atual
 

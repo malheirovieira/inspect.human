@@ -725,6 +725,220 @@ body {
 .fin-icon-danger {
   color: var(--action-cancel);
 }
+
+/* ---- Botão "Upgrade" da barra superior (components/layout/UpgradeButton) ----
+   Referência: Uiverse.io (licença MIT), reduzida pra 36px de altura (o sino
+   ao lado tem 44px) com sombras no padrão do sistema. Ícone de seta girado
+   45 graus que volta a 0 no hover. */
+.fin-upgrade {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
+  transition: box-shadow 0.2s ease;
+}
+.fin-upgrade:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.fin-upgrade:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.fin-upgrade__inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 3px 3px 3px 10px;
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+  transition: transform 0.2s ease;
+}
+.fin-upgrade:active .fin-upgrade__inner {
+  transform: scale(0.97);
+}
+.fin-upgrade__text {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.fin-upgrade__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.fin-upgrade__pro {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+.fin-upgrade__icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  color: var(--text-primary);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+.fin-upgrade:hover .fin-upgrade__icon,
+.fin-upgrade:focus-visible .fin-upgrade__icon {
+  transform: rotate(0deg);
+}
+/* Celular: sem a palavra, fica o selo PRO + seta (o aria-label mantém o nome). */
+@media (max-width: 480px) {
+  .fin-upgrade__label {
+    display: none;
+  }
+}
+
+/* ---- Planos: cards de preço (components/configuracoes/PlanCard) ----
+   Referência: Uiverse.io (licença MIT) — lado a lado no desktop, empilhados
+   no celular (auto-fit). */
+.fin-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+.fin-plan-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.fin-plan-card--current {
+  border-color: var(--action-confirm);
+  box-shadow: 0 0 0 1px var(--action-confirm), var(--shadow-sm);
+}
+.fin-plan-card__top {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 32px 24px 24px;
+}
+.fin-plan-card__name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  color: var(--text-secondary);
+}
+.fin-plan-card__current-tag {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--green-surface);
+  color: var(--action-confirm);
+  font-size: 11px;
+  font-weight: 600;
+}
+.fin-plan-card__description {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.fin-plan-card__price {
+  margin: 0;
+}
+.fin-plan-card__amount {
+  font-size: 44px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+.fin-plan-card__period {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.fin-plan-card__features {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.fin-plan-card__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.fin-plan-card__features svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--action-confirm);
+}
+.fin-plan-card__bottom {
+  display: flex;
+  padding: 0 24px 28px;
+}
+/* Botão pílula: verde (confirmação) que fica vazado no hover. */
+.fin-plan-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  padding: 0 24px;
+  border: 2px solid var(--action-confirm);
+  border-radius: var(--radius-full);
+  background: var(--action-confirm);
+  color: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.fin-plan-card__cta:hover {
+  background: transparent;
+  color: var(--action-confirm);
+}
+.fin-plan-card__cta:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+.fin-plan-card__cta:disabled {
+  border-color: var(--border);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* ---- Aviso modal simples (<dialog>) ---- */
+.fin-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-hover);
+}
+.fin-dialog::backdrop {
+  background: rgba(29, 29, 31, 0.35);
+}
+.fin-dialog__body {
+  padding: 20px 24px 24px;
+}
 /* ---- Botão redondo (toggle incluir/cancelar ao lado dos filtros) ---- */
 .fin-btn--round {
   width: 44px;

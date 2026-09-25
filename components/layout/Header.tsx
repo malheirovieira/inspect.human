@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { HeaderSearch } from "./HeaderSearch";
 import { NotificationBell } from "./NotificationBell";
+import { UpgradeButton } from "./UpgradeButton";
 
 export type BreadcrumbItem = { label: string; href?: string };
 
@@ -30,6 +31,7 @@ export function Header({
           <div className="fin-topbar__search">
             {searchPlaceholder && <HeaderSearch placeholder={searchPlaceholder} />}
           </div>
+          <UpgradeButton />
           <NotificationBell />
         </div>
       </div>
