@@ -17,9 +17,12 @@ function formatHeaderDate(date: Date): string {
 // quando o usuário está nesta página). O fundo ambiente vem do layout
 // (components/layout/AmbientBackground).
 //
-// Ordem: título → "Seu plano" → "Precisa da sua atenção". As duas seções
-// são de recrutamento/empresa: só ADMIN e HR veem (EMPLOYEE vê só o
-// título). "Ver planos" só pra ADMIN.
+// Ordem: título → "Precisa da sua atenção" → card "Seu plano" no CANTO
+// INFERIOR DIREITO (margin-top: auto + align-self: flex-end no .fin-content,
+// que é coluna flex e cresce até o fim da tela — fica no canto sem sobrepor
+// nada; se a página crescer, desce junto). As duas seções são de
+// recrutamento/empresa: só ADMIN e HR veem (EMPLOYEE vê só o título).
+// "Ver planos" só pra ADMIN.
 export default async function InicioPage() {
   const session = await requireSession();
   const header = <Header title="Início" date={formatHeaderDate(new Date())} />;
@@ -35,8 +38,6 @@ export default async function InicioPage() {
     <>
       {header}
       <div className="fin-content">
-        <PlanSummaryCard plan={plan} used={used} showPlansLink={session.role === "ADMIN"} />
-
         <section aria-labelledby="atencao-titulo" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h2 id="atencao-titulo" className="fin-heading" style={{ margin: 0 }}>
             Precisa da sua atenção
@@ -53,6 +54,10 @@ export default async function InicioPage() {
             </div>
           )}
         </section>
+
+        <div className="mt-auto w-full self-end sm:w-96">
+          <PlanSummaryCard plan={plan} used={used} showPlansLink={session.role === "ADMIN"} />
+        </div>
       </div>
     </>
   );
