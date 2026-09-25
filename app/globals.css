@@ -418,17 +418,23 @@ body {
   position: relative;
 }
 
-/* ---- Fundo ambiente (só tela Início) ----
-   Camada fixa atrás de tudo: base branca levemente fria + 3 brilhos, cada
-   um uma camada maior que o brilho visível, feita só com radial-gradient
-   de várias paradas (transição suave sem filter: blur). Posições e tamanhos
-   em vw/vh (porcentagem da tela) pra manter a composição em qualquer
-   largura; overflow: hidden impede barra de rolagem. Animação só de
-   transform e opacity, durações diferentes (47s, 61s, 73s) pra nunca
-   sincronizar; deslocamento de 3 a 5% da tela, escala 0.95 a 1.08. */
+/* ---- Fundo ambiente (só tela Início, só na ÁREA DA PÁGINA) ----
+   A Sidebar é branca e opaca; o efeito fica só à direita dela. Camada
+   sticky do tamanho da tela como PRIMEIRO filho do .fin-main: margin-bottom
+   negativo = ocupa 0 de altura no fluxo; sticky = acompanha o scroll; a
+   largura segue o menu aberto/recolhido sozinha. Base branca levemente fria
+   + 3 brilhos, cada um uma camada maior que o brilho visível, feita só com
+   radial-gradient de várias paradas (sem filter: blur). Posições e tamanhos
+   em % da ÁREA (mesma composição em qualquer largura); overflow: hidden
+   impede barra de rolagem. Animação só de transform e opacity, durações
+   diferentes (47s, 61s, 73s) pra nunca sincronizar; deslocamento de 3 a 5%
+   da tela, escala 0.95 a 1.08. */
 .fin-ambient {
-  position: fixed;
-  inset: 0;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  height: 100vh;
+  margin-bottom: -100vh;
   overflow: hidden;
   pointer-events: none;
   background: var(--ambient-base);
@@ -441,13 +447,14 @@ body {
   animation-direction: alternate;
   animation-iteration-count: infinite;
 }
-/* Principal: centro em (0%, 85%), o mais intenso. Elipse com raio de 56vw
-   x 56vh — o azul visível chega a ~40% da largura e sobe até ~55% da altura. */
+/* Principal: centro em (0%, 85%) da área, o mais intenso. Elipse com raio
+   de 56% x 56% — o azul visível chega a ~40% da largura e sobe até ~55% da
+   altura. */
 .fin-ambient__glow--main {
-  width: 112vw;
-  height: 112vh;
-  left: -56vw;
-  top: calc(85vh - 56vh);
+  width: 112%;
+  height: 112%;
+  left: -56%;
+  top: 29%;
   /* Muitas paradas com transparência em curva suave (sem anéis visíveis). */
   background: radial-gradient(
     closest-side,
@@ -471,10 +478,10 @@ body {
 /* Secundário: centro em (92%, 5%), mais fraco — some a ~30% da largura
    pra esquerda e ~25% da altura pra baixo. */
 .fin-ambient__glow--top {
-  width: 84vw;
-  height: 56vh;
-  left: calc(92vw - 42vw);
-  top: calc(5vh - 28vh);
+  width: 84%;
+  height: 56%;
+  left: 50%;
+  top: -23%;
   background: radial-gradient(
     closest-side,
     color-mix(in srgb, var(--ambient-blue-top) 80%, transparent) 0%,
@@ -494,10 +501,10 @@ body {
 /* Toque azul-lavanda na lateral esquerda, em (5%, 40%) — transição entre o
    brilho de baixo e o branco. Baixa opacidade. */
 .fin-ambient__glow--lavender {
-  width: 56vw;
-  height: 60vh;
-  left: calc(5vw - 28vw);
-  top: calc(40vh - 30vh);
+  width: 56%;
+  height: 60%;
+  left: -23%;
+  top: 10%;
   background: radial-gradient(
     closest-side,
     color-mix(in srgb, var(--ambient-lavender) 40%, transparent) 0%,
@@ -596,6 +603,9 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  /* Posicionado pra pintar POR CIMA do fundo ambiente (que vem antes na
+     árvore, dentro do .fin-main). */
+  position: relative;
   animation: fin-page-enter 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
 }
 

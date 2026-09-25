@@ -17,10 +17,11 @@ export default async function DashboardGroupLayout({ children }: { children: Rea
 
   return (
     <div className="fin-app">
-      {/* Primeira camada: fundo ambiente, só renderiza na tela Início. */}
-      <AmbientBackground />
       <Sidebar userName={session.name} companyName={company?.name} />
       <div className="fin-main">
+        {/* Primeira camada da ÁREA DA PÁGINA (a Sidebar é branca e fica de
+            fora): fundo ambiente, só renderiza na tela Início. */}
+        <AmbientBackground />
         <PageTransition>{children}</PageTransition>
       </div>
     </div>

@@ -104,6 +104,10 @@ do fluxo real do produto.
 
 - Largura 280px expandida / 76px recolhida (`localStorage`, sobrevive a
   reload).
+- **Fundo branco opaco** (sem transparência/desfoque). O fundo animado da
+  Início (`AmbientBackground`) fica só na área da página, à direita: é o
+  primeiro filho do `.fin-main`, numa camada `sticky` do tamanho da tela, com
+  posições em % da área (acompanha o menu aberto/recolhido).
 - "Início" (antigo "Dashboard") fica **fora de `GROUPS`**, sem rótulo de
   seção acima — é o pouso fixo pós-login (sempre lá, nunca "último módulo
   visitado"), por isso nenhuma seção do menu acende quando o usuário está

@@ -9,9 +9,12 @@ import { usePathname } from "next/navigation";
 // mantém translateY(0) no fim) — um ancestral com transform faz o
 // `position: fixed` se prender a ele em vez da tela.
 //
-// Empilhamento sem z-index negativo: .fin-app tem `isolation: isolate` e
-// este fundo é o PRIMEIRO filho; .fin-main e a Sidebar (posicionados, sem
-// z-index) vêm depois na árvore e pintam por cima. Estilos e cores em
+// Só na ÁREA DA PÁGINA (à direita da Sidebar, que é branca e opaca): este
+// fundo é o PRIMEIRO filho do .fin-main, numa camada `sticky` do tamanho da
+// tela (ocupa 0 de altura no fluxo), então acompanha a largura do menu
+// aberto/recolhido e o scroll. Empilhamento sem z-index negativo:
+// .fin-app tem `isolation: isolate` e o conteúdo (.fin-page-enter,
+// posicionado) vem depois na árvore e pinta por cima. Estilos e cores em
 // globals.css (seção "Fundo ambiente").
 export function AmbientBackground() {
   const pathname = usePathname();
