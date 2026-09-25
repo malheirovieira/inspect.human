@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { ArrowUp } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { isTopPlan } from "@/lib/plans";
 import { getCompanyPlan } from "@/services/plans";
 
 // Botão "Upgrade" da barra superior, à esquerda do sino.
-// Referência visual: Uiverse.io (licença MIT) — adaptado ao design system
-// (altura de 36px pra caber na barra, cores/raios/sombras do sistema). CSS
-// em globals.css (.fin-upgrade).
+// Referência visual: Uiverse.io (licença MIT) — simplificado: só branco
+// (sem moldura cinza), 36px de altura pra caber na barra, seta reta pra
+// direita. CSS em globals.css (.fin-upgrade).
 //
 // Server Component: só ADMIN vê, e some quando a empresa já está no plano
 // mais alto. Leva pra /configuracoes/planos (também só ADMIN).
@@ -25,7 +25,7 @@ export async function UpgradeButton() {
           <span className="fin-upgrade__pro">PRO</span>
         </span>
         <span className="fin-upgrade__icon" aria-hidden="true">
-          <ArrowUp size={13} strokeWidth={2.5} />
+          <ArrowRight size={15} strokeWidth={1.75} />
         </span>
       </span>
     </Link>

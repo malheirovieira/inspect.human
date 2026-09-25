@@ -743,21 +743,21 @@ body {
 }
 
 /* ---- Botão "Upgrade" da barra superior (components/layout/UpgradeButton) ----
-   Referência: Uiverse.io (licença MIT), reduzida pra 36px de altura (o sino
-   ao lado tem 44px) com sombras no padrão do sistema. Ícone de seta girado
-   45 graus que volta a 0 no hover. */
+   Referência: Uiverse.io (licença MIT), simplificada a pedido do usuário:
+   só branco (sem a moldura cinza nem sombra), 36px de altura (o sino ao lado
+   tem 44px) e seta reta pra direita, fina, que desliza 2px no hover. */
 .fin-upgrade {
   display: inline-flex;
   flex-shrink: 0;
-  padding: 3px;
   border-radius: var(--radius-sm);
-  background: var(--surface-muted);
-  box-shadow: var(--shadow-sm);
+  background: var(--surface);
   text-decoration: none;
   transition: box-shadow 0.2s ease;
 }
+/* Hover: continua branco (o cinza da barra faria o botão "sumir"); só uma
+   sombra leve + a seta deslizando. */
 .fin-upgrade:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 .fin-upgrade:focus-visible {
   outline: none;
@@ -766,13 +766,9 @@ body {
 .fin-upgrade__inner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 30px;
-  padding: 3px 3px 3px 10px;
-  border-radius: 7px;
-  background: var(--surface);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  box-sizing: border-box;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px 0 12px;
   transition: transform 0.2s ease;
 }
 .fin-upgrade:active .fin-upgrade__inner {
@@ -799,20 +795,14 @@ body {
   line-height: 1.4;
 }
 .fin-upgrade__icon {
-  width: 24px;
-  height: 24px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--surface-muted);
-  color: var(--text-primary);
-  transform: rotate(45deg);
+  color: var(--text-secondary);
   transition: transform 0.2s ease;
 }
 .fin-upgrade:hover .fin-upgrade__icon,
 .fin-upgrade:focus-visible .fin-upgrade__icon {
-  transform: rotate(0deg);
+  transform: translateX(2px);
 }
 /* Celular: sem a palavra, fica o selo PRO + seta (o aria-label mantém o nome). */
 @media (max-width: 480px) {
