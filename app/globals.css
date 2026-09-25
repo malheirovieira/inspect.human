@@ -1015,10 +1015,11 @@ body {
 
 /* ---- Início: faixa de depoimentos (components/inicio/TestimonialsStrip) ----
    Card com o visual da referência — From Uiverse.io by Yaya12085 (licença
-   MIT) — reduzido proporcionalmente (largura máx. 260px). Diferenças
-   pedidas: cursor default no card (botões: pointer), sem contorno no hover,
-   "X" (Fechar) no lugar dos três pontos. Carrossel POR PÁGINA (5/4/2/1 cards
-   conforme a largura, definido no componente): a página inteira desliza,
+   MIT) — compacto e HORIZONTAL: ocupa 1/N da faixa, altura baixa (texto em
+   até 3 linhas + nome em 1 linha). Diferenças pedidas: cursor default no
+   card (botões: pointer), sem contorno no hover, "X" (Fechar) no lugar dos
+   três pontos. Carrossel POR PÁGINA (3/2/1 cards conforme a largura,
+   definido no componente), 32px entre os cards: a página inteira desliza,
    sem rolagem nativa nem barra de rolagem. */
 .fin-testimonials-section {
   display: flex;
@@ -1064,17 +1065,23 @@ body {
   padding: 8px;
   margin: -8px;
 }
+/* Celular: card a 16px das bordas da tela (o conteúdo tem 40px de recuo). */
+@media (max-width: 639px) {
+  .fin-testimonials {
+    margin-inline: -32px;
+  }
+}
 .fin-testimonials:focus-visible {
   outline: 2px solid #1389eb;
   outline-offset: -2px;
   border-radius: 8px;
 }
-/* Uma página = grade com N colunas de até 260px (N no estilo inline). */
+/* Uma página = grade com N colunas iguais (N no estilo inline), 32px entre
+   os cards. */
 .fin-testimonials__page {
   position: relative;
   display: grid;
-  gap: 1rem;
-  justify-content: start;
+  gap: 32px;
   /* arraste horizontal é do carrossel; o vertical continua rolando a página */
   touch-action: pan-y;
 }
@@ -1118,7 +1125,6 @@ body {
   border-radius: 8px;
   box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
   border: 3px dashed transparent;
-  max-width: 260px;
   width: 100%;
   user-select: none;
 }

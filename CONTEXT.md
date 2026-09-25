@@ -519,8 +519,9 @@ da Início em 2026-09-25 (a pedido); `getMonthlyAiUsage` continua, pra etapa
   `lib/testimonials.ts`): **FICTÍCIOS e provisórios** — pessoas e empresas
   inventadas, serão trocados pelos comentários reais com a MESMA estrutura
   (`Testimonial`). 10 depoimentos num CARROSSEL POR PÁGINA (framer-motion,
-  sem rolagem nativa): página = cards visíveis — 5 a partir de 1440px de
-  largura, 4 no desktop, 2 no tablet, 1 no celular. A fileira inteira desliza
+  sem rolagem nativa): página = cards visíveis — 3 no desktop (qualquer
+  largura a partir de 1024px), 2 no tablet, 1 no celular; 32px entre os cards
+  (no celular, card a 16px das bordas da tela). A fileira inteira desliza
   (~700ms, ease-in-out) na direção do movimento; depois da última volta à
   primeira pro mesmo lado (loop); última página incompleta é completada com
   os primeiros. Avanço automático a cada 6s, com pausa (mouse em cima, foco
@@ -528,8 +529,8 @@ da Início em 2026-09-25 (a pedido); `getMonthlyAiUsage` continua, pra etapa
   página, bolinhas abaixo levam à página, arrastar (dedo, mouse ou gesto
   horizontal do touchpad) troca de página; qualquer um reinicia os 6s.
   prefers-reduced-motion: sem avanço automático e sem animação.
-  Card com o visual da referência (From Uiverse.io by Yaya12085) REDUZIDO:
-  máx. 260px, padding 0.75rem, texto 13px limitado a 3 linhas, nome/cargo/
+  Card com o visual da referência (From Uiverse.io by Yaya12085), compacto e
+  HORIZONTAL: ocupa 1/N da faixa (sem largura máxima), padding 0.75rem, texto 13px limitado a 3 linhas, nome/cargo/
   empresa em 1 linha (11px), etiqueta 11px, avatar 24px, ícones 16px, todos
   da mesma altura. Etiqueta com o
   segmento, "X" (Fechar, no lugar dos três pontos), depoimento entre aspas + nome · cargo · empresa, ações Amei /

@@ -8,13 +8,15 @@ import type { Testimonial } from "@/lib/testimonials";
 // Faixa "O que dizem sobre o Inspect Talent" (tela Início) — carrossel POR
 // PÁGINA com avanço automático.
 // Card com o visual da referência — From Uiverse.io by Yaya12085 (licença
-// MIT), reduzido proporcionalmente (CSS em globals.css, .fin-testimonial).
+// MIT), compacto e horizontal: ocupa 1/N da faixa (CSS em globals.css,
+// .fin-testimonial).
 //
-// Página = grupo de cards visíveis: 5 a partir de 1440px de largura, 4 no
-// desktop, 2 no tablet, 1 no celular. A fileira inteira desliza (~700ms,
-// ease-in-out) e a próxima entra, sempre na direção do movimento — depois da
-// última volta à primeira continuando pro mesmo lado (loop, sem "voltar
-// correndo"). Última página incompleta é completada com os primeiros.
+// Página = grupo de cards visíveis: 3 no desktop (qualquer largura a partir
+// de 1024px), 2 no tablet, 1 no celular; 32px entre os cards. A fileira
+// inteira desliza (~700ms, ease-in-out) e a próxima entra, sempre na direção
+// do movimento — depois da última volta à primeira continuando pro mesmo lado
+// (loop, sem "voltar correndo"). Última página incompleta é completada com os
+// primeiros.
 // Avanço automático a cada 6s; pausa com mouse em cima, foco do teclado,
 // arraste, aba oculta ou botão Pausar. Setas, bolinhas e arraste (dedo ou
 // touchpad) trocam de página e reiniciam a contagem. prefers-reduced-motion:
@@ -32,8 +34,7 @@ const SWIPE_PX = 50;
 
 // Cards por página conforme a largura da tela.
 const BREAKPOINTS: [query: string, perPage: number][] = [
-  ["(min-width: 1440px)", 5],
-  ["(min-width: 1024px)", 4],
+  ["(min-width: 1024px)", 3],
   ["(min-width: 640px)", 2],
 ];
 
@@ -163,7 +164,7 @@ export function TestimonialsStrip({ items }: { items: Testimonial[] }) {
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const [pinned, setPinned] = useState<string[]>([]);
   const [dismissed, setDismissed] = useState<string[]>([]);
-  const [perPage, setPerPage] = useState(4); // SSR: desktop comum
+  const [perPage, setPerPage] = useState(3); // SSR: desktop
   // Antes de ler localStorage/largura, render estático (sem animação); ao
   // ler, os fechados somem e a quantidade por página se ajusta SEM animar.
   const [ready, setReady] = useState(false);
@@ -293,7 +294,8 @@ export function TestimonialsStrip({ items }: { items: Testimonial[] }) {
     />
   );
 
-  const gridStyle = { gridTemplateColumns: `repeat(${perPage}, minmax(0, 260px))` };
+  // Cada card ocupa 1/N da faixa, descontados os espaços de 32px (CSS).
+  const gridStyle = { gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))` };
   const slide = { duration: reduceMotion ? 0 : SLIDE_S, ease: "easeInOut" as const };
 
   return (
@@ -395,13 +397,7 @@ export function TestimonialsStrip({ items }: { items: Testimonial[] }) {
       </div>
 
       {multiPage && (
-        <div
-          className="fin-testimonials__dots"
-          role="group"
-          aria-label="Páginas de depoimentos"
-          // Centraliza sob a fileira de cards (que fica à esquerda), não sob a largura toda.
-          style={{ maxWidth: perPage * 260 + (perPage - 1) * 16 }}
-        >
+        <div className="fin-testimonials__dots" role="group" aria-label="Páginas de depoimentos">
           {Array.from({ length: pageCount }, (_, i) => (
             <button
               key={i}
