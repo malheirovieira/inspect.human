@@ -56,7 +56,14 @@ pra recriar no futuro.
 - **Vitest 4** (testes — ver seção "Testes"). Fixado na 4 porque a 5 exige
   `@types/node` >= 22 e o projeto está no 20.
 - Hospedagem: **Vercel Hobby** + **Supabase free** (ver "Pendências antes do
-  primeiro cliente").
+  primeiro cliente"). `vercel.json` define `"regions": ["gru1"]` (São Paulo)
+  para minimizar latência até o Supabase em `sa-east-1`; disponível a partir
+  do plano Pro — confirmar no painel antes do próximo deploy.
+- **Performance (2026-09-26)**: `services/company.ts` exporta `getCompany()`
+  cacheada com React `cache()` — layout, vaga e UpgradeButton compartilham
+  1 query por requisição. `getProfileAiState` aceita dados prefetchados do
+  `getPerson()` (elimina 1 query duplicada no perfil). `AutoRefresh` usa
+  `GET /api/analysis/[id]/status` em vez de `router.refresh()` a cada tick.
 
 ## Rotas implementadas
 
@@ -287,7 +294,7 @@ depois.
 | Variável | Padrão | Uso |
 |---|---|---|
 | `AI_PROVIDER` | `mock` | `mock` \| `gemini` \| `openai`; valor inválido = erro (não cai pra mock em silêncio) |
-| `AI_MODEL` | nenhum | obrigatório pra gemini/openai; nenhum nome de modelo no código |
+| `AI_MODEL` | nenhum | obrigatório pra gemini/openai; nenhum nome de modelo no código — produção usa `gemini-3.5-flash-lite` (validado localmente em 2026-09-24) |
 | `GEMINI_API_KEY` / `OPENAI_API_KEY` | nenhum | só no servidor, nunca `NEXT_PUBLIC_` |
 | `AI_ALLOW_REAL_DATA` | `false` | só `"true"` libera candidato real. **Só com plano PAGO** — os termos do Gemini free proíbem dado pessoal e permitem revisão humana |
 
@@ -301,8 +308,9 @@ currículo e a geração mais recente); ações em
   do currículo; some se a pessoa não tem currículo. Mostra resumo,
   experiência (+ frase de base), formação, últimos cargos e tags. Rótulo
   "Gerado por IA · revise antes de decidir" (ou "Exemplo simulado · sem IA"
-  no mock) + data, só com análise concluída. Estados: Processando (recarrega
-  a cada 10s — `AutoRefresh`), Concluído, Falhou ("Tentar novamente";
+  no mock) + data, só com análise concluída. Estados: Processando (poll
+  leve a cada 10s via `AutoRefresh` → `GET /api/analysis/[id]/status` →
+  `router.refresh()` uma única vez ao terminar), Concluído, Falhou ("Tentar novamente";
   PDF ilegível pede nova versão em vez disso), Sem texto legível, e o motivo
   da ferramenta não rodar (`AI_BLOCK_REASON_LABELS`) — nesse caso nenhum
   botão de gerar aparece. "Gerar resumo"/"Gerar novamente" criam nova
