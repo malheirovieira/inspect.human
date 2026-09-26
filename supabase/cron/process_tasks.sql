@@ -23,8 +23,6 @@ create extension if not exists pg_net;
 
 -- Segredos no Vault. Pra trocar depois:
 --   select vault.update_secret(id, '<novo valor>') from vault.secrets where name = 'tasks_cron_secret';
-select vault.create_secret('<URL_DO_APP>/api/cron/tasks', 'tasks_cron_url', 'Rota do processador de tarefas');
-select vault.create_secret('<CRON_SECRET>', 'tasks_cron_secret', 'Bearer da rota /api/cron/tasks');
 
 create or replace function public.dispatch_background_tasks()
 returns void

@@ -1480,6 +1480,14 @@ body {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
+/* ---- Linha de lista clicável (CandidatesBoard, lista de Vagas, etc.) ---- */
+.fin-list-row {
+  transition: background 0.15s ease;
+}
+.fin-list-row:hover {
+  background: var(--surface-muted);
+}
+
 /* ---- Card do Kanban de candidatos — estilo Trello ---- */
 .fin-kanban-card {
   background: var(--white);

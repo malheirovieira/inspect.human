@@ -54,6 +54,7 @@ export function CandidatesBoard({
               ? `/recrutamento/vagas/${jobId}/candidaturas/${candidate.id}`
               : `/recrutamento/banco-de-talentos/${candidate.candidateId}`
           }
+          className="fin-list-row"
           style={{
             display: "flex",
             alignItems: "center",
