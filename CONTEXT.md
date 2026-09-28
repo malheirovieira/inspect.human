@@ -152,7 +152,7 @@ estar assim; confirme antes de assumir o contrário.
   abaixo), não texto solto na pessoa.
 - **`Application`** — a CANDIDATURA de um Candidate a UMA vaga: `stage`,
   `position` (ordem manual no Kanban), `qualificationTag`, `hiredAt`. Etapas
-  em `schemas/candidate.ts` (`CANDIDATE_STAGES`): `TRIAGE, TEST, INTERVIEW,
+  em `schemas/candidate.ts` (`CANDIDATE_STAGES`): `TRIAGE, INTERVIEW, TEST,
   PROPOSAL, HIRED, REJECTED` — sem check constraint no banco (validado só
   no Zod, mais barato adicionar etapa nova). `PIPELINE_STAGES` é a mesma
   lista sem `REJECTED` (usada no funil do painel e no checklist da
@@ -376,7 +376,7 @@ talentos"), `RED` ("Perfil incompatível") — só existe/edita enquanto
 
 1. Marcar a tag como `RED` reprova a candidatura na hora (move pra
    `REJECTED` automaticamente, sem precisar de um segundo passo manual).
-2. Só é possível sair de `TRIAGE` pra frente (Teste/Entrevista/Proposta/
+2. Só é possível sair de `TRIAGE` pra frente (Entrevista/Teste/Proposta/
    Contratado) se a tag for `GREEN` — tentando avançar sem isso (pelo
    Kanban OU pelo checklist, mesma regra pros dois) reprova automaticamente
    em vez de mover pra etapa pedida. Isso é decisão de produto, não bug: só
