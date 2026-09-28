@@ -1,50 +1,55 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Interview } from '@prisma/client';
-import { InterviewCard } from './InterviewCard';
-import { ScheduleInterviewModal } from './ScheduleInterviewModal';
-import { Calendar } from 'lucide-react';
+import { useState } from "react";
+import type { Interview } from "@prisma/client";
+import { Calendar } from "lucide-react";
+import { InterviewCard } from "./InterviewCard";
+import { InterviewForm } from "./InterviewForm";
 
-interface InterviewSectionProps {
-  applicationId: string;
-  candidateName: string;
-  interviews?: Interview[];
-}
-
+// Componente único que decide o que mostrar (botão tracejado, formulário
+// inline expandido, ou card com a entrevista) — nunca modal/overlay, mesmo
+// padrão de edição inline do resto do projeto (ver components/ui/EditLock).
 export function InterviewSection({
   applicationId,
-  candidateName,
   interviews = [],
-}: InterviewSectionProps) {
-  const [showModal, setShowModal] = useState(false);
+}: {
+  applicationId: string;
+  interviews?: Interview[];
+}) {
+  const [editing, setEditing] = useState(false);
   const interview = interviews[0];
 
-  return (
-    <>
-      {interview ? (
-        <InterviewCard
-          interview={interview}
-          applicationId={applicationId}
-          onSchedule={() => setShowModal(true)}
-        />
-      ) : (
-        <button
-          onClick={() => setShowModal(true)}
-          className="w-full p-6 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-gray-400 hover:bg-gray-50 transition-colors"
-        >
-          <Calendar className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600 font-medium">Agendar Entrevista</p>
-        </button>
-      )}
+  if (editing) {
+    return (
+      <InterviewForm
+        applicationId={applicationId}
+        initial={interview}
+        onCancel={() => setEditing(false)}
+        onSaved={() => setEditing(false)}
+      />
+    );
+  }
 
-      {showModal && (
-        <ScheduleInterviewModal
-          applicationId={applicationId}
-          candidateName={candidateName}
-          onClose={() => setShowModal(false)}
-        />
-      )}
-    </>
+  if (interview) {
+    return <InterviewCard interview={interview} applicationId={applicationId} onEdit={() => setEditing(true)} />;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      style={{
+        width: "100%",
+        padding: 24,
+        border: "2px dashed var(--border)",
+        borderRadius: "var(--radius-md)",
+        textAlign: "center",
+        cursor: "pointer",
+        background: "transparent",
+      }}
+    >
+      <Calendar size={24} style={{ color: "var(--text-muted)", margin: "0 auto 8px" }} />
+      <p style={{ fontWeight: 500, color: "var(--text-muted)", margin: 0 }}>Agendar Entrevista</p>
+    </button>
   );
 }

@@ -3,8 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { ApplicationHeader } from "@/components/recrutamento/ApplicationHeader";
 import { CandidateProcessChecklist } from "@/components/recrutamento/CandidateProcessChecklist";
 import { CandidateTimeline } from "@/components/recrutamento/CandidateTimeline";
-import { ScheduleInterviewButton } from "@/components/recrutamento/ScheduleInterviewButton";
-import { InterviewCard } from "@/components/recrutamento/InterviewCard";
+import { InterviewSection } from "@/components/recrutamento/InterviewSection";
 import { getApplication } from "@/services/applications";
 import { listApplicationEvents } from "@/services/applicationEvents";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
@@ -57,11 +56,7 @@ export default async function CandidaturaDetalhePage({
           stageLabels={stageLabels}
         />
 
-        <ScheduleInterviewButton
-          applicationId={application.id}
-          candidateName={application.candidate.name}
-          interviews={application.interviews ?? []}
-        />
+        <InterviewSection applicationId={application.id} interviews={application.interviews ?? []} />
 
         <CandidateProcessChecklist
           applicationId={application.id}
@@ -69,14 +64,6 @@ export default async function CandidaturaDetalhePage({
           stageLabels={stageLabels}
           rejectedFromStage={rejectedFromStage ?? null}
         />
-
-        {(application.interviews ?? []).length > 0 && (
-          <InterviewCard
-            interview={(application.interviews ?? [])[0]}
-            applicationId={application.id}
-            onSchedule={() => {}}
-          />
-        )}
 
         <CandidateTimeline applicationId={application.id} events={events} />
       </div>
