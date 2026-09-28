@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { scheduleInterview } from '@/app/actions/scheduleInterview';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, X } from 'lucide-react';
@@ -25,6 +25,14 @@ export function ScheduleInterviewModal({
   const [guests, setGuests] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Impede scroll da página quando modal está aberto
+  React.useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
