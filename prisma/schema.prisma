@@ -64,6 +64,7 @@ model Company {
   assessmentChoices   AssessmentChoice[]
   assessmentResponses AssessmentResponse[]
   assessmentAnswers   AssessmentAnswer[]
+  emailTemplates      EmailTemplate[]
 
   @@map("companies")
   @@schema("public")
@@ -281,6 +282,7 @@ model Application {
   events    ApplicationEvent[]
   consents  Consent[]
   assessmentResponses AssessmentResponse[]
+  emailLogs EmailLog[]
 
   @@index([companyId])
   @@index([companyId, jobId])
@@ -722,5 +724,46 @@ model AssessmentAnswer {
   @@index([companyId])
   @@index([questionId], map: "idx_assessment_answers_question")
   @@map("assessment_answers")
+  @@schema("public")
+}
+
+// Fase 1: Comunicação & Engajamento
+
+model EmailTemplate {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String
+  subject   String
+  bodyHtml  String   @map("body_html")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  logs    EmailLog[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("email_templates")
+  @@schema("public")
+}
+
+model EmailLog {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId    String   @map("application_id") @db.Uuid
+  templateId       String   @map("template_id") @db.Uuid
+  recipientEmail   String   @map("recipient_email")
+  subject          String
+  bodyHtml         String   @map("body_html")
+  status           String   @default("queued")
+  sentAt           DateTime? @map("sent_at") @db.Timestamptz(6)
+  errorMessage     String?  @map("error_message")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  application Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  template    EmailTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_logs")
   @@schema("public")
 }
