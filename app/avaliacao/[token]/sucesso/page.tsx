@@ -43,8 +43,3 @@ export default function SucessoPage() {
     </div>
   );
 }
-
-export const metadata = {
-  title: 'Sucesso - Inspect Talent',
-  description: 'Sua avaliação foi enviada',
-};

@@ -7,13 +7,25 @@
  * Uso prod: Cron job (supabase/cron/process_tasks.sql)
  */
 
-import { prisma } from '@/lib/prisma';
-import { sendEmailViaResend } from '@/lib/email';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
+// Import dinâmico DEPOIS do dotenv.config(): imports estáticos são hoisted
+// pelo esbuild/tsx (mesmo compilando para CJS) e rodariam antes do
+// dotenv.config() carregar .env.local — lib/prisma.ts leria DATABASE_URL
+// undefined nesse caso. Only affects standalone scripts; o Next.js já
+// carrega .env.local sozinho, então app/actions/* não precisam disso.
+async function loadDeps() {
+  const { prisma } = await import('@/lib/prisma');
+  const { sendEmailViaResend } = await import('@/lib/email');
+  return { prisma, sendEmailViaResend };
+}
 
 const BATCH_SIZE = 10;
 
 async function processPendingTasks() {
   console.log('[process-tasks] Iniciando...');
+  const { prisma, sendEmailViaResend } = await loadDeps();
 
   try {
     // Busca tasks pendentes em lotes
@@ -32,39 +44,40 @@ async function processPendingTasks() {
 
     for (const task of tasks) {
       try {
-        await processTask(task);
+        await processTask(task, prisma, sendEmailViaResend);
       } catch (error) {
         console.error(`[process-tasks] Erro ao processar task ${task.id}:`, error);
-        await markTaskFailed(task.id, String(error));
+        await markTaskFailed(task.id, String(error), prisma);
       }
     }
 
     console.log('[process-tasks] Concluído');
   } catch (error) {
     console.error('[process-tasks] Erro fatal:', error);
-    process.exit(1);
+    process.exitCode = 1;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-async function processTask(task: {
-  id: string;
-  type: string;
-  payload: unknown;
-}) {
+async function processTask(
+  task: { id: string; type: string; payload: unknown },
+  prisma: Awaited<ReturnType<typeof loadDeps>>['prisma'],
+  sendEmailViaResend: Awaited<ReturnType<typeof loadDeps>>['sendEmailViaResend']
+) {
   switch (task.type) {
     case 'SEND_EMAIL':
-      return await processSendEmail(task);
+      return await processSendEmail(task, prisma, sendEmailViaResend);
     default:
       console.warn(`[process-tasks] Task type desconhecido: ${task.type}`);
   }
 }
 
-async function processSendEmail(task: {
-  id: string;
-  payload: unknown;
-}) {
+async function processSendEmail(
+  task: { id: string; payload: unknown },
+  prisma: Awaited<ReturnType<typeof loadDeps>>['prisma'],
+  sendEmailViaResend: Awaited<ReturnType<typeof loadDeps>>['sendEmailViaResend']
+) {
   const payload = task.payload as {
     emailLogId?: string;
     to?: string;
@@ -110,7 +123,11 @@ async function processSendEmail(task: {
   console.log(`[SEND_EMAIL] ✅ Enviado para ${payload.to}`);
 }
 
-async function markTaskFailed(taskId: string, error: string) {
+async function markTaskFailed(
+  taskId: string,
+  error: string,
+  prisma: Awaited<ReturnType<typeof loadDeps>>['prisma']
+) {
   const task = await prisma.backgroundTask.findUnique({
     where: { id: taskId },
   });

@@ -11,7 +11,7 @@ async function loadAssessment(token: string): Promise<AssessmentPublicData | nul
     ? `https://${process.env.VERCEL_URL}`
     : 'http://localhost:3000';
 
-  const res = await fetch(`${baseUrl}/avaliacao/${token}`, {
+  const res = await fetch(`${baseUrl}/api/avaliacao/${token}`, {
     cache: 'no-store',
   });
 
