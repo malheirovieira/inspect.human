@@ -98,7 +98,11 @@ export async function sendEmailViaResend(
       html,
     });
 
-    return { success: true, messageId: result.id };
+    if (result.error) {
+      return { success: false, error: result.error.message };
+    }
+
+    return { success: true, messageId: result.data.id };
   } catch (error) {
     console.error('[sendEmailViaResend]', error);
     return { success: false, error: String(error) };

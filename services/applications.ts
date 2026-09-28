@@ -11,6 +11,7 @@ export async function getApplication(applicationId: string) {
     include: {
       candidate: { select: { id: true, name: true, email: true, phone: true, linkedinUrl: true } },
       job: { select: { id: true, title: true } },
+      interviews: { orderBy: { createdAt: "desc" } },
     },
   });
 }

@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { ApplicationHeader } from "@/components/recrutamento/ApplicationHeader";
 import { CandidateProcessChecklist } from "@/components/recrutamento/CandidateProcessChecklist";
 import { CandidateTimeline } from "@/components/recrutamento/CandidateTimeline";
+import { InterviewSection } from "@/components/recrutamento/InterviewSection";
 import { getApplication } from "@/services/applications";
 import { listApplicationEvents } from "@/services/applicationEvents";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
@@ -60,6 +61,14 @@ export default async function CandidaturaDetalhePage({
           stageLabels={stageLabels}
           rejectedFromStage={rejectedFromStage ?? null}
         />
+
+        {application.stage === "INTERVIEW" && (
+          <InterviewSection
+            applicationId={application.id}
+            candidateName={application.candidate.name}
+            interviews={application.interviews ?? []}
+          />
+        )}
 
         <CandidateTimeline applicationId={application.id} events={events} />
       </div>
