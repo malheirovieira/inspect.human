@@ -7,12 +7,8 @@ import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   Home,
-  Users,
   Briefcase,
-  GraduationCap,
-  TrendingUp,
   Settings,
-  HelpCircle,
   LogOut,
   ChevronRight,
   ChevronLeft,
@@ -74,19 +70,6 @@ const DASHBOARD: NavItem & { icon: LucideIcon } = {
 
 const GROUPS: NavGroup[] = [
   {
-    label: "Pessoas",
-    icon: Users,
-    section: "PESSOAS",
-    href: "/pessoas",
-    // Colaboradores/Desligamentos: módulo em desenvolvimento por ora — fica
-    // cinza e sem interação no menu, igual "Ajuda".
-    disabled: true,
-    items: [
-      { href: "/colaboradores", label: "Colaboradores" },
-      { href: "/desligamentos", label: "Desligamentos" },
-    ],
-  },
-  {
     label: "Recrutamento",
     icon: Briefcase,
     section: "PESSOAS",
@@ -94,36 +77,15 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/recrutamento/vagas", label: "Vagas" },
       { href: "/recrutamento/banco-de-talentos", label: "Banco de Talentos" },
+      { href: "/recrutamento/testes", label: "Testes e Avaliações" },
     ],
-  },
-  {
-    label: "Desenvolvimento",
-    icon: GraduationCap,
-    section: "PESSOAS",
-    href: "/desenvolvimento",
-    // Módulo em desenvolvimento por ora — mesmo bloqueio do grupo Pessoas.
-    disabled: true,
-    items: [
-      { href: "/desenvolvimento/trilhas", label: "Trilhas" },
-      { href: "/desenvolvimento/progresso", label: "Progresso" },
-    ],
-  },
-  {
-    label: "Gestão",
-    icon: TrendingUp,
-    section: "ANÁLISE",
-    href: "/gestao",
-    // Módulo em desenvolvimento por ora — mesmo bloqueio do grupo Pessoas.
-    disabled: true,
-    items: [{ href: "/gestao/kpis", label: "KPIs" }],
   },
 ];
 
-const SECTION_ORDER = ["PESSOAS", "ANÁLISE"];
+const SECTION_ORDER = ["PESSOAS"];
 
 const OUTROS: (NavItem & { icon: LucideIcon })[] = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
-  { href: "/ajuda", label: "Ajuda", icon: HelpCircle, disabled: true },
 ];
 
 function groupForPath(pathname: string): string | null {

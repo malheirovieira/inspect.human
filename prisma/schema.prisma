@@ -59,6 +59,11 @@ model Company {
   candidateResumes    CandidateResume[]
   resumeAnalyses      ResumeAnalysis[]
   consents            Consent[]
+  assessments         Assessment[]
+  assessmentQuestions AssessmentQuestion[]
+  assessmentChoices   AssessmentChoice[]
+  assessmentResponses AssessmentResponse[]
+  assessmentAnswers   AssessmentAnswer[]
 
   @@map("companies")
   @@schema("public")
@@ -273,6 +278,7 @@ model Application {
   resume    CandidateResume? @relation("ApplicationResume", fields: [resumeId], references: [id], onDelete: SetNull)
   events    ApplicationEvent[]
   consents  Consent[]
+  assessmentResponses AssessmentResponse[]
 
   @@index([companyId])
   @@index([companyId, jobId])
@@ -607,5 +613,111 @@ model BackgroundTask {
 
   @@index([companyId, status, updatedAt(sort: Desc)], map: "idx_background_tasks_company_status")
   @@map("background_tasks")
+  @@schema("public")
+}
+
+// Fase 2: Testes e Avaliações
+
+model Assessment {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  title       String
+  description String?
+  totalScore  Int      @default(0) @map("total_score")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company   Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questions AssessmentQuestion[]
+  responses AssessmentResponse[]
+
+  @@index([companyId])
+  @@map("assessments")
+  @@schema("public")
+}
+
+model AssessmentQuestion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  assessmentId String   @map("assessment_id") @db.Uuid
+  text         String
+  type         String   @default("MULTIPLE_CHOICE")
+  maxScore     Int      @default(1) @map("max_score")
+  position     Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company   Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assessment Assessment          @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  choices   AssessmentChoice[]
+  answers   AssessmentAnswer[]
+
+  @@index([assessmentId, position], map: "idx_assessment_questions_assessment")
+  @@index([companyId])
+  @@map("assessment_questions")
+  @@schema("public")
+}
+
+model AssessmentChoice {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  questionId String  @map("question_id") @db.Uuid
+  text      String
+  isCorrect Boolean  @default(false) @map("is_correct")
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company   Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  question  AssessmentQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers   AssessmentAnswer[]
+
+  @@index([questionId, position], map: "idx_assessment_choices_question")
+  @@index([companyId])
+  @@map("assessment_choices")
+  @@schema("public")
+}
+
+model AssessmentResponse {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  applicationId String   @map("application_id") @db.Uuid
+  assessmentId  String   @map("assessment_id") @db.Uuid
+  token         String   @unique
+  expiresAt     DateTime @map("expires_at") @db.Timestamptz(6)
+  submittedAt   DateTime? @map("submitted_at") @db.Timestamptz(6)
+  score         Int?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  application Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  assessment  Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers     AssessmentAnswer[]
+
+  @@index([applicationId], map: "idx_assessment_responses_application")
+  @@index([token], map: "idx_assessment_responses_token")
+  @@index([companyId])
+  @@index([submittedAt], map: "idx_assessment_responses_submitted")
+  @@map("assessment_responses")
+  @@schema("public")
+}
+
+model AssessmentAnswer {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  responseId String   @map("response_id") @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  choiceId   String?  @map("choice_id") @db.Uuid
+  score      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company   Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  response  AssessmentResponse   @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question  AssessmentQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  choice    AssessmentChoice?    @relation(fields: [choiceId], references: [id], onDelete: SetNull)
+
+  @@index([responseId], map: "idx_assessment_answers_response")
+  @@index([companyId])
+  @@index([questionId], map: "idx_assessment_answers_question")
+  @@map("assessment_answers")
   @@schema("public")
 }
