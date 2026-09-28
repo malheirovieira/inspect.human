@@ -770,13 +770,16 @@ model EmailLog {
 }
 
 model Interview {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  applicationId String   @unique @map("application_id") @db.Uuid
-  scheduledAt   DateTime @map("scheduled_at") @db.Timestamptz(6)
-  scheduledBy   String   @map("scheduled_by") @db.Uuid
-  status        String   @default("SCHEDULED")
-  notes         String?
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId   String   @unique @map("application_id") @db.Uuid
+  scheduledAt     DateTime @map("scheduled_at") @db.Timestamptz(6)
+  scheduledBy     String   @map("scheduled_by") @db.Uuid
+  status          String   @default("SCHEDULED")
+  notes           String?
+  modality        String   @default("PRESENCIAL") // "PRESENCIAL" ou "REMOTO"
+  interviewerName String?  @map("interviewer_name")
+  guests          String?  // JSON array serializado: ["João Silva", "Maria Santos"]
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 

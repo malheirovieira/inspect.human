@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Interview } from '@prisma/client';
 import { cancelInterview } from '@/app/actions/scheduleInterview';
 import { useRouter } from 'next/navigation';
-import { Calendar, Clock, FileText, Trash2 } from 'lucide-react';
+import { Calendar, Clock, FileText, Trash2, Users, MapPin, User } from 'lucide-react';
 
 interface InterviewCardProps {
   interview: Interview;
@@ -62,6 +62,27 @@ export function InterviewCard({
           <Calendar className="w-4 h-4 text-gray-400" />
           <span className="text-gray-900 font-medium">{formatted}</span>
         </div>
+
+        <div className="flex items-center gap-3 text-sm">
+          <MapPin className="w-4 h-4 text-gray-400" />
+          <span className="text-gray-900">
+            {interview.modality === 'REMOTO' ? 'Remoto' : 'Presencial'}
+          </span>
+        </div>
+
+        {interview.interviewerName && (
+          <div className="flex items-center gap-3 text-sm">
+            <User className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-900">{interview.interviewerName}</span>
+          </div>
+        )}
+
+        {interview.guests && (
+          <div className="flex items-start gap-3 text-sm">
+            <Users className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
+            <span className="text-gray-900">{interview.guests}</span>
+          </div>
+        )}
 
         {interview.notes && (
           <div className="flex gap-3 p-3 bg-gray-50 rounded-lg">

@@ -20,6 +20,9 @@ export function ScheduleInterviewModal({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [modality, setModality] = useState('PRESENCIAL');
+  const [interviewerName, setInterviewerName] = useState('');
+  const [guests, setGuests] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,7 +39,10 @@ export function ScheduleInterviewModal({
     const result = await scheduleInterview(
       applicationId,
       new Date(`${date}T${time}`),
-      notes || undefined
+      notes || undefined,
+      modality,
+      interviewerName || undefined,
+      guests || undefined
     );
 
     if (!result.success) {
@@ -117,6 +123,47 @@ export function ScheduleInterviewModal({
               onChange={(e) => setTime(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
               required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Modalidade *
+            </label>
+            <select
+              value={modality}
+              onChange={(e) => setModality(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              required
+            >
+              <option value="PRESENCIAL">Presencial</option>
+              <option value="REMOTO">Remoto</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Entrevistador (opcional)
+            </label>
+            <input
+              type="text"
+              value={interviewerName}
+              onChange={(e) => setInterviewerName(e.target.value)}
+              placeholder="Nome do entrevistador"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Convidados (opcional)
+            </label>
+            <input
+              type="text"
+              value={guests}
+              onChange={(e) => setGuests(e.target.value)}
+              placeholder="João Silva, Maria Santos"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             />
           </div>
 

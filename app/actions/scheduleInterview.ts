@@ -7,7 +7,10 @@ import { enqueueEmail } from '@/lib/email';
 export async function scheduleInterview(
   applicationId: string,
   scheduledAt: Date,
-  notes?: string
+  notes?: string,
+  modality?: string,
+  interviewerName?: string,
+  guests?: string
 ) {
   try {
     const session = await getSession();
@@ -37,12 +40,22 @@ export async function scheduleInterview(
 
     const interview = await prisma.interview.upsert({
       where: { applicationId },
-      update: { scheduledAt, scheduledBy: session.userId, notes },
+      update: {
+        scheduledAt,
+        scheduledBy: session.userId,
+        notes,
+        modality: modality || 'PRESENCIAL',
+        interviewerName,
+        guests,
+      },
       create: {
         applicationId,
         scheduledAt,
         scheduledBy: session.userId,
         notes,
+        modality: modality || 'PRESENCIAL',
+        interviewerName,
+        guests,
       },
     });
 
