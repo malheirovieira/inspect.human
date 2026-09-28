@@ -121,6 +121,7 @@ create table jobs (
   interview_deadline date,
   hiring_deadline date,
   expected_start_date date,
+  assessment_id uuid references assessments (id) on delete set null,
   created_by uuid references users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

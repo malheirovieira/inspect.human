@@ -196,11 +196,13 @@ model Job {
   interviewDeadline DateTime? @map("interview_deadline") @db.Date
   hiringDeadline    DateTime? @map("hiring_deadline") @db.Date
   expectedStartDate DateTime? @map("expected_start_date") @db.Date
+  assessmentId   String?  @map("assessment_id") @db.Uuid
   createdById    String?  @map("created_by") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assessment   Assessment?   @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
   createdBy    User?         @relation("JobCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   applications Application[]
 
@@ -631,6 +633,7 @@ model Assessment {
   company   Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
   questions AssessmentQuestion[]
   responses AssessmentResponse[]
+  jobs      Job[]
 
   @@index([companyId])
   @@map("assessments")
