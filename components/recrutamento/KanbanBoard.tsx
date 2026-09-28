@@ -279,23 +279,26 @@ export function KanbanBoard({
     const { active, over } = event;
     if (!over) return;
 
-    const targetStage = findContainer(active.id as string);
-    if (!targetStage) return;
-
-    let finalItems = columns[targetStage];
-    const oldIndex = finalItems.findIndex((c) => c.id === active.id);
+    const activeContainer = findContainer(active.id as string);
     const overContainer = findContainer(over.id as string);
+    if (!activeContainer || !overContainer) return;
 
-    if (overContainer === targetStage && active.id !== over.id) {
+    // Use overContainer (destino) em vez de activeContainer se arrastou entre stages
+    const finalStage = overContainer;
+
+    let finalItems = columns[finalStage];
+    const oldIndex = finalItems.findIndex((c) => c.id === active.id);
+
+    if (activeContainer === finalStage && active.id !== over.id) {
       const newIndex = finalItems.findIndex((c) => c.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         finalItems = arrayMove(finalItems, oldIndex, newIndex);
-        setColumns((prev) => ({ ...prev, [targetStage]: finalItems }));
+        setColumns((prev) => ({ ...prev, [finalStage]: finalItems }));
       }
     }
 
     const orderedIds = finalItems.map((c) => c.id);
-    await moveCandidateInKanban(active.id as string, targetStage, orderedIds);
+    await moveCandidateInKanban(active.id as string, finalStage, orderedIds);
     router.refresh();
   }
 
