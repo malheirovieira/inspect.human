@@ -12,7 +12,6 @@
     "test:db": "vitest run --project db",
     "test:db:setup": "node scripts/setup-test-db.js",
     "tasks:dev": "node scripts/tasks-dev.js",
-    "process-tasks": "tsx scripts/process-tasks.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

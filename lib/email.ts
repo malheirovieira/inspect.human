@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { enqueue } from '@/lib/tasks';
+import { EMAIL_SEND_TASK } from '@/lib/tasks/handlers/emailSend';
 
 // Renderiza variáveis do template: {{candidateName}} → value
 export function renderTemplate(template: string, variables: Record<string, string>): string {
@@ -42,7 +44,8 @@ export async function enqueueEmail(
       },
     });
 
-    // Enfileira task para envio
+    // Enfileira task para envio (fila real — lib/tasks — processada por
+    // /api/cron/tasks via pg_cron em prod ou `npm run tasks:dev` em dev)
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
       select: { companyId: true },
@@ -52,19 +55,14 @@ export async function enqueueEmail(
       throw new Error(`Application ${applicationId} não encontrada`);
     }
 
-    await prisma.backgroundTask.create({
-      data: {
+    await enqueue(
+      EMAIL_SEND_TASK,
+      { emailLogId: emailLog.id },
+      {
         companyId: application.companyId,
-        type: 'SEND_EMAIL',
-        payload: {
-          emailLogId: emailLog.id,
-          to: recipientEmail,
-          subject: renderedSubject,
-          html: renderedBody,
-        },
-        idempotencyKey: `email:${emailLog.id}`,
-      },
-    });
+        idempotencyKey: `${EMAIL_SEND_TASK}:${emailLog.id}`,
+      }
+    );
 
     return emailLog;
   } catch (err) {
@@ -91,8 +89,18 @@ export async function sendEmailViaResend(
     // @ts-ignore
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // RESEND_FROM_EMAIL permite override explícito (ex.: domínio próprio já
+    // verificado). Sem isso, cai no domínio de teste do Resend em dev —
+    // "noreply@inspect-talent.com" exige verificação de domínio e falha com
+    // 403 (validation_error) enquanto isso não for feito.
+    const fromAddress =
+      process.env.RESEND_FROM_EMAIL ||
+      (process.env.NODE_ENV === 'production'
+        ? 'noreply@inspect-talent.com'
+        : 'onboarding@resend.dev');
+
     const result = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'noreply@inspect-talent.com',
+      from: fromAddress,
       to,
       subject,
       html,

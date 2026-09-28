@@ -1,6 +1,7 @@
 import type { TaskDefinition } from "../registry";
 import { resumeAnalyzeTask } from "./resumeAnalyze";
 import { resumePurgeVersionsTask } from "./resumePurgeVersions";
+import { emailSendTask } from "./emailSend";
 
 // Registro ÚNICO de tipos de tarefa. Cada fase cria o seu handler num
 // arquivo próprio desta pasta (com defineTask) e só acrescenta aqui.
@@ -11,4 +12,5 @@ import { resumePurgeVersionsTask } from "./resumePurgeVersions";
 export const TASK_DEFINITIONS: readonly TaskDefinition<any>[] = [
   resumeAnalyzeTask, // Fase 3 — triagem com IA
   resumePurgeVersionsTask, // Fase 3 — retenção de versões de currículo
+  emailSendTask, // Fase 1 — comunicação/e-mail (convite de entrevista etc.)
 ];
