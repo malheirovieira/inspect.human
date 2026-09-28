@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
 import { setCandidateTag } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
+import { DeleteCandidateButton } from "@/components/recrutamento/DeleteCandidateButton";
 import { CANDIDATE_STAGES, STAGE_LABELS, CANDIDATE_TAGS, TAG_LABELS, TAG_COLORS, TAG_NEXT_STEP } from "@/schemas/candidate";
 
 type Stage = (typeof CANDIDATE_STAGES)[number];
@@ -19,6 +20,7 @@ export function ApplicationHeader({
   candidateId,
   candidateName,
   jobTitle,
+  jobId,
   stage,
   tag,
   stageLabels,
@@ -27,6 +29,7 @@ export function ApplicationHeader({
   candidateId: string;
   candidateName: string;
   jobTitle: string;
+  jobId: string;
   stage: Stage;
   tag: Tag | null;
   stageLabels: Record<Stage, string>;
@@ -52,9 +55,12 @@ export function ApplicationHeader({
           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)" }}>{candidateName}</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{jobTitle}</div>
         </div>
-        <Link href={`/recrutamento/banco-de-talentos/${candidateId}`} style={{ fontSize: 13, fontWeight: 500 }}>
-          Ver perfil completo
-        </Link>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href={`/recrutamento/banco-de-talentos/${candidateId}`} style={{ fontSize: 13, fontWeight: 500 }}>
+            Ver perfil completo
+          </Link>
+          <DeleteCandidateButton candidateId={candidateId} candidateName={candidateName} jobId={jobId} />
+        </div>
       </div>
 
       {/* A tag é uma ferramenta de triagem — só faz sentido editar

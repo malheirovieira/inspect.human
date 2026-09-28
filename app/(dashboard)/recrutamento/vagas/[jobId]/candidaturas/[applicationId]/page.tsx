@@ -50,6 +50,7 @@ export default async function CandidaturaDetalhePage({
           candidateId={application.candidateId}
           candidateName={application.candidate.name}
           jobTitle={application.job.title}
+          jobId={jobId}
           stage={application.stage as Stage}
           tag={application.qualificationTag as Tag | null}
           stageLabels={stageLabels}
