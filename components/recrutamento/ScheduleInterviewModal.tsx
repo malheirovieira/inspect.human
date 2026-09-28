@@ -52,8 +52,31 @@ export function ScheduleInterviewModal({
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 50,
+        padding: '1rem',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '0.5rem',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          maxWidth: '28rem',
+          width: '100%',
+          padding: '1.5rem',
+          maxHeight: '90vh',
+          overflow: 'auto',
+        }}
+      >
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">Agendar Entrevista</h2>

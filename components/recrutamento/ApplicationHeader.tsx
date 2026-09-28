@@ -55,7 +55,7 @@ export function ApplicationHeader({
           <div style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)" }}>{candidateName}</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{jobTitle}</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Link href={`/recrutamento/banco-de-talentos/${candidateId}`} style={{ fontSize: 13, fontWeight: 500 }}>
             Ver perfil completo
           </Link>

@@ -2,12 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { X } from "lucide-react";
 import { deleteCandidate } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
 
-// Candidate é a pessoa (reaproveitada entre candidaturas) — deletar aqui
-// remove TODAS as candidaturas dela, em qualquer vaga, não só a que está
-// sendo vista. O confirm avisa isso explicitamente.
 export function DeleteCandidateButton({
   candidateId,
   candidateName,
@@ -42,11 +39,22 @@ export function DeleteCandidateButton({
       type="button"
       onClick={handleDelete}
       disabled={deleting}
-      className="fin-btn fin-btn--danger"
-      style={{ opacity: deleting ? 0.7 : 1 }}
+      aria-label={`Excluir candidato ${candidateName}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 44,
+        height: 44,
+        borderRadius: "var(--radius-md)",
+        border: "1px solid var(--border)",
+        background: "var(--surface)",
+        color: "var(--action-cancel)",
+        cursor: deleting ? "not-allowed" : "pointer",
+        opacity: deleting ? 0.7 : 1,
+      }}
     >
-      <Trash2 size={16} />
-      {deleting ? "Excluindo..." : "Excluir candidato"}
+      <X size={16} />
     </button>
   );
 }
