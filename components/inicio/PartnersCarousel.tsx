@@ -4,9 +4,10 @@ import { useState } from "react";
 import type { Partner } from "@prisma/client";
 import { ChevronLeft, ChevronRight, Lock, X } from "lucide-react";
 
-// Um banner largo por vez (não um grid de logos pequenos) — é um anúncio,
-// não um selo de parceria. Altura fixa via .fin-partner-banner (globals.css,
-// 120px desktop / 80px mobile — inline style não faz media query).
+// Um banner quadrado por vez — é um anúncio, não um selo de parceria.
+// Altura fixa via .fin-partner-banner (globals.css, 300px desktop / 200px
+// mobile — inline style não faz media query). Navegação (setas + dots) fica
+// ABAIXO do banner, não sobreposta a ele.
 export function PartnersCarousel({ partners, canClose }: { partners: Partner[]; canClose: boolean }) {
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [index, setIndex] = useState(0);
@@ -17,67 +18,72 @@ export function PartnersCarousel({ partners, canClose }: { partners: Partner[]; 
   const current = visible[Math.min(index, visible.length - 1)];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div className="fin-partner-banner" style={{ position: "relative", flex: 1, borderRadius: "var(--radius-lg)", overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
-          <a href={current.linkUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", height: "100%" }}>
-            <img
-              src={current.imageUrl}
-              alt={current.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          </a>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div
+        className="fin-partner-banner"
+        style={{
+          position: "relative",
+          width: "100%",
+          borderRadius: "var(--radius-lg)",
+          overflow: "hidden",
+          boxShadow: "var(--shadow-hover)",
+        }}
+      >
+        <a href={current.linkUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", height: "100%" }}>
+          <img src={current.imageUrl} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </a>
 
-          {canClose ? (
-            <button
-              type="button"
-              onClick={() => setDismissed((prev) => [...prev, current.id])}
-              title="Fechar"
-              aria-label={`Fechar banner de ${current.name}`}
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                width: 28,
-                height: 28,
-                borderRadius: "var(--radius-full)",
-                border: "none",
-                background: "rgba(0, 0, 0, 0.4)",
-                backdropFilter: "blur(4px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                color: "var(--white)",
-              }}
-            >
-              <X size={14} />
-            </button>
-          ) : (
-            <span
-              title="Fechar banners disponível nos planos pagos"
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                width: 28,
-                height: 28,
-                borderRadius: "var(--radius-full)",
-                background: "rgba(0, 0, 0, 0.4)",
-                backdropFilter: "blur(4px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--white)",
-              }}
-            >
-              <Lock size={13} />
-            </span>
-          )}
-        </div>
+        {canClose ? (
+          <button
+            type="button"
+            onClick={() => setDismissed((prev) => [...prev, current.id])}
+            title="Fechar"
+            aria-label={`Fechar banner de ${current.name}`}
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              width: 32,
+              height: 32,
+              borderRadius: "var(--radius-full)",
+              border: "none",
+              background: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "var(--white)",
+            }}
+          >
+            <X size={16} />
+          </button>
+        ) : (
+          <span
+            title="Fechar banners disponível nos planos pagos"
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              width: 32,
+              height: 32,
+              borderRadius: "var(--radius-full)",
+              background: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--white)",
+            }}
+          >
+            <Lock size={14} />
+          </span>
+        )}
+      </div>
 
-        {visible.length > 1 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+      {visible.length > 1 && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button
               type="button"
               onClick={() => setIndex((i) => (i - 1 + visible.length) % visible.length)}
@@ -115,8 +121,28 @@ export function PartnersCarousel({ partners, canClose }: { partners: Partner[]; 
               <ChevronRight size={16} />
             </button>
           </div>
-        )}
-      </div>
+
+          <div style={{ display: "flex", gap: 6 }}>
+            {visible.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={`Banner ${i + 1}`}
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "var(--radius-full)",
+                  border: "none",
+                  background: i === index ? "var(--ink)" : "var(--border)",
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {!canClose && (
         <p style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", margin: 0 }}>

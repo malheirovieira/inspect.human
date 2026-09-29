@@ -48,7 +48,14 @@ export default async function InicioPage() {
       {header}
       <div className="fin-content">
         {showTestimonials && <TestimonialsStrip items={[...TESTIMONIALS]} />}
-        {partners.length > 0 && <PartnersCarousel partners={partners} canClose={canClose} />}
+        {partners.length > 0 && (
+          <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)", margin: "0 0 16px" }}>
+              Parceiros de benefícios
+            </p>
+            <PartnersCarousel partners={partners} canClose={canClose} />
+          </div>
+        )}
       </div>
     </>
   );

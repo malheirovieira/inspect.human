@@ -1088,13 +1088,14 @@ body {
 }
 
 /* Banner de parceiro na Início (components/inicio/PartnersCarousel) — altura
-   fixa responsiva; só a altura precisa de media query (o resto é inline). */
+   fixa responsiva; só a altura precisa de media query (o resto é inline).
+   Formato mais quadrado (2ª iteração: era 120px/80px, banner horizontal). */
 .fin-partner-banner {
-  height: 120px;
+  height: 300px;
 }
 @media (max-width: 640px) {
   .fin-partner-banner {
-    height: 80px;
+    height: 200px;
   }
 }
 
