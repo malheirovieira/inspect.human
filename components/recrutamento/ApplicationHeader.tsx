@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { User } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Field";
 import { setCandidateTag } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
@@ -56,8 +57,14 @@ export function ApplicationHeader({
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{jobTitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Link href={`/recrutamento/banco-de-talentos/${candidateId}`} style={{ fontSize: 13, fontWeight: 500 }}>
-            Ver perfil completo
+          <Link
+            href={`/recrutamento/banco-de-talentos/${candidateId}`}
+            title="Ver perfil completo"
+            aria-label="Ver perfil completo"
+            className="fin-header-icon-btn"
+            style={{ background: "#0b2d5b" }}
+          >
+            <User size={16} />
           </Link>
           <DeleteCandidateButton candidateId={candidateId} candidateName={candidateName} jobId={jobId} />
         </div>

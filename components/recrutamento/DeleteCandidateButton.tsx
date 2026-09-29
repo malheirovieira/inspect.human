@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { deleteCandidate } from "@/app/(dashboard)/recrutamento/banco-de-talentos/actions";
 
 export function DeleteCandidateButton({
@@ -40,21 +40,11 @@ export function DeleteCandidateButton({
       onClick={handleDelete}
       disabled={deleting}
       aria-label={`Excluir candidato ${candidateName}`}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: 44,
-        height: 44,
-        borderRadius: "var(--radius-md)",
-        border: "1px solid var(--border)",
-        background: "var(--surface)",
-        color: "var(--action-cancel)",
-        cursor: deleting ? "not-allowed" : "pointer",
-        opacity: deleting ? 0.7 : 1,
-      }}
+      title="Excluir candidato"
+      className="fin-header-icon-btn"
+      style={{ background: "#c62828" }}
     >
-      <X size={16} />
+      <Trash2 size={16} />
     </button>
   );
 }
