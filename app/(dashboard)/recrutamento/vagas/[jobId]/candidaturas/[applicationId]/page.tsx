@@ -56,7 +56,11 @@ export default async function CandidaturaDetalhePage({
           stageLabels={stageLabels}
         />
 
-        <InterviewSection applicationId={application.id} interviews={application.interviews ?? []} />
+        <InterviewSection
+          applicationId={application.id}
+          interviews={application.interviews ?? []}
+          highlightScheduling={application.qualificationTag === "GREEN"}
+        />
 
         <CandidateProcessChecklist
           applicationId={application.id}

@@ -66,7 +66,7 @@ export function ApplicationHeader({
       {/* A tag é uma ferramenta de triagem — só faz sentido editar
           enquanto a candidatura ainda está nessa etapa. */}
       {currentStage === "TRIAGE" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: "1 1 240px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fin-eyebrow">TAG DE TRIAGEM</span>
           <Select value={currentTag} onChange={(e) => handleTagChange(e.target.value as Tag | "")}>
             <option value="">(Nenhuma tag)</option>
