@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
@@ -9,6 +10,23 @@ import { AI_BLOCK_REASON_LABELS } from "@/lib/ai/availability";
 import { dedupeTags } from "@/lib/ai/screening";
 import { requestResumeAnalysis } from "@/lib/screening/request";
 import { taskRegistry } from "@/lib/tasks";
+
+// Dispara o processador da fila imediatamente após enfileirar — best effort.
+// Sem isso, a tarefa fica esperando o pg_cron do próximo minuto (até 60s).
+// Falha silenciosa: se CRON_SECRET não configurado → 503 → pg_cron retenta.
+async function triggerQueueNow() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = host.includes("localhost") ? "http" : "https";
+  fetch(`${proto}://${host}/api/cron/tasks`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.CRON_SECRET ?? ""}`,
+    },
+    body: "{}",
+  }).catch(() => {}); // fire-and-forget — não bloqueia a action
+}
 
 export type AiActionResult = { error: string } | { success: true };
 
@@ -46,6 +64,9 @@ export async function requestCandidateAnalysis(
     })
   );
   if (result.status === "blocked") return { error: AI_BLOCK_REASON_LABELS[result.reason] };
+
+  // Tarefa enfileirada — disparar processador imediatamente (sem await).
+  if (result.status === "queued") void triggerQueueNow();
 
   revalidatePath(`/recrutamento/banco-de-talentos/${candidateId}`);
   return { success: true };

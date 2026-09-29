@@ -11,7 +11,7 @@ import { CandidatesBoard } from "@/components/recrutamento/CandidatesBoard";
 import { KanbanBoard } from "@/components/recrutamento/KanbanBoard";
 import { getJob } from "@/services/jobs";
 import { requireSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
+import { getCompany } from "@/services/company";
 import { setJobStatus } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { listCompanyOptions } from "@/services/companyOptions";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
@@ -41,9 +41,11 @@ export default async function VagaDetalhePage({
   const visibleStages = showRejected ? CANDIDATE_STAGES : CANDIDATE_STAGES.filter((s) => s !== "REJECTED");
 
   const session = await requireSession();
+  // getCompany() é cacheada por React: se o layout já buscou a empresa nesta
+  // requisição, retorna do cache sem nova query ao banco.
   const [job, company, employmentTypes, departments, stageLabels] = await Promise.all([
     getJob(jobId),
-    prisma.company.findUnique({ where: { id: session.companyId } }),
+    getCompany(session.companyId),
     listCompanyOptions("MODALIDADE_CONTRATACAO"),
     listCompanyOptions("SETOR"),
     getKanbanStageLabels(),
@@ -55,14 +57,18 @@ export default async function VagaDetalhePage({
   // Tags + experiência do resumo por IA nos cards (sem o resumo).
   const aiSnippets = await getAiSnippets(session.companyId, [...new Set(job.applications.map((a) => a.candidateId))]);
   const boardCandidates = job.applications.map((a) => {
-    const { candidate, ...rest } = a;
+    const { candidate, discResponses, ...rest } = a;
     const snippet = aiSnippets.get(a.candidateId);
+    const disc = discResponses?.[0];
     return {
       ...rest,
       ...candidate,
       job: { title: job.title },
       aiSkills: snippet?.skills,
       aiExperienceYears: snippet?.experienceYears ?? null,
+      discPerfil: disc?.submittedAt ? disc.perfilDisc : null,
+      discScoreGeral: disc?.submittedAt ? Number(disc.scoreGeral) : null,
+      discPending: Boolean(disc && !disc.submittedAt),
     };
   });
   // Reprovado não conta como candidato "em aberto" — mesma régua usada no
@@ -143,19 +149,21 @@ export default async function VagaDetalhePage({
         </div>
 
         {activeTab === "detalhes" && (
-          <JobForm
-            jobId={job.id}
-            initial={{
-              title: job.title,
-              description: job.description,
-              department: job.department ?? "",
-              location: job.location ?? "",
-              workMode: job.workMode as "PRESENCIAL" | "REMOTO" | "HIBRIDO",
-              employmentType: job.employmentType ?? "",
-            }}
-            employmentTypeOptions={employmentTypes.map((o) => o.label)}
-            departmentOptions={departments.map((o) => o.label)}
-          />
+          <>
+            <JobForm
+              jobId={job.id}
+              initial={{
+                title: job.title,
+                description: job.description,
+                department: job.department ?? "",
+                location: job.location ?? "",
+                workMode: job.workMode as "PRESENCIAL" | "REMOTO" | "HIBRIDO",
+                employmentType: job.employmentType ?? "",
+              }}
+              employmentTypeOptions={employmentTypes.map((o) => o.label)}
+              departmentOptions={departments.map((o) => o.label)}
+            />
+          </>
         )}
 
         {activeTab === "candidatos" && (

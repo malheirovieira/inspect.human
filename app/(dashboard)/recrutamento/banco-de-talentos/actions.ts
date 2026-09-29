@@ -350,3 +350,21 @@ export async function setCandidateTestFlag(candidateId: string, isTest: boolean)
   revalidatePath("/recrutamento/banco-de-talentos");
   return { success: true };
 }
+
+// Candidate é a PESSOA, reaproveitada entre candidaturas — apagar aqui
+// remove TODAS as candidaturas dela (em qualquer vaga), não só a que está
+// sendo vista no momento. Cascade do schema cuida de applications,
+// interviews, email_logs, application_events, consents e assessment
+// responses; o componente (DeleteCandidateButton) avisa isso no confirm.
+export async function deleteCandidate(candidateId: string, jobId: string): Promise<ActionResult> {
+  const session = await requireRole(["ADMIN", "HR"]);
+
+  const candidate = await prisma.candidate.findFirst({ where: { id: candidateId, companyId: session.companyId } });
+  if (!candidate) return { error: "Candidato não encontrado." };
+
+  await prisma.candidate.delete({ where: { id: candidateId } });
+
+  revalidatePath("/recrutamento/banco-de-talentos");
+  revalidatePath(`/recrutamento/vagas/${jobId}`);
+  return { success: true };
+}

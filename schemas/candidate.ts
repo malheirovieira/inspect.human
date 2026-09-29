@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CANDIDATE_STAGES = ["TRIAGE", "TEST", "INTERVIEW", "PROPOSAL", "HIRED", "REJECTED"] as const;
+export const CANDIDATE_STAGES = ["TRIAGE", "INTERVIEW", "TEST", "PROPOSAL", "HIRED", "REJECTED"] as const;
 
 export const STAGE_LABELS: Record<(typeof CANDIDATE_STAGES)[number], string> = {
   TRIAGE: "Triagem",

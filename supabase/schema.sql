@@ -121,6 +121,7 @@ create table jobs (
   interview_deadline date,
   hiring_deadline date,
   expected_start_date date,
+  assessment_id uuid references assessments (id) on delete set null,
   created_by uuid references users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -279,6 +280,7 @@ create table resume_analyses (
 );
 create index idx_resume_analyses_skills on resume_analyses using gin (skills);
 create index idx_resume_analyses_company_completed on resume_analyses (company_id, completed_at) where status = 'DONE';
+create index idx_resume_analyses_resume_status_gen on resume_analyses (resume_id, status, generation desc);
 
 -- ----------------------------------------------------------------------------
 -- consents — consentimento genérico (finalidade + versão/hash do texto
@@ -510,10 +512,107 @@ begin
   end loop;
 end $$;
 
--- ----------------------------------------------------------------------------
+-- ============================================================================
+-- Fase 2: assessments — testes e avaliações
+-- ============================================================================
+create table assessments (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  title text not null,
+  description text,
+  total_score integer not null default 0,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index idx_assessments_company on assessments (company_id);
+
+create table assessment_questions (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  assessment_id uuid not null references assessments (id) on delete cascade,
+  text text not null,
+  type text not null default 'MULTIPLE_CHOICE',
+  max_score integer not null default 1,
+  position integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index idx_assessment_questions_assessment on assessment_questions (assessment_id, position);
+create index idx_assessment_questions_company on assessment_questions (company_id);
+
+create table assessment_choices (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  question_id uuid not null references assessment_questions (id) on delete cascade,
+  text text not null,
+  is_correct boolean not null default false,
+  position integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index idx_assessment_choices_question on assessment_choices (question_id, position);
+create index idx_assessment_choices_company on assessment_choices (company_id);
+
+create table assessment_responses (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  application_id uuid not null references applications (id) on delete cascade,
+  assessment_id uuid not null references assessments (id) on delete cascade,
+  token text not null unique,
+  expires_at timestamptz not null,
+  submitted_at timestamptz,
+  score integer,
+  created_at timestamptz not null default now()
+);
+create index idx_assessment_responses_application on assessment_responses (application_id);
+create index idx_assessment_responses_token on assessment_responses (token);
+create index idx_assessment_responses_company on assessment_responses (company_id);
+create index idx_assessment_responses_submitted on assessment_responses (submitted_at) where submitted_at is not null;
+
+create or replace function assessment_responses_set_company_id()
+returns trigger language plpgsql as $$
+begin
+  select company_id into new.company_id from applications where id = new.application_id;
+  if new.company_id is null then
+    raise exception 'application_id inválido: candidatura não encontrada';
+  end if;
+  return new;
+end;
+$$;
+create trigger trg_assessment_responses_set_company_id
+  before insert on assessment_responses
+  for each row execute function assessment_responses_set_company_id();
+
+create table assessment_answers (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references companies (id) on delete cascade,
+  response_id uuid not null references assessment_responses (id) on delete cascade,
+  question_id uuid not null references assessment_questions (id) on delete cascade,
+  choice_id uuid references assessment_choices (id) on delete set null,
+  score integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index idx_assessment_answers_response on assessment_answers (response_id);
+create index idx_assessment_answers_company on assessment_answers (company_id);
+create index idx_assessment_answers_question on assessment_answers (question_id) where score > 0;
+
+create or replace function assessment_answers_set_company_id()
+returns trigger language plpgsql as $$
+begin
+  select company_id into new.company_id from assessment_responses where id = new.response_id;
+  if new.company_id is null then
+    raise exception 'response_id inválido: resposta do candidato não encontrada';
+  end if;
+  return new;
+end;
+$$;
+create trigger trg_assessment_answers_set_company_id
+  before insert on assessment_answers
+  for each row execute function assessment_answers_set_company_id();
+
+-- ============================================================================
 -- Rede de segurança: nega tudo por padrão a anon/authenticated.
 -- Todo acesso legítimo passa pelo servidor Next.js com a service_role.
--- ----------------------------------------------------------------------------
+-- ============================================================================
 alter table companies enable row level security;
 alter table users enable row level security;
 alter table jobs enable row level security;
@@ -526,6 +625,11 @@ alter table background_tasks enable row level security;
 alter table candidate_resumes enable row level security;
 alter table resume_analyses enable row level security;
 alter table consents enable row level security;
+alter table assessments enable row level security;
+alter table assessment_questions enable row level security;
+alter table assessment_choices enable row level security;
+alter table assessment_responses enable row level security;
+alter table assessment_answers enable row level security;
 
 revoke all on all tables in schema public from anon, authenticated;
 revoke all on all functions in schema public from anon, authenticated;

@@ -43,6 +43,11 @@ export type KanbanCandidate = {
   // Resumo por IA (análise concluída): até 3 tags + experiência no card.
   aiSkills?: string[];
   aiExperienceYears?: number | null;
+  // DISC: perfil+score só quando respondido; discPending = link gerado mas
+  // ainda sem resposta. Nenhum dos dois = avaliação não enviada.
+  discPerfil?: string | null;
+  discScoreGeral?: number | null;
+  discPending?: boolean;
 };
 
 const TAG_ORDER: Record<string, number> = { GREEN: 0, BLUE: 1, RED: 2 };
@@ -95,6 +100,16 @@ function CandidateCard({ candidate, jobId, showJob }: { candidate: KanbanCandida
         </div>
         {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{candidate.job.title}</div>}
         <AiCardSnippet skills={candidate.aiSkills} experienceYears={candidate.aiExperienceYears} />
+        {candidate.discPerfil && (
+          <Badge tone="success" style={{ fontSize: 10, padding: "0 6px", marginTop: 6 }}>
+            {candidate.discPerfil} | {Math.round(candidate.discScoreGeral ?? 0)}
+          </Badge>
+        )}
+        {!candidate.discPerfil && candidate.discPending && (
+          <Badge tone="primary" style={{ fontSize: 10, padding: "0 6px", marginTop: 6 }}>
+            DISC pendente
+          </Badge>
+        )}
       </Link>
     </div>
   );
@@ -279,23 +294,26 @@ export function KanbanBoard({
     const { active, over } = event;
     if (!over) return;
 
-    const targetStage = findContainer(active.id as string);
-    if (!targetStage) return;
-
-    let finalItems = columns[targetStage];
-    const oldIndex = finalItems.findIndex((c) => c.id === active.id);
+    const activeContainer = findContainer(active.id as string);
     const overContainer = findContainer(over.id as string);
+    if (!activeContainer || !overContainer) return;
 
-    if (overContainer === targetStage && active.id !== over.id) {
+    // Use overContainer (destino) em vez de activeContainer se arrastou entre stages
+    const finalStage = overContainer;
+
+    let finalItems = columns[finalStage];
+    const oldIndex = finalItems.findIndex((c) => c.id === active.id);
+
+    if (activeContainer === finalStage && active.id !== over.id) {
       const newIndex = finalItems.findIndex((c) => c.id === over.id);
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         finalItems = arrayMove(finalItems, oldIndex, newIndex);
-        setColumns((prev) => ({ ...prev, [targetStage]: finalItems }));
+        setColumns((prev) => ({ ...prev, [finalStage]: finalItems }));
       }
     }
 
     const orderedIds = finalItems.map((c) => c.id);
-    await moveCandidateInKanban(active.id as string, targetStage, orderedIds);
+    await moveCandidateInKanban(active.id as string, finalStage, orderedIds);
     router.refresh();
   }
 

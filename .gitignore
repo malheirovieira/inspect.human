@@ -8,3 +8,6 @@ out
 
 # Claude Code — preferências pessoais (não versionar)
 .claude/settings.local.json
+
+# Supabase CLI — cache local de `supabase link` (dados de conexão da máquina)
+supabase/.temp/

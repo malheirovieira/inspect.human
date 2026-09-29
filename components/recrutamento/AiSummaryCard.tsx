@@ -78,7 +78,7 @@ export function AiSummaryCard({ candidateId, state }: { candidateId: string; sta
     body = (
       <p style={{ ...muted, display: "flex", alignItems: "center", gap: 8 }}>
         <Loader2 size={15} className="animate-spin" /> Processando o currículo…
-        <AutoRefresh />
+        <AutoRefresh analysisId={analysis.id} />
       </p>
     );
   } else if (analysis.status === "NO_TEXT") {

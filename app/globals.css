@@ -32,6 +32,9 @@
   --success-surface: #e3f9e9;
   --danger: #ff3b30;
   --danger-surface: #ffe5e3;
+  /* Alerta neutro (nem sucesso nem erro) — usado pra chamar atenção pra uma
+     ação pendente, ex.: card de "Agendar Entrevista" piscando. */
+  --attention: #e6a700;
   /* Azul "padrão" de identidade/interação (hover de botão primário, painel
      de login/cadastro, foco de campo) — token à parte de --green-700 e
      --success, que agora são semânticos (estado ativo/positivo). */
@@ -58,14 +61,16 @@
   --action-cancel: #fe0401;
   --action-cancel-hover: #d10301;
   /* Fundo ambiente da tela Início (components/layout/AmbientBackground) —
-     azuis clareados em 2026-09-25 (antes #7eb6fb/#b9dafb/#dcecfd/#b3d4fb/
-     #e3e8fb) pra um brilho mais leve e suave. */
-  --ambient-base: #fafbfe;
-  --ambient-blue-strong: #a4ccfc;
-  --ambient-blue-mid: #cbe3fd;
-  --ambient-blue-soft: #e5f0fe;
-  --ambient-blue-top: #c8dffd;
-  --ambient-lavender: #e9edfc;
+     gradiente diagonal pastel rosa→azul (2026-09-29, 3ª iteração: Obsidian
+     Chrome escuro e sua variante clara com blobs radiais foram testados e
+     descartados antes deste). Linear, não radial — ver .fin-ambient logo
+     abaixo, que usa estas 2 cores direto (os 3 glows radiais que usavam os
+     tokens antigos (--ambient-blue-strong e afins) ficaram inativos,
+     ver .fin-ambient__glow. */
+  /* Clareadas em relação à 1ª versão (#f3e9e8/#96b9d9) — o azul em
+     particular estava saturado demais, "gradiente forte" foi o feedback. */
+  --ambient-pink: #f9f4f3;
+  --ambient-blue: #cfe0ee;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -160,9 +165,11 @@ body {
   z-index: 8;
   min-height: 52px;
   padding: 0 40px;
-  background: rgba(245, 245, 247, 0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  /* Transparente de verdade (não branco translúcido) — só o blur cria a
+     separação visual do conteúdo por trás, sem tingir de branco. */
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
   border-bottom: 1px solid var(--border);
 }
 .fin-topbar__inner {
@@ -180,7 +187,7 @@ body {
 }
 .fin-topbar__date {
   flex: 0 0 auto;
-  color: var(--text-muted);
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
@@ -429,9 +436,11 @@ body {
    radial-gradient de várias paradas (sem filter: blur). Posições e tamanhos
    em % da ÁREA (mesma composição em qualquer largura); overflow: hidden
    impede barra de rolagem. Animação só de transform e opacity: cada brilho
-   PERCORRE a área (trajetórias amplas e lentas, pedido de 2026-09-25 —
-   antes só oscilava perto do canto), durações diferentes (36s, 44s, 52s,
-   alternate) pra nunca sincronizar; escala 0.95 a 1.08. */
+   PERCORRE só a borda de onde nasceu — nunca cruza pro miolo da tela
+   (pedido de 2026-09-29; antes ia até perto do centro, ver histórico do
+   @keyframes fin-ambient-drift-* pra amplitude anterior), durações
+   diferentes (36s, 44s, 52s, alternate) pra nunca sincronizar; escala 0.95
+   a 1.08. */
 .fin-ambient {
   position: sticky;
   top: 0;
@@ -440,15 +449,23 @@ body {
   margin-bottom: -100vh;
   overflow: hidden;
   pointer-events: none;
-  background: var(--ambient-base);
+  background: linear-gradient(
+    135deg,
+    var(--ambient-pink),
+    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
+    var(--ambient-blue),
+    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
+    var(--ambient-pink)
+  );
+  background-size: 300% 300%;
+  animation: fin-ambient-shift 12s ease infinite;
 }
+/* Os 3 glows radiais (paleta azul antiga, depois "Obsidian Chrome") ficam
+   inativos: o efeito atual é o gradiente diagonal liso acima, sem manchas
+   sobrepostas. Elementos mantidos no DOM (ver AmbientBackground.tsx) pra
+   não mexer no componente — só neutralizados aqui. */
 .fin-ambient__glow {
-  position: absolute;
-  border-radius: 50%;
-  will-change: transform, opacity;
-  animation-timing-function: ease-in-out;
-  animation-direction: alternate;
-  animation-iteration-count: infinite;
+  display: none;
 }
 /* Principal: centro em (0%, 85%) da área, o mais intenso. Elipse com raio
    de 56% x 56% — o azul visível chega a ~40% da largura e sobe até ~55% da
@@ -520,29 +537,32 @@ body {
   animation-name: fin-ambient-drift-lavender;
   animation-duration: 52s;
 }
-/* Trajetórias pela área da página. O de baixo (nasce no canto inferior
-   esquerdo) sobe em diagonal até perto do centro; o de cima (canto superior
-   direito) desce cruzando pra esquerda; a lavanda percorre a lateral
-   esquerda e o meio. Alternate: vão e voltam pelo mesmo caminho, sem salto. */
+/* Trajetórias CONFINADAS À BORDA de origem de cada blob — nenhuma cruza
+   pro centro/meio da tela (pedido de 2026-09-29). O de baixo (nasce no
+   canto inferior esquerdo) percorre só a borda inferior/esquerda; o de
+   cima (canto superior direito) só a borda superior/direita; a lavanda só
+   a borda esquerda. Amplitude bem menor que antes (translateX/Y contidos
+   em ~18vw/18vh) pra nunca invadir o miolo. Alternate: vão e voltam pelo
+   mesmo caminho, sem salto. */
 @keyframes fin-ambient-drift-main {
   0% {
     transform: translate(0, 0) scale(1);
     opacity: 1;
   }
   25% {
-    transform: translate(22vw, -12vh) scale(1.05);
+    transform: translate(12vw, -4vh) scale(1.05);
     opacity: 0.92;
   }
   50% {
-    transform: translate(42vw, -28vh) scale(1.08);
+    transform: translate(18vw, -9vh) scale(1.08);
     opacity: 0.85;
   }
   75% {
-    transform: translate(26vw, -44vh) scale(1);
+    transform: translate(9vw, -14vh) scale(1);
     opacity: 0.92;
   }
   100% {
-    transform: translate(8vw, -20vh) scale(0.96);
+    transform: translate(0vw, -6vh) scale(0.96);
     opacity: 1;
   }
 }
@@ -552,19 +572,19 @@ body {
     opacity: 0.95;
   }
   25% {
-    transform: translate(-24vw, 12vh) scale(1.06);
+    transform: translate(-10vw, 4vh) scale(1.06);
     opacity: 0.88;
   }
   50% {
-    transform: translate(-46vw, 30vh) scale(1.02);
+    transform: translate(-18vw, 9vh) scale(1.02);
     opacity: 0.85;
   }
   75% {
-    transform: translate(-30vw, 48vh) scale(0.96);
+    transform: translate(-11vw, 15vh) scale(0.96);
     opacity: 0.9;
   }
   100% {
-    transform: translate(-10vw, 22vh) scale(1.04);
+    transform: translate(-2vw, 7vh) scale(1.04);
     opacity: 1;
   }
 }
@@ -574,20 +594,35 @@ body {
     opacity: 0.9;
   }
   33% {
-    transform: translate(18vw, -10vh) scale(1.05);
+    transform: translate(6vw, -6vh) scale(1.05);
     opacity: 1;
   }
   66% {
-    transform: translate(34vw, 14vh) scale(0.97);
+    transform: translate(10vw, 6vh) scale(0.97);
     opacity: 0.85;
   }
   100% {
-    transform: translate(12vw, 26vh) scale(1.02);
+    transform: translate(3vw, 12vh) scale(1.02);
     opacity: 0.95;
   }
 }
-/* Movimento reduzido: fundo estático na posição da referência. */
+@keyframes fin-ambient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+/* Movimento reduzido: fundo estático na posição inicial do gradiente. */
 @media (prefers-reduced-motion: reduce) {
+  .fin-ambient {
+    animation: none;
+    background-position: 0% 50%;
+  }
   .fin-ambient__glow {
     animation: none;
     will-change: auto;
@@ -603,7 +638,7 @@ body {
   padding: 0 40px 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 /* ---- Entrada de página (components/layout/PageTransition.tsx) ----
@@ -683,6 +718,28 @@ body {
 .fin-card--muted {
   background: var(--surface-muted);
   box-shadow: none;
+}
+/* Chama atenção pro card de "Agendar Entrevista" quando o perfil já foi
+   classificado como compatível na triagem mas a entrevista ainda não foi
+   marcada — borda amarela pulsando (só opacidade/box-shadow, sem mudar
+   layout). Some assim que agenda (o card vira o InterviewCard normal). */
+.fin-card--attention {
+  border-color: var(--attention);
+  animation: fin-attention-pulse 1.6s ease-in-out infinite;
+}
+@keyframes fin-attention-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--attention) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--attention) 0%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fin-card--attention {
+    animation: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--attention) 40%, transparent);
+  }
 }
 .fin-eyebrow {
   font-size: 11px;
@@ -845,17 +902,43 @@ body {
   gap: 20px;
   align-items: stretch;
 }
+/* Paleta própria desta página: azul/preto/branco no destaque (mesclados
+   num gradiente), verde-água nos checks — não o verde de confirmação do
+   resto do sistema (ver commit "plans page redesign"). --plan-blue é o
+   mesmo azul de --focus-ring, único azul já definido no design system;
+   --plan-blue-deep é ele mesclado com preto pro gradiente do destaque. */
 .fin-plan-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid #e5e3df;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
+.fin-plan-card--highlight {
+  border: 2px solid #195ab4;
+  box-shadow: var(--shadow-lg, 0 12px 32px rgba(25, 90, 180, 0.18));
+  transform: scale(1.02);
+}
 .fin-plan-card--current {
-  border-color: var(--action-confirm);
-  box-shadow: 0 0 0 1px var(--action-confirm), var(--shadow-sm);
+  border-color: #195ab4;
+  box-shadow: 0 0 0 1px #195ab4, var(--shadow-sm);
+}
+.fin-plan-card__badge {
+  position: absolute;
+  top: -12px;
+  left: 24px;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.fin-plan-card__badge--highlight {
+  background: linear-gradient(135deg, #195ab4, #0f2a4a);
+  color: var(--white);
 }
 .fin-plan-card__top {
   flex: 1;
@@ -874,8 +957,8 @@ body {
 .fin-plan-card__current-tag {
   padding: 2px 10px;
   border-radius: var(--radius-full);
-  background: var(--green-surface);
-  color: var(--action-confirm);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
 }
@@ -888,14 +971,19 @@ body {
   margin: 0;
 }
 .fin-plan-card__amount {
-  font-size: 44px;
-  font-weight: 300;
+  font-size: 36px;
+  font-weight: 700;
   letter-spacing: -0.03em;
   color: var(--text-primary);
 }
 .fin-plan-card__period {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
+  color: var(--text-muted);
+}
+.fin-plan-card__price-after {
+  margin: 4px 0 0;
+  font-size: 13px;
   color: var(--text-muted);
 }
 .fin-plan-card__features {
@@ -916,13 +1004,20 @@ body {
 .fin-plan-card__features svg {
   flex-shrink: 0;
   margin-top: 1px;
-  color: var(--action-confirm);
+  color: #14b8a6;
+}
+.fin-plan-card__feature--blocked {
+  color: var(--text-muted);
+}
+.fin-plan-card__feature--blocked svg {
+  color: var(--text-muted);
+  cursor: help;
 }
 .fin-plan-card__bottom {
   display: flex;
   padding: 0 24px 28px;
 }
-/* Botão pílula: verde (confirmação) que fica vazado no hover. */
+/* Botão pílula: gradiente azul→preto (destaque) por padrão, vazado no hover. */
 .fin-plan-card__cta {
   display: flex;
   align-items: center;
@@ -930,19 +1025,27 @@ body {
   width: 100%;
   height: 40px;
   padding: 0 24px;
-  border: 2px solid var(--action-confirm);
+  border: 2px solid #195ab4;
   border-radius: var(--radius-full);
-  background: var(--action-confirm);
+  background: linear-gradient(135deg, #195ab4, #0f2a4a);
   color: var(--white);
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 }
 .fin-plan-card__cta:hover {
   background: transparent;
-  color: var(--action-confirm);
+  color: #195ab4;
+}
+.fin-plan-card__cta--outline {
+  background: transparent;
+  color: #195ab4;
+}
+.fin-plan-card__cta--outline:hover {
+  background: linear-gradient(135deg, #195ab4, #0f2a4a);
+  color: var(--white);
 }
 .fin-plan-card__cta:focus-visible {
   outline: none;
@@ -953,6 +1056,35 @@ body {
   background: var(--surface-muted);
   color: var(--text-muted);
   cursor: default;
+}
+
+/* ---- Ícones circulares do cabeçalho da candidatura (ApplicationHeader:
+   perfil azul, excluir vermelho) — cor de fundo vem via style inline por
+   botão, só o formato/hover/estado são compartilhados aqui. */
+/* Contorno por padrão (cor via --icon-color, definida por style inline no
+   callsite); preenche só no hover — nunca vem já preenchido. */
+.fin-header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--icon-color);
+  background: transparent;
+  color: var(--icon-color);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.fin-header-icon-btn:hover {
+  background: var(--icon-color);
+  color: var(--white);
+}
+.fin-header-icon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 /* ---- Início: "Precisa da sua atenção" (components/inicio/AttentionCard) ----
@@ -1480,6 +1612,14 @@ body {
   outline: none;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
+/* ---- Linha de lista clicável (CandidatesBoard, lista de Vagas, etc.) ---- */
+.fin-list-row {
+  transition: background 0.15s ease;
+}
+.fin-list-row:hover {
+  background: var(--surface-muted);
+}
+
 /* ---- Card do Kanban de candidatos — estilo Trello ---- */
 .fin-kanban-card {
   background: var(--white);

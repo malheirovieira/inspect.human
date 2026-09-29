@@ -59,6 +59,7 @@ export default async function VagasPage({
               <Link
                 key={job.id}
                 href={`/recrutamento/vagas/${job.id}`}
+                className="fin-list-row"
                 style={{
                   display: "flex",
                   alignItems: "center",

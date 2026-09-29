@@ -9,13 +9,25 @@ import { PLAN_CONTACT_URL } from "@/lib/plans";
 // troca de plano: só abre o aviso "Em breve" com um contato PROVISÓRIO
 // (PLAN_CONTACT_URL, lib/plans.ts). <dialog> nativo = foco preso e Esc fecham
 // sozinhos.
-export function SubscribeButton({ planName }: { planName: string }) {
+export function SubscribeButton({
+  planName,
+  label = "Assinar",
+  outline = false,
+}: {
+  planName: string;
+  label?: string;
+  outline?: boolean;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   return (
     <>
-      <button type="button" className="fin-plan-card__cta" onClick={() => dialogRef.current?.showModal()}>
-        Assinar
+      <button
+        type="button"
+        className={`fin-plan-card__cta${outline ? " fin-plan-card__cta--outline" : ""}`}
+        onClick={() => dialogRef.current?.showModal()}
+      >
+        {label}
       </button>
       <dialog
         ref={dialogRef}

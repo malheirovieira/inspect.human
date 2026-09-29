@@ -111,17 +111,39 @@ export type ProfileAiState = {
   blockedLabel: string | null;
 };
 
-export async function getProfileAiState(candidateId: string): Promise<ProfileAiState> {
+// Dados mínimos do candidato necessários para calcular o estado do card IA.
+// Recebidos via argumento quando o chamador já buscou o perfil completo
+// (evita uma query duplicada); ou buscados internamente quando chamado só
+// com o id (retrocompatibilidade, ex.: outros pontos de entrada futuros).
+type CandidatePrefetch = {
+  id: string;
+  isTest: boolean;
+  currentResumeId: string | null;
+  company: { aiScreeningEnabled: boolean };
+};
+
+export async function getProfileAiState(
+  candidateIdOrData: string | CandidatePrefetch
+): Promise<ProfileAiState> {
   const session = await requireRole(["ADMIN", "HR"]);
-  const candidate = await prisma.candidate.findFirst({
-    where: { id: candidateId, companyId: session.companyId },
-    select: {
-      id: true,
-      isTest: true,
-      currentResumeId: true,
-      company: { select: { aiScreeningEnabled: true } },
-    },
-  });
+
+  let candidate: CandidatePrefetch | null;
+  if (typeof candidateIdOrData === "string") {
+    // Caminho de compatibilidade — busca o candidato se só o id foi passado.
+    candidate = await prisma.candidate.findFirst({
+      where: { id: candidateIdOrData, companyId: session.companyId },
+      select: {
+        id: true,
+        isTest: true,
+        currentResumeId: true,
+        company: { select: { aiScreeningEnabled: true } },
+      },
+    });
+  } else {
+    // Caminho otimizado — dados já vêm do getPerson() na mesma requisição.
+    candidate = candidateIdOrData;
+  }
+
   if (!candidate?.currentResumeId) return { hasResume: false, analysis: null, blockedLabel: null };
 
   const [latest, hasConsent] = await Promise.all([
