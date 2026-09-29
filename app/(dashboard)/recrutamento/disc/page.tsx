@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Settings } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { DISC_DIMENSION_LABELS } from "@/lib/disc/questions";
@@ -32,12 +34,20 @@ export default async function DiscPage() {
           </Card>
         ) : (
           <>
-            <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span className="fin-eyebrow">{assessment.title}</span>
-              <div style={{ display: "flex", gap: 24, fontSize: 14, color: "var(--text-muted)" }}>
-                <span>{assessment.questions.length} perguntas</span>
-                <span>{assessment.responses.length} respostas enviadas</span>
+            <Card style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <span className="fin-eyebrow">{assessment.title}</span>
+                <div style={{ display: "flex", gap: 24, fontSize: 14, color: "var(--text-muted)" }}>
+                  <span>{assessment.questions.length} perguntas</span>
+                  <span>{assessment.responses.length} respostas enviadas</span>
+                </div>
               </div>
+              <Link href="/recrutamento/disc/perguntas" style={{ textDecoration: "none" }}>
+                <Button type="button" variant="secondary">
+                  <Settings size={14} />
+                  Editar Perguntas
+                </Button>
+              </Link>
             </Card>
 
             <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
