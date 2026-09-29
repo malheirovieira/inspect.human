@@ -38,6 +38,7 @@ export function InterviewForm({
   const [modality, setModality] = useState(initial?.modality ?? "PRESENCIAL");
   const [interviewerName, setInterviewerName] = useState(initial?.interviewerName ?? "");
   const [guests, setGuests] = useState(initial?.guests ?? "");
+  const [interviewLink, setInterviewLink] = useState(initial?.interviewLink ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +61,8 @@ export function InterviewForm({
       notes || undefined,
       modality,
       interviewerName || undefined,
-      guests || undefined
+      guests || undefined,
+      interviewLink || undefined
     );
 
     setSubmitting(false);
@@ -103,11 +105,20 @@ export function InterviewForm({
           </FieldLabel>
         </div>
 
+        <FieldLabel label="Link da entrevista">
+          <Input
+            type="url"
+            value={interviewLink}
+            onChange={(e) => setInterviewLink(e.target.value)}
+            placeholder="https://meet.google.com/..."
+          />
+        </FieldLabel>
+
         <FieldLabel label="Notas">
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Google Meet, trazer documentos..."
+            placeholder="Trazer documentos, levar notebook..."
             rows={3}
           />
         </FieldLabel>

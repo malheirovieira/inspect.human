@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import type { Interview } from "@prisma/client";
-import { cancelInterview } from "@/app/actions/scheduleInterview";
+import { cancelInterview, sendInterviewLink } from "@/app/actions/scheduleInterview";
 import { useRouter } from "next/navigation";
-import { Calendar, FileText, MapPin, User, Users } from "lucide-react";
+import { AlertTriangle, Calendar, FileText, Link2, MapPin, Send, User, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 
@@ -25,6 +25,7 @@ export function InterviewCard({
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [sendingLink, setSendingLink] = useState(false);
 
   async function handleCancel() {
     if (!confirm("Deseja cancelar essa entrevista?")) return;
@@ -35,6 +36,20 @@ export function InterviewCard({
     if (!result.success) {
       alert(result.error || "Erro ao cancelar.");
       setLoading(false);
+      return;
+    }
+    router.refresh();
+  }
+
+  async function handleSendLink() {
+    if (!interview.interviewLink) return;
+
+    setSendingLink(true);
+    const result = await sendInterviewLink(applicationId, interview.interviewLink);
+    setSendingLink(false);
+
+    if (!result.success) {
+      alert(result.error || "Erro ao enviar link.");
       return;
     }
     router.refresh();
@@ -89,6 +104,60 @@ export function InterviewCard({
           <div style={{ display: "flex", alignItems: "flex-start", gap: 12, fontSize: 14 }}>
             <Users size={16} style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: 2 }} />
             <span style={{ color: "var(--ink)" }}>{interview.guests}</span>
+          </div>
+        )}
+
+        {interview.status === "SCHEDULED" && interview.modality === "REMOTO" && interview.interviewLink && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              padding: 12,
+              borderRadius: "var(--radius-md)",
+              background: "var(--surface-muted)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, fontSize: 14 }}>
+              <Link2 size={16} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+              <a
+                href={interview.interviewLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {interview.interviewLink}
+              </a>
+            </div>
+            <Button type="button" variant="secondary" onClick={handleSendLink} disabled={sendingLink}>
+              <Send size={14} />
+              {sendingLink ? "Enviando..." : "Enviar Link"}
+            </Button>
+          </div>
+        )}
+
+        {interview.status === "SCHEDULED" && interview.modality === "REMOTO" && !interview.interviewLink && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              padding: 12,
+              borderRadius: "var(--radius-md)",
+              background: "var(--danger-surface)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 14 }}>
+              <AlertTriangle size={16} style={{ color: "var(--danger)", flexShrink: 0 }} />
+              <span style={{ color: "var(--danger)" }}>Link de entrevista não adicionado</span>
+            </div>
+            <Button type="button" variant="secondary" onClick={onEdit}>
+              Adicionar Link
+            </Button>
           </div>
         )}
 

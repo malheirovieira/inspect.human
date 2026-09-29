@@ -10,7 +10,8 @@ export async function scheduleInterview(
   notes?: string,
   modality?: string,
   interviewerName?: string,
-  guests?: string
+  guests?: string,
+  interviewLink?: string
 ) {
   try {
     const session = await getSession();
@@ -47,6 +48,7 @@ export async function scheduleInterview(
         modality: modality || 'PRESENCIAL',
         interviewerName,
         guests,
+        interviewLink: interviewLink || undefined,
       },
       create: {
         applicationId,
@@ -56,6 +58,7 @@ export async function scheduleInterview(
         modality: modality || 'PRESENCIAL',
         interviewerName,
         guests,
+        interviewLink,
       },
     });
 
@@ -114,6 +117,92 @@ export async function scheduleInterview(
   } catch (err) {
     console.error('[scheduleInterview]', err);
     return { success: false, error: 'Erro ao agendar entrevista' };
+  }
+}
+
+// Disparado à parte do agendamento — o link (Meet/Teams/Zoom/endereço) só
+// costuma existir depois de marcar data/hora, então merece seu próprio
+// e-mail ("Link Entrevista") em vez de esperar o candidato adivinhar.
+export async function sendInterviewLink(applicationId: string, interviewLink: string) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: 'Não autenticado' };
+    }
+
+    const trimmedLink = interviewLink.trim();
+    if (!trimmedLink) {
+      return { success: false, error: 'Informe o link da entrevista.' };
+    }
+
+    const interview = await prisma.interview.findUnique({
+      where: { applicationId },
+      include: {
+        application: {
+          include: { candidate: true, job: { include: { company: true } } },
+        },
+      },
+    });
+
+    if (!interview) {
+      return { success: false, error: 'Entrevista não encontrada' };
+    }
+
+    if (interview.application.job.companyId !== session.companyId) {
+      return { success: false, error: 'Sem permissão' };
+    }
+
+    const updated = await prisma.interview.update({
+      where: { id: interview.id },
+      data: { interviewLink: trimmedLink },
+    });
+
+    const template = await prisma.emailTemplate.findFirst({
+      where: { companyId: interview.application.job.companyId, name: 'Link Entrevista' },
+    });
+
+    if (template) {
+      const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const timeFormatter = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      try {
+        await enqueueEmail(
+          applicationId,
+          template.id,
+          {
+            candidateName: interview.application.candidate.name,
+            interviewDate: dateFormatter.format(interview.scheduledAt),
+            interviewTime: timeFormatter.format(interview.scheduledAt),
+            interviewLink: trimmedLink,
+            candidateEmail: interview.application.candidate.email,
+          },
+          interview.application.candidate.email
+        );
+      } catch (err) {
+        console.error('[sendInterviewLink] Email enqueue failed:', err);
+        // Link já foi salvo — não desfaz por causa do e-mail.
+      }
+    }
+
+    await prisma.applicationEvent.create({
+      data: {
+        companyId: interview.application.job.companyId,
+        applicationId,
+        type: 'INTERVIEW_LINK_SENT',
+        payload: { link: trimmedLink },
+        actorId: session.userId,
+      },
+    });
+
+    return { success: true, data: updated };
+  } catch (err) {
+    console.error('[sendInterviewLink]', err);
+    return { success: false, error: 'Erro ao enviar link da entrevista' };
   }
 }
 

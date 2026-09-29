@@ -779,6 +779,7 @@ model Interview {
   modality        String   @default("PRESENCIAL") // "PRESENCIAL" ou "REMOTO"
   interviewerName String?  @map("interviewer_name")
   guests          String?  // JSON array serializado: ["João Silva", "Maria Santos"]
+  interviewLink   String?  @map("interview_link") // Meet/Teams/Zoom — preenchido à parte, dispara e-mail próprio
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
