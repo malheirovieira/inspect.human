@@ -67,8 +67,10 @@
      abaixo, que usa estas 2 cores direto (os 3 glows radiais que usavam os
      tokens antigos (--ambient-blue-strong e afins) ficaram inativos,
      ver .fin-ambient__glow. */
-  --ambient-pink: #f3e9e8;
-  --ambient-blue: #96b9d9;
+  /* Clareadas em relação à 1ª versão (#f3e9e8/#96b9d9) — o azul em
+     particular estava saturado demais, "gradiente forte" foi o feedback. */
+  --ambient-pink: #f9f4f3;
+  --ambient-blue: #cfe0ee;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -166,8 +168,8 @@ body {
   /* Transparente de verdade (não branco translúcido) — só o blur cria a
      separação visual do conteúdo por trás, sem tingir de branco. */
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
   border-bottom: 1px solid var(--border);
 }
 .fin-topbar__inner {
