@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Interview } from "@prisma/client";
 import { cancelInterview, sendInterviewLink } from "@/app/actions/scheduleInterview";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Calendar, FileText, Link2, MapPin, Send, User, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const STATUS_LABELS: Record<string, string> = {
   SCHEDULED: "Agendada",
@@ -24,17 +25,18 @@ export function InterviewCard({
   onEdit: () => void;
 }) {
   const router = useRouter();
+  const cancelDialogRef = useRef<HTMLDialogElement>(null);
   const [loading, setLoading] = useState(false);
   const [sendingLink, setSendingLink] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCancel() {
-    if (!confirm("Deseja cancelar essa entrevista?")) return;
-
     setLoading(true);
+    setError(null);
     const result = await cancelInterview(applicationId);
 
     if (!result.success) {
-      alert(result.error || "Erro ao cancelar.");
+      setError(result.error || "Erro ao cancelar.");
       setLoading(false);
       return;
     }
@@ -45,11 +47,12 @@ export function InterviewCard({
     if (!interview.interviewLink) return;
 
     setSendingLink(true);
+    setError(null);
     const result = await sendInterviewLink(applicationId, interview.interviewLink);
     setSendingLink(false);
 
     if (!result.success) {
-      alert(result.error || "Erro ao enviar link.");
+      setError(result.error || "Erro ao enviar link.");
       return;
     }
     router.refresh();
@@ -177,16 +180,28 @@ export function InterviewCard({
         )}
       </div>
 
+      {error && <span className="fin-field-error">{error}</span>}
+
       {interview.status === "SCHEDULED" && (
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
           <Button type="button" variant="secondary" onClick={onEdit} disabled={loading}>
             Editar
           </Button>
-          <Button type="button" variant="danger" onClick={handleCancel} disabled={loading}>
+          <Button type="button" variant="danger" onClick={() => cancelDialogRef.current?.showModal()} disabled={loading}>
             {loading ? "Cancelando..." : "Cancelar"}
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        ref={cancelDialogRef}
+        title="Cancelar entrevista"
+        message="Deseja cancelar essa entrevista? Essa ação não pode ser desfeita."
+        confirmLabel="Cancelar entrevista"
+        cancelLabel="Voltar"
+        variant="warning"
+        onConfirm={handleCancel}
+      />
     </Card>
   );
 }
