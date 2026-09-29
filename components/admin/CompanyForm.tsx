@@ -27,6 +27,9 @@ export function CompanyForm({ onCancel, onSaved }: { onCancel: () => void; onSav
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Só preenchido quando o e-mail falha — precisa ser repassado manualmente,
+  // então o form fica aberto até o SUPERADMIN copiar (sem fechar sozinho).
+  const [failedPassword, setFailedPassword] = useState<string | null>(null);
 
   function handleNameChange(value: string) {
     setCompanyName(value);
@@ -46,9 +49,18 @@ export function CompanyForm({ onCancel, onSaved }: { onCancel: () => void; onSav
       return;
     }
 
-    setSuccess(`Empresa criada! E-mail enviado para ${adminEmail}.`);
     router.refresh();
-    setTimeout(onSaved, 1500);
+
+    if (result.emailSent) {
+      setSuccess(`Empresa criada! E-mail enviado para ${adminEmail}.`);
+      setTimeout(onSaved, 1500);
+      return;
+    }
+
+    // E-mail falhou (ex.: Resend sem configurar) — a conta já existe e
+    // funciona, mas ninguém recebeu a senha. Fica na tela até copiar,
+    // não fecha sozinho.
+    setFailedPassword(result.tempPassword ?? null);
   }
 
   return (
@@ -95,14 +107,25 @@ export function CompanyForm({ onCancel, onSaved }: { onCancel: () => void; onSav
             {success}
           </div>
         )}
+        {failedPassword && (
+          <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--danger-surface)", color: "var(--danger)", fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
+            <strong>Empresa criada, mas o e-mail não pôde ser enviado.</strong>
+            <span>Repasse esta senha manualmente para {adminEmail}:</span>
+            <code style={{ fontSize: 14, fontWeight: 700, background: "var(--surface)", padding: "6px 10px", borderRadius: "var(--radius-sm)", width: "fit-content" }}>
+              {failedPassword}
+            </code>
+          </div>
+        )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
-            Cancelar
+          <Button type="button" variant="secondary" onClick={failedPassword ? onSaved : onCancel} disabled={submitting}>
+            {failedPassword ? "Fechar" : "Cancelar"}
           </Button>
-          <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
-            {submitting ? "Criando..." : "Criar e Enviar Acesso"}
-          </Button>
+          {!failedPassword && (
+            <Button type="submit" variant={submitting ? "disabled" : "confirm"}>
+              {submitting ? "Criando..." : "Criar e Enviar Acesso"}
+            </Button>
+          )}
         </div>
       </Card>
     </form>

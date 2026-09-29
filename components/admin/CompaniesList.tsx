@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { updateCompanyPlan, toggleCompanyActive } from "@/app/actions/adminCompanies";
+import { DeleteButton } from "@/components/ui/DeleteButton";
+import { updateCompanyPlan, toggleCompanyActive, deleteCompany } from "@/app/actions/adminCompanies";
 
 type CompanyWithCounts = Company & { _count: { users: number; jobs: number; applications: number } };
 
@@ -30,6 +31,12 @@ export function CompaniesList({ companies }: { companies: CompanyWithCounts[] })
     setLoadingId(companyId);
     await toggleCompanyActive(companyId);
     setLoadingId(null);
+    router.refresh();
+  }
+
+  async function handleDelete(companyId: string) {
+    const result = await deleteCompany(companyId);
+    if (!result.success) throw new Error(result.error);
     router.refresh();
   }
 
@@ -100,6 +107,20 @@ export function CompaniesList({ companies }: { companies: CompanyWithCounts[] })
           <Button type="button" variant="secondary" onClick={() => handleToggle(company.id)} disabled={loadingId === company.id}>
             {company.active ? "Desativar" : "Ativar"}
           </Button>
+
+          {/* Só empresas já inativas podem ser excluídas — segurança contra
+              apagar um cliente em operação por engano (checado também no
+              servidor, ver deleteCompany). */}
+          {!company.active && (
+            <DeleteButton
+              variant="ghost"
+              ariaLabel={`Excluir empresa ${company.name}`}
+              confirmTitle="Excluir empresa"
+              label="Excluir"
+              confirmMessage={`Tem certeza que deseja excluir "${company.name}" permanentemente? Isso apaga TODOS os dados dela — vagas, candidatos, colaboradores, entrevistas, avaliações DISC — e as contas de acesso dos colaboradores. Essa ação não pode ser desfeita.`}
+              onConfirm={() => handleDelete(company.id)}
+            />
+          )}
         </div>
       ))}
     </Card>

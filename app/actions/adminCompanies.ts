@@ -32,7 +32,7 @@ export async function createCompanyWithAdmin(data: {
   adminName: string;
   adminEmail: string;
   plan: string;
-}): Promise<ActionResult & { tempPassword?: string }> {
+}): Promise<ActionResult & { tempPassword?: string; emailSent?: boolean }> {
   try {
     await requireRole(["SUPERADMIN"]);
 
@@ -80,28 +80,33 @@ export async function createCompanyWithAdmin(data: {
         },
       });
 
-      try {
-        await sendEmailViaResend(
-          adminEmail,
-          "Seu acesso ao Inspect Talent está pronto",
-          `<div style="font-family: Arial, sans-serif; max-width: 600px;">
-            <h2>Olá, ${adminName}!</h2>
-            <p>Sua conta no <strong>Inspect Talent</strong> foi criada com sucesso.</p>
-            <div style="background: #f5f5f7; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <p><strong>E-mail:</strong> ${adminEmail}</p>
-              <p><strong>Senha temporária:</strong> ${tempPassword}</p>
-            </div>
-            <p>Você será solicitado a trocar a senha no primeiro acesso.</p>
-          </div>`
-        );
-      } catch (emailErr) {
+      // sendEmailViaResend NUNCA lança — sempre retorna {success, error},
+      // inclusive quando RESEND_API_KEY não está configurado. Um try/catch
+      // aqui nunca dispararia; o resultado precisa ser checado de verdade,
+      // senão uma falha de envio passa silenciosa e o SUPERADMIN nunca fica
+      // sabendo que precisa repassar a senha manualmente.
+      const emailResult = await sendEmailViaResend(
+        adminEmail,
+        "Seu acesso ao Inspect Talent está pronto",
+        `<div style="font-family: Arial, sans-serif; max-width: 600px;">
+          <h2>Olá, ${adminName}!</h2>
+          <p>Sua conta no <strong>Inspect Talent</strong> foi criada com sucesso.</p>
+          <div style="background: #f5f5f7; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p><strong>E-mail:</strong> ${adminEmail}</p>
+            <p><strong>Senha temporária:</strong> ${tempPassword}</p>
+          </div>
+          <p>Você será solicitado a trocar a senha no primeiro acesso.</p>
+        </div>`
+      );
+      if (!emailResult.success) {
         // Conta já existe e funciona — falha de e-mail não desfaz a criação,
-        // só significa que o SUPERADMIN precisa repassar a senha manualmente.
-        console.error("[createCompanyWithAdmin] email", emailErr);
+        // só significa que o SUPERADMIN precisa repassar a senha manualmente
+        // (por isso tempPassword sempre volta no retorno, mesmo aqui).
+        console.error("[createCompanyWithAdmin] email", emailResult.error);
       }
 
       revalidatePath("/admin/empresas");
-      return { success: true, tempPassword };
+      return { success: true, tempPassword, emailSent: emailResult.success };
     } catch (err) {
       await supabase.auth.admin.deleteUser(authUser.user.id);
       throw err;
@@ -123,6 +128,49 @@ export async function updateCompanyPlan(companyId: string, plan: string): Promis
   } catch (err) {
     console.error("[updateCompanyPlan]", err);
     return { success: false, error: "Erro ao atualizar plano" };
+  }
+}
+
+// Exclusão de verdade — só de empresa já INATIVA (segurança contra apagar
+// um cliente em operação por engano). Zera tudo: os ~25 relacionamentos de
+// Company já cascateiam no schema (jobs, candidatos, vagas, DISC, etc.),
+// MAS User.company usa onDelete: SetNull (não Cascade — decisão da tarefa
+// anterior, pra proteger o SUPERADMIN de ser apagado se a empresa de
+// origem dele for removida). Sem tratar isso à parte, os colaboradores
+// dessa empresa ficariam "soltos" (companyId null, ainda ativos no
+// Supabase Auth) em vez de removidos — por isso apagamos os Users e as
+// contas correspondentes no Auth explicitamente, antes de apagar a Company.
+export async function deleteCompany(companyId: string): Promise<ActionResult> {
+  try {
+    await requireRole(["SUPERADMIN"]);
+
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      include: { users: { select: { id: true } } },
+    });
+    if (!company) return { success: false, error: "Empresa não encontrada" };
+    if (company.active) return { success: false, error: "Só é possível excluir empresas inativas" };
+
+    const supabase = createSupabaseAdminClient();
+    for (const user of company.users) {
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
+      // "not found" é esperado se o Auth já estava dessincronizado; qualquer
+      // outro erro interrompe antes de mexer no banco.
+      if (error && error.status !== 404) {
+        return { success: false, error: `Erro ao remover usuário do Auth: ${error.message}` };
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.user.deleteMany({ where: { companyId } }),
+      prisma.company.delete({ where: { id: companyId } }),
+    ]);
+
+    revalidatePath("/admin/empresas");
+    return { success: true };
+  } catch (err) {
+    console.error("[deleteCompany]", err);
+    return { success: false, error: "Erro ao excluir empresa" };
   }
 }
 
