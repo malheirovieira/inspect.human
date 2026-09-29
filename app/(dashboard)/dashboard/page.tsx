@@ -49,7 +49,7 @@ export default async function InicioPage() {
       <div className="fin-content">
         {showTestimonials && <TestimonialsStrip items={[...TESTIMONIALS]} />}
         {partners.length > 0 && (
-          <div style={{ paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+          <div style={{ marginTop: "auto", paddingBottom: 24 }}>
             <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)", margin: "0 0 16px" }}>
               Parceiros de benefícios
             </p>
