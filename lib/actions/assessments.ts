@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/session';
+import { requireRole } from "@/lib/session";
 import { z } from 'zod';
 
 const CreateAssessmentSchema = z.object({
@@ -25,10 +25,7 @@ export type CreateAssessmentInput = z.infer<typeof CreateAssessmentSchema>;
 
 export async function createAssessment(input: CreateAssessmentInput) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado' };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     const validation = CreateAssessmentSchema.parse(input);
 
@@ -82,10 +79,7 @@ export async function createAssessment(input: CreateAssessmentInput) {
 
 export async function getAssessments() {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado', data: null };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     const assessments = await prisma.assessment.findMany({
       where: { companyId: session.companyId },
@@ -110,10 +104,7 @@ export async function getAssessments() {
 
 export async function getAssessmentById(id: string) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado', data: null };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     const assessment = await prisma.assessment.findFirst({
       where: {
@@ -143,10 +134,7 @@ export async function getAssessmentById(id: string) {
 
 export async function updateAssessment(id: string, input: CreateAssessmentInput) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado' };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     const validation = CreateAssessmentSchema.parse(input);
     const totalScore = validation.questions.reduce((sum, q) => sum + q.maxScore, 0);
@@ -213,10 +201,7 @@ export async function updateAssessment(id: string, input: CreateAssessmentInput)
 
 export async function deleteAssessment(id: string) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado' };
-    }
+    await requireRole(["ADMIN", "HR"]);
 
     // Verifica se há responses
     const existingResponses = await prisma.assessmentResponse.findFirst({

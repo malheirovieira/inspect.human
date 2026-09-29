@@ -20,6 +20,8 @@ export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json(EMPTY, { status: 401 });
   if (session.role !== "ADMIN" && session.role !== "HR") return NextResponse.json(EMPTY);
+  // companyId só é null pra SUPERADMIN, já excluído pela checagem acima.
+  if (!session.companyId) return NextResponse.json(EMPTY);
 
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
   if (q.length < 2) return NextResponse.json(EMPTY);

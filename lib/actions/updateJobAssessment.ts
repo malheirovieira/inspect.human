@@ -1,17 +1,14 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/session';
+import { requireRole } from '@/lib/session';
 
 export async function updateJobAssessment(
   jobId: string,
   assessmentId: string | null
 ) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado' };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     // Verifica que a vaga pertence à empresa do usuário
     const job = await prisma.job.findFirst({

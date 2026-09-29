@@ -13,11 +13,14 @@ export default async function DashboardGroupLayout({ children }: { children: Rea
   // deste grupo de rotas (como /login), então não entra nesse redirect.
   if (session.mustChangePassword) redirect("/trocar-senha");
 
-  const company = await getCompany(session.companyId);
+  // SUPERADMIN não tem empresa (companyId null) — mostra rótulo do sistema
+  // no lugar do nome de uma empresa que ele não pertence mais.
+  const company = session.companyId ? await getCompany(session.companyId) : null;
+  const companyName = session.role === "SUPERADMIN" ? "Painel do Sistema" : company?.name;
 
   return (
     <div className="fin-app">
-      <Sidebar userName={session.name} companyName={company?.name} role={session.role} />
+      <Sidebar userName={session.name} companyName={companyName} role={session.role} />
       <div className="fin-main">
         {/* Primeira camada da ÁREA DA PÁGINA (a Sidebar é branca e fica de
             fora): fundo ambiente, só renderiza na tela Início. */}

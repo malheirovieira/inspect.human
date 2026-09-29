@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/session';
+import { requireRole } from '@/lib/session';
 
 function generateToken(): string {
   return Math.random().toString(36).substring(2, 15) +
@@ -10,10 +10,7 @@ function generateToken(): string {
 
 export async function generateAssessmentLink(applicationId: string) {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: 'Não autenticado' };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     // Busca candidatura + vaga
     const application = await prisma.application.findFirst({

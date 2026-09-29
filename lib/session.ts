@@ -4,13 +4,14 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "./supabase/server";
 import { prisma } from "./prisma";
 
-// SUPERADMIN é dono do sistema (não da empresa) — só gerencia
-// /admin/parceiros, fora do escopo normal de ADMIN de uma empresa.
+// SUPERADMIN é dono do sistema, DE FATO fora de qualquer empresa —
+// companyId é null pra essa role (migration 0034), nunca reaproveita a
+// empresa de origem de antes da promoção. Só gerencia /admin/*.
 export type Role = "ADMIN" | "HR" | "EMPLOYEE" | "SUPERADMIN";
 
 export type Session = {
   userId: string;
-  companyId: string;
+  companyId: string | null;
   role: Role;
   name: string;
   email: string;
@@ -52,13 +53,29 @@ export async function requireSession(): Promise<Session> {
   return session;
 }
 
-// SUPERADMIN passa em qualquer checagem de role — sem isso, promover a
-// conta do dono do sistema pra SUPERADMIN faria ela perder acesso ao resto
-// do dashboard (todo requireRole(["ADMIN","HR"]) já existente bloquearia
-// qualquer role fora da lista, e SUPERADMIN nunca está nessas listas).
+// Duas assinaturas: quando `roles` não inclui "SUPERADMIN" (toda página de
+// negócio existente — ADMIN/HR/EMPLOYEE), o retorno GARANTE companyId como
+// string, sem precisar tocar nos ~50 call sites que já existiam antes do
+// companyId virar opcional (nenhum deles listava "SUPERADMIN" nos roles
+// aceitos, então a inferência do array literal já casa com este overload
+// automaticamente). Quando `roles` inclui "SUPERADMIN" (páginas /admin/*),
+// o retorno é a Session crua (companyId pode ser null de verdade).
+export async function requireRole(roles: Exclude<Role, "SUPERADMIN">[]): Promise<Session & { companyId: string }>;
+export async function requireRole(roles: Role[]): Promise<Session>;
 export async function requireRole(roles: Role[]): Promise<Session> {
   const session = await requireSession();
-  if (session.role === "SUPERADMIN") return session;
+
+  if (session.role === "SUPERADMIN") {
+    // Página já é pra SUPERADMIN (ex.: /admin/parceiros, /admin/empresas) —
+    // não exige companyId, que SUPERADMIN não tem.
+    if (roles.includes("SUPERADMIN")) return session;
+    // Página de negócio (ADMIN/HR/EMPLOYEE): sem empresa vinculada não há o
+    // que filtrar — manda pro painel dele em vez de vazar companyId null
+    // pras queries dessa página.
+    if (!session.companyId) redirect("/admin/empresas");
+    return session;
+  }
+
   if (!roles.includes(session.role)) redirect("/dashboard");
   return session;
 }

@@ -96,7 +96,9 @@ model User {
   // Mesmo UUID de auth.users(id) — nunca gerado pelo Prisma, sempre vindo do
   // Supabase Auth no momento em que o usuário é criado/convidado.
   id        String   @id @db.Uuid
-  companyId String   @map("company_id") @db.Uuid
+  // Opcional só pra SUPERADMIN (dono do sistema, não de uma empresa) —
+  // ON DELETE SET NULL (migration 0034), não CASCADE como o resto do schema.
+  companyId String?  @map("company_id") @db.Uuid
   name      String
   email     String
   role      String
@@ -161,7 +163,7 @@ model User {
   admissionExamDate   DateTime? @map("admission_exam_date") @db.Date
   admissionExamResult String?   @map("admission_exam_result")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   createdJobs         Job[]                @relation("JobCreatedBy")
   trainingAssignments TrainingAssignment[]

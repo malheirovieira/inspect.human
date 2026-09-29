@@ -13,9 +13,10 @@ export async function GET(
 ) {
   const { analysisId } = await params;
 
-  // API route — não redirecionar; retornar 401 diretamente.
+  // API route — não redirecionar; retornar 401 diretamente. companyId só é
+  // null pra SUPERADMIN, já excluído pela checagem de role acima.
   const session = await getSession();
-  if (!session || (session.role !== "ADMIN" && session.role !== "HR")) {
+  if (!session || (session.role !== "ADMIN" && session.role !== "HR") || !session.companyId) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 

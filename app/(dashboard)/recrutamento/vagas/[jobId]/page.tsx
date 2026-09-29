@@ -10,7 +10,7 @@ import { JobDeleteButton } from "@/components/recrutamento/JobDeleteButton";
 import { CandidatesBoard } from "@/components/recrutamento/CandidatesBoard";
 import { KanbanBoard } from "@/components/recrutamento/KanbanBoard";
 import { getJob } from "@/services/jobs";
-import { requireSession } from "@/lib/session";
+import { requireRole } from "@/lib/session";
 import { getCompany } from "@/services/company";
 import { setJobStatus } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { listCompanyOptions } from "@/services/companyOptions";
@@ -40,7 +40,10 @@ export default async function VagaDetalhePage({
   const showRejected = showRejectedParam === "1";
   const visibleStages = showRejected ? CANDIDATE_STAGES : CANDIDATE_STAGES.filter((s) => s !== "REJECTED");
 
-  const session = await requireSession();
+  // ADMIN/HR — mesmo role já exigido dentro de getJob(); explícito aqui
+  // também porque a página usa session.companyId diretamente logo abaixo
+  // (SUPERADMIN sem empresa não tem o que ver aqui).
+  const session = await requireRole(["ADMIN", "HR"]);
   // getCompany() é cacheada por React: se o layout já buscou a empresa nesta
   // requisição, retorna do cache sem nova query ao banco.
   const [job, company, employmentTypes, departments, stageLabels] = await Promise.all([

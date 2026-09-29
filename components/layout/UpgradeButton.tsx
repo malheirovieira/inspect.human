@@ -13,7 +13,7 @@ import { getCompanyPlan } from "@/services/plans";
 // mais alto. Leva pra /configuracoes/planos (também só ADMIN).
 export async function UpgradeButton() {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") return null;
+  if (!session || session.role !== "ADMIN" || !session.companyId) return null;
   const plan = await getCompanyPlan(session.companyId);
   if (isTopPlan(plan.id)) return null;
 

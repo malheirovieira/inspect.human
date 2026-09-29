@@ -2,7 +2,7 @@
 
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/session";
+import { requireRole } from "@/lib/session";
 
 function generateToken(): string {
   // randomUUID() em vez de Math.random() (usado no link de assessment
@@ -15,10 +15,7 @@ type GenerateDiscLinkResult = { success: false; error: string } | { success: tru
 
 export async function generateDiscLink(applicationId: string): Promise<GenerateDiscLinkResult> {
   try {
-    const session = await getSession();
-    if (!session) {
-      return { success: false, error: "Não autenticado" };
-    }
+    const session = await requireRole(["ADMIN", "HR"]);
 
     const application = await prisma.application.findFirst({
       where: { id: applicationId, companyId: session.companyId },

@@ -9,6 +9,7 @@ import {
   Home,
   Briefcase,
   Building2,
+  Handshake,
   Settings,
   LogOut,
   ChevronRight,
@@ -406,7 +407,12 @@ export function Sidebar({
               <>
                 <SectionLabel label="SUPER ADMIN" collapsed={collapsed} />
                 <SimpleNavItem
-                  item={{ href: "/admin/parceiros", label: "Parceiros", icon: Building2 }}
+                  item={{ href: "/admin/empresas", label: "Empresas", icon: Building2 }}
+                  pathname={pathname}
+                  collapsed={collapsed}
+                />
+                <SimpleNavItem
+                  item={{ href: "/admin/parceiros", label: "Parceiros", icon: Handshake }}
                   pathname={pathname}
                   collapsed={collapsed}
                 />
