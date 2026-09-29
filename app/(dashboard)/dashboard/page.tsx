@@ -1,9 +1,7 @@
 import { Header } from "@/components/layout/Header";
-import { TestimonialsStrip } from "@/components/inicio/TestimonialsStrip";
 import { PartnersCarousel } from "@/components/inicio/PartnersCarousel";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
 import { requireSession } from "@/lib/session";
-import { TESTIMONIALS } from "@/lib/testimonials";
 import { listActivePartners } from "@/app/actions/partners";
 import { getCompanyPlan } from "@/services/plans";
 import { DEFAULT_PLAN_ID, PLANS } from "@/lib/plans";
@@ -20,13 +18,12 @@ function formatHeaderDate(date: Date): string {
 // (components/layout/AmbientBackground).
 //
 // SUPERADMIN não tem empresa (companyId null) — não faz sentido mostrar
-// depoimentos/parceiros de uma empresa específica pra quem não pertence a
-// nenhuma; em vez disso vê stats globais do SaaS (SuperAdminDashboard).
+// parceiros de uma empresa específica pra quem não pertence a nenhuma; em
+// vez disso vê stats globais do SaaS (SuperAdminDashboard).
 //
 // Título = saudação neutra (serve pra qualquer gênero) com o primeiro nome;
 // o item do menu ("Início"), a aba do navegador e o rótulo acima do título
-// continuam iguais. Abaixo, a faixa de depoimentos FICTÍCIOS
-// (lib/testimonials.ts) — só ADMIN e HR; EMPLOYEE vê só o título.
+// continuam iguais.
 //
 // "Precisa da sua atenção" saiu da tela, mas a lógica continua pronta pra
 // uso futuro em outro lugar: services/attention.ts + AttentionCard.
@@ -101,28 +98,22 @@ export default async function InicioPage() {
   if (!session.companyId) return header;
   const { companyId } = session;
 
-  // Parceiros aparecem pra TODOS os usuários da empresa (inclusive EMPLOYEE,
-  // que antes só via o título) — só o carrossel de depoimentos continua
-  // exclusivo de ADMIN/HR.
+  // Parceiros aparecem pra TODOS os usuários da empresa (inclusive EMPLOYEE).
   const [partners, plan] = await Promise.all([listActivePartners(), getCompanyPlan(companyId)]);
   const canClose = plan.id !== DEFAULT_PLAN_ID;
-  const showTestimonials = session.role === "ADMIN" || session.role === "HR";
 
-  if (!showTestimonials && partners.length === 0) return header;
+  if (partners.length === 0) return header;
 
   return (
     <>
       {header}
       <div className="fin-content">
-        {showTestimonials && <TestimonialsStrip items={[...TESTIMONIALS]} />}
-        {partners.length > 0 && (
-          <div style={{ marginTop: "auto", paddingBottom: 24 }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)", margin: "0 0 16px" }}>
-              Parceiros de benefícios
-            </p>
-            <PartnersCarousel partners={partners} canClose={canClose} />
-          </div>
-        )}
+        <div style={{ marginTop: "auto", paddingBottom: 24 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)", margin: "0 0 16px" }}>
+            Parceiros de benefícios
+          </p>
+          <PartnersCarousel partners={partners} canClose={canClose} />
+        </div>
       </div>
     </>
   );
