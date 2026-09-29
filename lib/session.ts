@@ -26,6 +26,13 @@ export type Session = {
 // em vez de bater no Supabase Auth + Prisma de novo a cada chamada — é isso
 // que fazia telas como /colaboradores/novo (layout + requireRole + 2x
 // listCompanyOptions) rodarem a validação de sessão 4 vezes numa página só.
+// Conta sensível (dono do sistema, sem o isolamento por empresa que protege
+// o resto) — sessão não fica "logada pra sempre" como as demais. Depois
+// desse tempo desde o último login de verdade (last_sign_in_at, rastreado
+// pelo próprio Supabase Auth — sem campo novo no banco), força logout e
+// exige senha de novo, mesmo com um refresh token ainda válido.
+const SUPERADMIN_SESSION_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2h
+
 export const getSession = cache(async (): Promise<Session | null> => {
   const supabase = await createSupabaseServerClient();
   const {
@@ -36,6 +43,14 @@ export const getSession = cache(async (): Promise<Session | null> => {
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
   if (!dbUser || !dbUser.active) return null;
+
+  if (dbUser.role === "SUPERADMIN") {
+    const lastSignIn = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : 0;
+    if (Date.now() - lastSignIn > SUPERADMIN_SESSION_MAX_AGE_MS) {
+      await supabase.auth.signOut();
+      return null;
+    }
+  }
 
   return {
     userId: dbUser.id,

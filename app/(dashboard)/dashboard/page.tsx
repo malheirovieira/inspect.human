@@ -6,7 +6,7 @@ import { requireSession } from "@/lib/session";
 import { TESTIMONIALS } from "@/lib/testimonials";
 import { listActivePartners } from "@/app/actions/partners";
 import { getCompanyPlan } from "@/services/plans";
-import { DEFAULT_PLAN_ID } from "@/lib/plans";
+import { DEFAULT_PLAN_ID, PLANS } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 
 function formatHeaderDate(date: Date): string {
@@ -41,22 +41,56 @@ export default async function InicioPage() {
   );
 
   if (session.role === "SUPERADMIN") {
-    const [totalCompanies, totalUsers, totalApplications, totalActiveJobs] = await prisma.$transaction([
-      prisma.company.count({ where: { active: true } }),
+    // groupBy fora do $transaction([...]) — dentro de um array heterogêneo
+    // o TypeScript perde a inferência específica de _count e trata como
+    // `true | {...} | undefined` genérico; isoladas, todas são leituras
+    // (sem necessidade real de atomicidade entre si).
+    const [totalUsers, totalPartners, companiesWithUserCount] = await prisma.$transaction([
       prisma.user.count({ where: { role: { not: "SUPERADMIN" } } }),
-      prisma.application.count(),
-      prisma.job.count({ where: { status: "OPEN" } }),
+      prisma.partner.count(),
+      prisma.company.findMany({
+        where: { active: true },
+        select: { id: true, name: true, plan: true, _count: { select: { users: true } } },
+        orderBy: { name: "asc" },
+      }),
     ]);
+    const planCounts = await prisma.company.groupBy({
+      by: ["plan"],
+      where: { active: true },
+      _count: { _all: true },
+      orderBy: { plan: "asc" },
+    });
+
+    const totalActiveCompanies = planCounts.reduce((sum, p) => sum + p._count._all, 0);
+
+    // Ticket médio = receita mensal estimada (soma do preço do plano de cada
+    // empresa ativa) / número de empresas ativas. Corporativo é "sob
+    // consulta" (monthlyPrice: null em lib/plans.ts) — não entra na conta,
+    // nem no numerador nem no denominador, por não ter valor conhecido.
+    let revenueSum = 0;
+    let payingCompanies = 0;
+    for (const { plan, _count } of planCounts) {
+      const price = PLANS.find((p) => p.id === plan)?.monthlyPrice;
+      if (price != null) {
+        revenueSum += price * _count._all;
+        payingCompanies += _count._all;
+      }
+    }
+    const averageTicket = payingCompanies > 0 ? revenueSum / payingCompanies : 0;
 
     return (
       <>
         {header}
         <div className="fin-content">
           <SuperAdminDashboard
-            totalCompanies={totalCompanies}
+            totalActiveCompanies={totalActiveCompanies}
+            planCounts={planCounts.map((p) => ({ plan: p.plan, count: p._count._all }))}
             totalUsers={totalUsers}
-            totalApplications={totalApplications}
-            totalActiveJobs={totalActiveJobs}
+            totalPartners={totalPartners}
+            companiesWithUserCount={companiesWithUserCount.map((c) => ({ id: c.id, name: c.name, plan: c.plan, userCount: c._count.users }))}
+            averageTicket={averageTicket}
+            adminName={session.name}
+            adminEmail={session.email}
           />
         </div>
       </>
