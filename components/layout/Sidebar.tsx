@@ -8,6 +8,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   Home,
   Briefcase,
+  Building2,
   Settings,
   LogOut,
   ChevronRight,
@@ -172,9 +173,11 @@ function SimpleNavItem({
 export function Sidebar({
   userName = "Gabriel Malheiro",
   companyName = "Sua empresa",
+  role,
 }: {
   userName?: string;
   companyName?: string;
+  role?: string;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -398,6 +401,18 @@ export function Sidebar({
             {OUTROS.map((item) => (
               <SimpleNavItem key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
             ))}
+
+            {role === "SUPERADMIN" && (
+              <>
+                <SectionLabel label="SUPER ADMIN" collapsed={collapsed} />
+                <SimpleNavItem
+                  item={{ href: "/admin/parceiros", label: "Parceiros", icon: Building2 }}
+                  pathname={pathname}
+                  collapsed={collapsed}
+                />
+              </>
+            )}
+
             <button
               type="button"
               onClick={handleLogout}

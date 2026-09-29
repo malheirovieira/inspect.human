@@ -1,7 +1,11 @@
 import { Header } from "@/components/layout/Header";
 import { TestimonialsStrip } from "@/components/inicio/TestimonialsStrip";
+import { PartnersCarousel } from "@/components/inicio/PartnersCarousel";
 import { requireSession } from "@/lib/session";
 import { TESTIMONIALS } from "@/lib/testimonials";
+import { listActivePartners } from "@/app/actions/partners";
+import { getCompanyPlan } from "@/services/plans";
+import { DEFAULT_PLAN_ID } from "@/lib/plans";
 
 function formatHeaderDate(date: Date): string {
   const dayMonth = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(date);
@@ -29,13 +33,22 @@ export default async function InicioPage() {
       date={formatHeaderDate(new Date())}
     />
   );
-  if (session.role !== "ADMIN" && session.role !== "HR") return header;
+
+  // Parceiros aparecem pra TODOS os usuários (inclusive EMPLOYEE, que antes
+  // só via o título) — só o carrossel de depoimentos continua exclusivo de
+  // ADMIN/HR.
+  const [partners, plan] = await Promise.all([listActivePartners(), getCompanyPlan(session.companyId)]);
+  const canClose = plan.id !== DEFAULT_PLAN_ID;
+  const showTestimonials = session.role === "ADMIN" || session.role === "HR";
+
+  if (!showTestimonials && partners.length === 0) return header;
 
   return (
     <>
       {header}
       <div className="fin-content">
-        <TestimonialsStrip items={[...TESTIMONIALS]} />
+        {showTestimonials && <TestimonialsStrip items={[...TESTIMONIALS]} />}
+        {partners.length > 0 && <PartnersCarousel partners={partners} canClose={canClose} />}
       </div>
     </>
   );

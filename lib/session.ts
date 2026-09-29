@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "./supabase/server";
 import { prisma } from "./prisma";
 
-export type Role = "ADMIN" | "HR" | "EMPLOYEE";
+// SUPERADMIN é dono do sistema (não da empresa) — só gerencia
+// /admin/parceiros, fora do escopo normal de ADMIN de uma empresa.
+export type Role = "ADMIN" | "HR" | "EMPLOYEE" | "SUPERADMIN";
 
 export type Session = {
   userId: string;
@@ -50,8 +52,13 @@ export async function requireSession(): Promise<Session> {
   return session;
 }
 
+// SUPERADMIN passa em qualquer checagem de role — sem isso, promover a
+// conta do dono do sistema pra SUPERADMIN faria ela perder acesso ao resto
+// do dashboard (todo requireRole(["ADMIN","HR"]) já existente bloquearia
+// qualquer role fora da lista, e SUPERADMIN nunca está nessas listas).
 export async function requireRole(roles: Role[]): Promise<Session> {
   const session = await requireSession();
+  if (session.role === "SUPERADMIN") return session;
   if (!roles.includes(session.role)) redirect("/dashboard");
   return session;
 }

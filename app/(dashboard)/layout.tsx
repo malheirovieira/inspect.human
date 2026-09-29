@@ -17,7 +17,7 @@ export default async function DashboardGroupLayout({ children }: { children: Rea
 
   return (
     <div className="fin-app">
-      <Sidebar userName={session.name} companyName={company?.name} />
+      <Sidebar userName={session.name} companyName={company?.name} role={session.role} />
       <div className="fin-main">
         {/* Primeira camada da ÁREA DA PÁGINA (a Sidebar é branca e fica de
             fora): fundo ambiente, só renderiza na tela Início. */}
