@@ -43,6 +43,11 @@ export type KanbanCandidate = {
   // Resumo por IA (análise concluída): até 3 tags + experiência no card.
   aiSkills?: string[];
   aiExperienceYears?: number | null;
+  // DISC: perfil+score só quando respondido; discPending = link gerado mas
+  // ainda sem resposta. Nenhum dos dois = avaliação não enviada.
+  discPerfil?: string | null;
+  discScoreGeral?: number | null;
+  discPending?: boolean;
 };
 
 const TAG_ORDER: Record<string, number> = { GREEN: 0, BLUE: 1, RED: 2 };
@@ -95,6 +100,16 @@ function CandidateCard({ candidate, jobId, showJob }: { candidate: KanbanCandida
         </div>
         {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{candidate.job.title}</div>}
         <AiCardSnippet skills={candidate.aiSkills} experienceYears={candidate.aiExperienceYears} />
+        {candidate.discPerfil && (
+          <Badge tone="success" style={{ fontSize: 10, padding: "0 6px", marginTop: 6 }}>
+            {candidate.discPerfil} | {Math.round(candidate.discScoreGeral ?? 0)}
+          </Badge>
+        )}
+        {!candidate.discPerfil && candidate.discPending && (
+          <Badge tone="primary" style={{ fontSize: 10, padding: "0 6px", marginTop: 6 }}>
+            DISC pendente
+          </Badge>
+        )}
       </Link>
     </div>
   );

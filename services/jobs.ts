@@ -41,6 +41,7 @@ export async function getJob(jobId: string) {
         orderBy: { createdAt: "desc" },
         include: {
           candidate: { select: { name: true, email: true, phone: true, linkedinUrl: true, currentResumeId: true, isTest: true } },
+          discResponses: { select: { submittedAt: true, perfilDisc: true, scoreGeral: true } },
         },
       },
       createdBy: { select: { name: true } },

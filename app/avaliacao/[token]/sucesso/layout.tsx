@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Sucesso - Inspect Talent',
-  description: 'Sua avaliação foi enviada',
+  title: 'Avaliação Concluída - Inspect Talent',
+  description: 'Resultado da sua avaliação comportamental DISC',
 };
 
 export default function SucessoLayout({ children }: { children: React.ReactNode }) {

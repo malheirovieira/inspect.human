@@ -67,14 +67,18 @@ export default async function VagaDetalhePage({
   // Tags + experiência do resumo por IA nos cards (sem o resumo).
   const aiSnippets = await getAiSnippets(session.companyId, [...new Set(job.applications.map((a) => a.candidateId))]);
   const boardCandidates = job.applications.map((a) => {
-    const { candidate, ...rest } = a;
+    const { candidate, discResponses, ...rest } = a;
     const snippet = aiSnippets.get(a.candidateId);
+    const disc = discResponses?.[0];
     return {
       ...rest,
       ...candidate,
       job: { title: job.title },
       aiSkills: snippet?.skills,
       aiExperienceYears: snippet?.experienceYears ?? null,
+      discPerfil: disc?.submittedAt ? disc.perfilDisc : null,
+      discScoreGeral: disc?.submittedAt ? Number(disc.scoreGeral) : null,
+      discPending: Boolean(disc && !disc.submittedAt),
     };
   });
   // Reprovado não conta como candidato "em aberto" — mesma régua usada no
