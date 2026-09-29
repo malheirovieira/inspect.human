@@ -1087,6 +1087,17 @@ body {
   opacity: 0.5;
 }
 
+/* Banner de parceiro na Início (components/inicio/PartnersCarousel) — altura
+   fixa responsiva; só a altura precisa de media query (o resto é inline). */
+.fin-partner-banner {
+  height: 120px;
+}
+@media (max-width: 640px) {
+  .fin-partner-banner {
+    height: 80px;
+  }
+}
+
 /* ---- Início: "Precisa da sua atenção" (components/inicio/AttentionCard) ----
    IDÊNTICO à referência — From Uiverse.io by Yaya12085 (licença MIT):
    .task → .fin-attention-card, .tags/.tag, p → __title, .stats. Mesmas cores,
