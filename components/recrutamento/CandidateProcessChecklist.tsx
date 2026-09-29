@@ -38,9 +38,19 @@ export function CandidateProcessChecklist({
   // fallback seguro.
   const currentIndex = effectiveStage ? PIPELINE_STAGES.indexOf(effectiveStage as (typeof PIPELINE_STAGES)[number]) : -1;
 
-  async function handleClick(next: Stage) {
-    setPending(next);
-    await moveCandidateStage(applicationId, next);
+  // Clicar numa etapa futura ou passada pula direto pra ela. Clicar de novo
+  // na etapa ATUAL "desmarca" — recua pra etapa anterior do pipeline, em vez
+  // de ficar parado na mesma (sem esse caso, reclicar em "Entrevista" não
+  // fazia nada).
+  async function handleClick(step: Stage, isCurrentStep: boolean) {
+    let target: Stage = step;
+    if (isCurrentStep) {
+      const idx = PIPELINE_STAGES.indexOf(step as (typeof PIPELINE_STAGES)[number]);
+      target = PIPELINE_STAGES[Math.max(0, idx - 1)];
+    }
+
+    setPending(step);
+    await moveCandidateStage(applicationId, target);
     setPending(null);
     router.refresh();
   }
@@ -79,7 +89,7 @@ export function CandidateProcessChecklist({
             <button
               key={step}
               type="button"
-              onClick={() => handleClick(step)}
+              onClick={() => handleClick(step, isCurrent)}
               disabled={isPending}
               style={{
                 display: "flex",
