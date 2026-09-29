@@ -9,7 +9,6 @@ import { CopyLinkButton } from "@/components/recrutamento/CopyLinkButton";
 import { JobDeleteButton } from "@/components/recrutamento/JobDeleteButton";
 import { CandidatesBoard } from "@/components/recrutamento/CandidatesBoard";
 import { KanbanBoard } from "@/components/recrutamento/KanbanBoard";
-import { JobAssessmentSelect } from "@/components/recrutamento/JobAssessmentSelect";
 import { getJob } from "@/services/jobs";
 import { requireSession } from "@/lib/session";
 import { getCompany } from "@/services/company";
@@ -17,7 +16,6 @@ import { setJobStatus } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { listCompanyOptions } from "@/services/companyOptions";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
 import { getAiSnippets } from "@/services/resumeAnalyses";
-import { prisma } from "@/lib/prisma";
 import { CANDIDATE_STAGES } from "@/schemas/candidate";
 
 const TABS = [
@@ -45,20 +43,12 @@ export default async function VagaDetalhePage({
   const session = await requireSession();
   // getCompany() é cacheada por React: se o layout já buscou a empresa nesta
   // requisição, retorna do cache sem nova query ao banco.
-  const [job, company, employmentTypes, departments, stageLabels, assessments] = await Promise.all([
+  const [job, company, employmentTypes, departments, stageLabels] = await Promise.all([
     getJob(jobId),
     getCompany(session.companyId),
     listCompanyOptions("MODALIDADE_CONTRATACAO"),
     listCompanyOptions("SETOR"),
     getKanbanStageLabels(),
-    prisma.assessment.findMany({
-      where: { companyId: session.companyId },
-      include: {
-        questions: { select: { id: true } },
-        responses: { where: { submittedAt: { not: null } }, select: { id: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
   ]);
 
   if (!job) notFound();
@@ -173,14 +163,6 @@ export default async function VagaDetalhePage({
               employmentTypeOptions={employmentTypes.map((o) => o.label)}
               departmentOptions={departments.map((o) => o.label)}
             />
-
-            <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <JobAssessmentSelect
-                jobId={job.id}
-                currentAssessmentId={job.assessmentId}
-                assessments={assessments}
-              />
-            </Card>
           </>
         )}
 
