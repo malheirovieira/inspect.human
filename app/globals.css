@@ -61,14 +61,14 @@
   --action-cancel: #fe0401;
   --action-cancel-hover: #d10301;
   /* Fundo ambiente da tela Início (components/layout/AmbientBackground) —
-     azuis clareados em 2026-09-25 (antes #7eb6fb/#b9dafb/#dcecfd/#b3d4fb/
-     #e3e8fb) pra um brilho mais leve e suave. */
-  --ambient-base: #fafbfe;
-  --ambient-blue-strong: #a4ccfc;
-  --ambient-blue-mid: #cbe3fd;
-  --ambient-blue-soft: #e5f0fe;
-  --ambient-blue-top: #c8dffd;
-  --ambient-lavender: #e9edfc;
+     gradiente diagonal pastel rosa→azul (2026-09-29, 3ª iteração: Obsidian
+     Chrome escuro e sua variante clara com blobs radiais foram testados e
+     descartados antes deste). Linear, não radial — ver .fin-ambient logo
+     abaixo, que usa estas 2 cores direto (os 3 glows radiais que usavam os
+     tokens antigos (--ambient-blue-strong e afins) ficaram inativos,
+     ver .fin-ambient__glow. */
+  --ambient-pink: #f3e9e8;
+  --ambient-blue: #96b9d9;
   --radius-sm: 10px;
   --radius-md: 10px;
   --radius-lg: 18px;
@@ -445,15 +445,23 @@ body {
   margin-bottom: -100vh;
   overflow: hidden;
   pointer-events: none;
-  background: var(--ambient-base);
+  background: linear-gradient(
+    135deg,
+    var(--ambient-pink),
+    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
+    var(--ambient-blue),
+    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
+    var(--ambient-pink)
+  );
+  background-size: 300% 300%;
+  animation: fin-ambient-shift 12s ease infinite;
 }
+/* Os 3 glows radiais (paleta azul antiga, depois "Obsidian Chrome") ficam
+   inativos: o efeito atual é o gradiente diagonal liso acima, sem manchas
+   sobrepostas. Elementos mantidos no DOM (ver AmbientBackground.tsx) pra
+   não mexer no componente — só neutralizados aqui. */
 .fin-ambient__glow {
-  position: absolute;
-  border-radius: 50%;
-  will-change: transform, opacity;
-  animation-timing-function: ease-in-out;
-  animation-direction: alternate;
-  animation-iteration-count: infinite;
+  display: none;
 }
 /* Principal: centro em (0%, 85%) da área, o mais intenso. Elipse com raio
    de 56% x 56% — o azul visível chega a ~40% da largura e sobe até ~55% da
@@ -594,8 +602,23 @@ body {
     opacity: 0.95;
   }
 }
-/* Movimento reduzido: fundo estático na posição da referência. */
+@keyframes fin-ambient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+/* Movimento reduzido: fundo estático na posição inicial do gradiente. */
 @media (prefers-reduced-motion: reduce) {
+  .fin-ambient {
+    animation: none;
+    background-position: 0% 50%;
+  }
   .fin-ambient__glow {
     animation: none;
     will-change: auto;
