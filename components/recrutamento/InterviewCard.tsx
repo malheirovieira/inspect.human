@@ -2,12 +2,13 @@
 
 import { useRef, useState } from "react";
 import type { Interview } from "@prisma/client";
-import { cancelInterview, sendInterviewLink } from "@/app/actions/scheduleInterview";
+import { cancelInterview, deleteInterview, sendInterviewLink } from "@/app/actions/scheduleInterview";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Calendar, FileText, Link2, MapPin, Send, User, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DeleteButton } from "@/components/ui/DeleteButton";
 
 const STATUS_LABELS: Record<string, string> = {
   SCHEDULED: "Agendada",
@@ -43,6 +44,12 @@ export function InterviewCard({
     router.refresh();
   }
 
+  async function handleDelete() {
+    const result = await deleteInterview(applicationId);
+    if (!result.success) throw new Error(result.error);
+    router.refresh();
+  }
+
   async function handleSendLink() {
     if (!interview.interviewLink) return;
 
@@ -75,8 +82,8 @@ export function InterviewCard({
           style={{
             padding: "4px 12px",
             borderRadius: "var(--radius-full)",
-            background: "var(--success-surface)",
-            color: "var(--success)",
+            background: interview.status === "CANCELLED" ? "var(--danger-surface)" : "var(--success-surface)",
+            color: interview.status === "CANCELLED" ? "var(--danger)" : "var(--success)",
             fontSize: 12,
             fontWeight: 500,
           }}
@@ -190,6 +197,17 @@ export function InterviewCard({
           <Button type="button" variant="danger" onClick={() => cancelDialogRef.current?.showModal()} disabled={loading}>
             {loading ? "Cancelando..." : "Cancelar"}
           </Button>
+        </div>
+      )}
+
+      {interview.status === "CANCELLED" && (
+        <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+          <DeleteButton
+            onConfirm={handleDelete}
+            ariaLabel="Excluir entrevista"
+            label="Excluir entrevista"
+            confirmMessage="Deseja excluir esta entrevista cancelada? O card some da candidatura e não pode ser desfeito."
+          />
         </div>
       )}
 

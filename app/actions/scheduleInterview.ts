@@ -248,3 +248,50 @@ export async function cancelInterview(applicationId: string) {
     return { success: false, error: 'Erro ao cancelar entrevista' };
   }
 }
+
+// Remove o registro por completo — só faz sentido numa entrevista já
+// CANCELLED (limpar o card em vez de deixar o cancelamento pendurado).
+// Reagendar depois disso cria um Interview novo (upsert de scheduleInterview
+// não encontra mais o registro antigo pra atualizar).
+export async function deleteInterview(applicationId: string) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: 'Não autenticado' };
+    }
+
+    const interview = await prisma.interview.findUnique({
+      where: { applicationId },
+      include: { application: { include: { job: true } } },
+    });
+
+    if (!interview) {
+      return { success: false, error: 'Entrevista não encontrada' };
+    }
+
+    if (interview.application.job.companyId !== session.companyId) {
+      return { success: false, error: 'Sem permissão' };
+    }
+
+    if (interview.status !== 'CANCELLED') {
+      return { success: false, error: 'Só é possível excluir uma entrevista cancelada' };
+    }
+
+    await prisma.interview.delete({ where: { id: interview.id } });
+
+    await prisma.applicationEvent.create({
+      data: {
+        companyId: interview.application.job.companyId,
+        applicationId,
+        type: 'INTERVIEW_DELETED',
+        payload: { deletedAt: new Date().toISOString() },
+        actorId: session.userId,
+      },
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error('[deleteInterview]', err);
+    return { success: false, error: 'Erro ao excluir entrevista' };
+  }
+}

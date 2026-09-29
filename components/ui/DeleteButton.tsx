@@ -116,7 +116,7 @@ export function DeleteButton({
         aria-label={ariaLabel}
         title={label}
         className="fin-header-icon-btn"
-        style={{ background: "var(--action-cancel)" }}
+        style={{ "--icon-color": "var(--action-cancel)" } as React.CSSProperties}
       >
         <Trash2 size={16} />
       </button>

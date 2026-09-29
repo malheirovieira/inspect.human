@@ -62,7 +62,7 @@ export function ApplicationHeader({
             title="Ver perfil completo"
             aria-label="Ver perfil completo"
             className="fin-header-icon-btn"
-            style={{ background: "#0b2d5b" }}
+            style={{ "--icon-color": "#0b2d5b" } as React.CSSProperties}
           >
             <User size={16} />
           </Link>
