@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UPCOMING_MODULES } from "@/lib/config/upcomingModules";
 
 type NavItem = {
   href: string;
@@ -180,6 +181,49 @@ function SimpleNavItem({
   );
 }
 
+// Módulo do roadmap, ainda sem rota/backend — não navega. Clique (mouse ou
+// teclado, Enter/Espaço no <button>) dispara o toast "Em desenvolvimento";
+// title nativo cobre o hover. aria-disabled (não o atributo disabled) pra
+// continuar focável/anunciado por leitor de tela como item desabilitado,
+// em vez de sumir da navegação por teclado.
+function UpcomingNavItem({
+  label,
+  description,
+  icon: Icon,
+  collapsed,
+  onAttempt,
+}: {
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  collapsed: boolean;
+  onAttempt: (label: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-disabled="true"
+      title={collapsed ? `${label} — Em breve` : `${description} — Em breve`}
+      onClick={() => onAttempt(label)}
+      className={cn(
+        "flex w-full cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-400 transition-all duration-700",
+        EASE,
+        collapsed ? "justify-center gap-0 px-0" : "gap-2"
+      )}
+    >
+      <Icon size={18} className="shrink-0" />
+      <span className={cn(LABEL_FADE, "flex-1", collapsed ? "w-0 flex-none opacity-0" : "w-auto opacity-100")}>
+        {label}
+      </span>
+      {!collapsed && (
+        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          Em breve
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function Sidebar({
   userName = "Gabriel Malheiro",
   companyName = "Sua empresa",
@@ -193,6 +237,17 @@ export function Sidebar({
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [upcomingToast, setUpcomingToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!upcomingToast) return;
+    const timer = setTimeout(() => setUpcomingToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [upcomingToast]);
+
+  function handleUpcomingAttempt(label: string) {
+    setUpcomingToast(`${label} — Em desenvolvimento`);
+  }
 
   useEffect(() => {
     try {
@@ -254,17 +309,17 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-gray-200 bg-white transition-[width] duration-[700ms]",
+        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden border-r border-gray-200 bg-white transition-[width] duration-[700ms]",
         EASE,
         collapsed ? "w-[76px]" : "w-[280px]"
       )}
     >
-      <div className={cn("flex h-full shrink-0 flex-col p-4", collapsed ? "w-[76px]" : "w-[280px]")}>
+      <div className={cn("flex h-full min-h-0 shrink-0 flex-col p-4", collapsed ? "w-[76px]" : "w-[280px]")}>
         <div
           className={cn(
             "fin-sidebar__profile transition-all duration-700",
             EASE,
-            collapsed ? "mb-4 flex-col items-center gap-0 !px-0 !py-3" : "mb-5"
+            collapsed ? "fin-sidebar__profile--collapsed mb-4 flex-col items-center gap-0" : "mb-5"
           )}
         >
           <div className="fin-sidebar__avatar shrink-0">{initials}</div>
@@ -274,8 +329,21 @@ export function Sidebar({
           </div>
         </div>
 
-        <nav className={cn("flex flex-1 flex-col", collapsed ? "gap-1" : "gap-0.5")}>
+        {/* Início fica fora da área rolável — sempre visível, junto do perfil. */}
+        <div className="mb-0.5 shrink-0">
           <SimpleNavItem item={DASHBOARD} pathname={pathname} collapsed={collapsed} />
+        </div>
+
+        {/* Só esta faixa (Recrutamento, Avaliações, Em breve) rola — scrollbar
+            fina própria (.fin-sidebar-scroll). min-h-0 é necessário aqui: sem
+            ele um flex item não encolhe abaixo do tamanho do conteúdo e o
+            overflow-y-auto nunca entra em ação. */}
+        <nav
+          className={cn(
+            "fin-sidebar-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden",
+            collapsed ? "flex flex-col gap-1" : "flex flex-col gap-0.5"
+          )}
+        >
 
           {SECTION_ORDER.map((section) => (
             <Fragment key={section}>
@@ -387,7 +455,22 @@ export function Sidebar({
 
           <SimpleNavItem item={AVALIACOES} pathname={pathname} collapsed={collapsed} />
 
-          <div className={cn("mt-auto flex flex-col border-t border-gray-200 pt-3", collapsed ? "gap-1" : "gap-0.5")}>
+          <SectionLabel label="EM BREVE" collapsed={collapsed} />
+          {UPCOMING_MODULES.map((module) => (
+            <UpcomingNavItem
+              key={module.label}
+              label={module.label}
+              description={module.description}
+              icon={module.icon}
+              collapsed={collapsed}
+              onAttempt={handleUpcomingAttempt}
+            />
+          ))}
+        </nav>
+
+        {/* Configurações/Sair ficam fora da área rolável — sempre estáticos
+            no rodapé, junto com o botão de recolher o menu. */}
+        <div className={cn("flex shrink-0 flex-col border-t border-gray-200 pt-3", collapsed ? "gap-1" : "gap-0.5")}>
             <button
               type="button"
               onClick={toggleCollapsed}
@@ -450,8 +533,17 @@ export function Sidebar({
               </span>
             </button>
           </div>
-        </nav>
-      </div>
+        </div>
+
+      {upcomingToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 left-4 z-50 rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white shadow-lg"
+        >
+          {upcomingToast}
+        </div>
+      )}
     </aside>
   );
 }

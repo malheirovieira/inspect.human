@@ -185,6 +185,16 @@ html {
 .fin-sidebar__profile:hover {
   background: rgba(0, 0, 0, 0.03);
 }
+/* Menu recolhido: só a bolinha de iniciais fica visível — o "card" (fundo,
+   sombra, padding) some, inclusive no hover, pra não sobrar um retângulo
+   em volta do avatar sozinho. */
+.fin-sidebar__profile--collapsed,
+.fin-sidebar__profile--collapsed:hover {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 0;
+}
 .fin-sidebar__avatar {
   width: 40px;
   height: 40px;
@@ -213,6 +223,27 @@ html {
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 2px;
+}
+/* Scrollbar minimalista só da faixa rolável do meio da sidebar (grupos +
+   Avaliações + Em breve) — Início e o rodapé (Configurações/Sair) ficam
+   fora dela, sempre estáticos (ver components/layout/Sidebar.tsx). Fina,
+   sem seta, transparente até precisar (some quando não há overflow). */
+.fin-sidebar-scroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+.fin-sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.fin-sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.fin-sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-full);
+}
+.fin-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
 }
 
 /* ---- Header ---- */
