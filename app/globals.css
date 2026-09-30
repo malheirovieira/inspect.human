@@ -8,84 +8,132 @@
    visual entre os dois produtos. Adaptar aqui = adaptar nos dois produtos.
    ========================================================================= */
 :root {
-  /* Paleta preto + accent (mesmo truque de sempre: os nomes de variável
-     --green-*, --gray-*, --surface-* ficam iguais, só os hex mudam, pra
-     propagar em todo o app sem reescrever cada tela). Portado do mockup
-     "estilo Apple" (Bolt/glassmorphism) enviado pelo usuário — fundo
-     levemente acinzentado, bordas em preto translúcido, raios maiores,
-     verde/vermelho mais vivos. Escala preto (green-900/800) quase igual,
-     só ajustada pro tom exato do mockup. */
-  --green-900: #1d1d1f;
-  --green-800: #262626;
-  --green-700: #34c759;
-  --green-600: #26a349;
-  --green-400: #6fe396;
-  --green-surface: #e3f9e9;
-  --white: #ffffff;
-  --gray-50: #f5f5f7;
-  --gray-100: #f3f2f0;
-  --gray-200: rgba(0, 0, 0, 0.06);
-  --gray-400: #86868b;
-  --gray-700: #4a4a46;
-  --ink: #1d1d1f;
-  --success: #34c759;
-  --success-surface: #e3f9e9;
-  --danger: #ff3b30;
-  --danger-surface: #ffe5e3;
-  /* Alerta neutro (nem sucesso nem erro) — usado pra chamar atenção pra uma
-     ação pendente, ex.: card de "Agendar Entrevista" piscando. */
-  --attention: #e6a700;
-  /* Azul "padrão" de identidade/interação (hover de botão primário, painel
-     de login/cadastro, foco de campo) — token à parte de --green-700 e
-     --success, que agora são semânticos (estado ativo/positivo). */
-  --focus-ring: #195ab4;
-  --focus-ring-light: #5f99e9;
-  --surface-page: var(--gray-50);
+  /* ==========================================================================
+     Visual Fluent 2 (Microsoft Fluent Design System) — neutros, status,
+     raios, sombras e tipografia do tema web claro de @fluentui/tokens.
+     Cor da marca: paleta "Nuvem limpa azul" do Inspect Talent
+     (#133C55 · #386FA4 · #59A5D8 · #EAF4FF · #F7F9FB).
+     ======================================================================= */
+
+  /* ---- Paleta Fluent (neutros, marca e status) ---- */
+  --label: #242424;             /* colorNeutralForeground1 */
+  --secondary-label: #424242;   /* colorNeutralForeground2 */
+  --tertiary-label: #616161;    /* colorNeutralForeground3 */
+  --quaternary-label: #707070;  /* colorNeutralForeground4 — placeholder */
+  --disabled-label: #bdbdbd;    /* colorNeutralForegroundDisabled */
+  --background: #f7f9fb;        /* fundo da página (quase-branco azulado da marca) */
+  --background-hover: #f5f5f5;  /* colorNeutralBackground1Hover */
+  --background-pressed: #e0e0e0;/* colorNeutralBackground1Pressed */
+  --background-disabled: #f0f0f0;/* colorNeutralBackgroundDisabled */
+  --white: #ffffff;             /* colorNeutralBackground1 */
+  --separator: #d1d1d1;         /* colorNeutralStroke1 */
+  --separator-hover: #c7c7c7;   /* colorNeutralStroke1Hover */
+  --divider: #e0e0e0;           /* colorNeutralStroke2 */
+  --stroke-accessible: #616161; /* colorNeutralStrokeAccessible — linha de baixo dos campos */
+  --accent: #386fa4;            /* marca: botão primário, links, abas, progresso (branco 5.3:1) */
+  --accent-hover: #2f5f8f;      /* hover do primário (branco 6.7:1) */
+  --accent-pressed: #133c55;    /* pressionado */
+  --accent-link: #386fa4;       /* links (5.0:1 no fundo da página) */
+  --accent-surface: #eaf4ff;    /* seleção, não lido, badge da marca */
+  --accent-deep: #133c55;       /* azul-profundo: navegação, avatar, KPI selecionado (branco 11.6:1) */
+  --accent-sky: #59a5d8;        /* azul-céu: SÓ decoração (ícones grandes, gráficos) — 2.7:1, nunca texto */
+  --red: #c50f1f;               /* colorStatusDangerBackground3 (cranberry) */
+  --red-hover: #b10e1c;         /* colorStatusDangerBackground3Hover */
+  --red-text: #b10e1c;          /* colorStatusDangerForeground1 */
+  --red-surface: #fdf3f4;       /* colorStatusDangerBackground1 */
+  --red-border: #eeacb2;        /* colorStatusDangerBorder1 */
+  --green: #107c10;             /* colorStatusSuccessBackground3 */
+  --green-text: #0e700e;        /* colorStatusSuccessForeground1 */
+  --green-surface: #f1faf1;     /* colorStatusSuccessBackground1 */
+  --green-border: #9fd89f;      /* colorStatusSuccessBorder1 */
+  --orange: #f7630c;            /* colorStatusWarningBackground3 */
+  --orange-text: #bc4b09;       /* colorStatusWarningForeground1 */
+  --orange-surface: #fff9f5;    /* colorStatusWarningBackground1 */
+  --orange-border: #fdcfb4;     /* colorStatusWarningBorder1 */
+
+  /* ---- Papéis ---- */
+  --surface-page: var(--background);
   --surface: var(--white);
-  --surface-muted: var(--gray-100);
-  --surface-selected: var(--green-surface);
-  --border: var(--gray-200);
-  --text-primary: var(--ink);
-  --text-secondary: var(--gray-700);
-  --text-muted: var(--gray-400);
+  --surface-muted: var(--background);
+  --surface-selected: var(--accent-surface);
+  --border: var(--separator);
+  --text-primary: var(--label);
+  --text-secondary: var(--secondary-label);
+  --text-muted: var(--tertiary-label);
+  --text-placeholder: var(--quaternary-label);
   --on-dark: var(--white);
-  --action-primary: var(--green-900);
-  --action-primary-hover: var(--focus-ring);
-  --action-primary-text: var(--green-900);
+  --focus-ring: var(--accent);
+  --success: var(--green-text);
+  --success-surface: var(--green-surface);
+  --danger: var(--red-text);
+  --danger-surface: var(--red-surface);
+  --attention: var(--orange);
+  --attention-surface: var(--orange-surface);
+  --ink: var(--label);
+
+  /* ---- Botões (Fluent: primário preenchido; padrão branco com borda) ---- */
+  --button-bg: var(--white);
+  --button-text: var(--label);
+  --button-border: var(--separator);
+  --action-primary: var(--accent);
+  --action-confirm: var(--accent);   /* Fluent: salvar é a ação primária (azul) */
+  --action-cancel: var(--red);       /* excluir: botão de perigo (cranberry) */
+  --on-action: var(--white);
+
+  /* ---- Nomes antigos (compatibilidade) ---- */
+  --green-900: var(--label);
+  --green-800: var(--label);
+  --green-700: var(--green);
+  --green-600: var(--green);
+  --green-400: var(--green);
+  --gray-50: var(--background);
+  --gray-100: var(--background);
+  --gray-200: var(--separator);
+  --gray-400: var(--quaternary-label);
+  --gray-700: var(--secondary-label);
+  --focus-ring-light: var(--accent);
+  --action-primary-hover: var(--accent-hover);
+  --action-primary-text: var(--accent-link);
   --on-action-primary: var(--white);
-  /* Regra do sistema: TODO botão de salvar/confirmar/atualizar usa
-     --action-confirm (verde); TODO botão de cancelar/excluir/remover usa
-     --action-cancel (vermelho). Espelhado em tailwind.config.ts. */
-  --action-confirm: #177f0f;
-  --action-confirm-hover: #11630b;
-  --action-cancel: #fe0401;
-  --action-cancel-hover: #d10301;
-  /* Fundo ambiente da tela Início (components/layout/AmbientBackground) —
-     gradiente diagonal pastel rosa→azul (2026-09-29, 3ª iteração: Obsidian
-     Chrome escuro e sua variante clara com blobs radiais foram testados e
-     descartados antes deste). Linear, não radial — ver .fin-ambient logo
-     abaixo, que usa estas 2 cores direto (os 3 glows radiais que usavam os
-     tokens antigos (--ambient-blue-strong e afins) ficaram inativos,
-     ver .fin-ambient__glow. */
-  /* Clareadas em relação à 1ª versão (#f3e9e8/#96b9d9) — o azul em
-     particular estava saturado demais, "gradiente forte" foi o feedback. */
-  --ambient-pink: #f9f4f3;
-  --ambient-blue: #cfe0ee;
-  --radius-sm: 10px;
-  --radius-md: 10px;
-  --radius-lg: 18px;
-  --radius-full: 999px;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.03);
-  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.07);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
-  /* SF Pro não pode ser distribuída fora de software Apple (licença) — por
-     isso não dá pra hospedar o arquivo da fonte. -apple-system/BlinkMacSystemFont
-     pede pro navegador usar a fonte do sistema: em Mac/iOS isso É a SF Pro de
-     verdade (com a troca automática Display/Text conforme o tamanho do
-     texto). Fora do ecossistema Apple, cai pra Inter — desenhada como
-     substituta métrica da SF Pro, mesmo padrão já usado no resto do app. */
-  --font-sans: -apple-system, BlinkMacSystemFont, var(--font-inter), "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --action-confirm-hover: var(--accent-hover);
+  --action-cancel-hover: var(--red-hover);
+  --yellow: var(--orange);
+  --yellow-surface: var(--orange-surface);
+
+  /* ---- Espaçamento Fluent (2 a 32px) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ---- Forma Fluent ---- */
+  --radius-md: 4px;      /* borderRadiusMedium — botões, campos, cards */
+  --radius-sm: 2px;      /* borderRadiusSmall — badges pequenos */
+  --radius-lg: 8px;      /* borderRadiusXLarge — diálogos, painéis */
+  --radius-full: 10000px;/* borderRadiusCircular */
+
+  /* ---- Elevação Fluent (sombra ambiente + sombra-chave) ---- */
+  --shadow-2: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+  --shadow-4: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  --shadow-8: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
+  --shadow-16: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
+  --shadow-64: 0 0 8px rgba(0, 0, 0, 0.12), 0 32px 64px rgba(0, 0, 0, 0.14);
+  --shadow-sm: var(--shadow-4);   /* card em repouso */
+  --shadow-hover: var(--shadow-8);/* card no hover */
+  --shadow-lg: var(--shadow-16);  /* menus, painéis, login */
+  --shadow-focus: inset 0 0 0 1px #ffffff, 0 0 0 2px #000000; /* foco Fluent: preto por fora, branco por dentro */
+
+  /* ---- Movimento Fluent ---- */
+  --ease-spring: cubic-bezier(0.33, 0, 0.1, 1);   /* curveDecelerateMax */
+  --ease-out-soft: cubic-bezier(0.33, 0, 0.1, 1);
+
+  /* ---- Tipografia Fluent: Segoe UI (Windows), fonte do sistema no resto ---- */
+  --font-sans: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif;
+  --font-logo: var(--font-sans);
 }
 
 html,
@@ -134,7 +182,7 @@ html {
   width: 40px;
   height: 40px;
   border-radius: var(--radius-full);
-  background: var(--action-primary);
+  background: var(--accent-deep);
   color: var(--on-action-primary);
   display: flex;
   align-items: center;
@@ -148,8 +196,8 @@ html {
   flex-shrink: 0;
 }
 .fin-sidebar__name {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,7 +244,7 @@ html {
 .fin-topbar__date {
   flex: 0 0 auto;
   color: var(--text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -213,7 +261,7 @@ html {
   padding: 24px 40px 24px;
 }
 .fin-header__crumb {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -234,15 +282,15 @@ html {
   opacity: 0.5;
 }
 .fin-header__title {
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 0;
 }
 .fin-header__add,
 .fin-header__bell {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border: none;
   display: flex;
   align-items: center;
@@ -251,8 +299,13 @@ html {
 }
 .fin-header__add {
   border-radius: var(--radius-md);
-  background: var(--action-primary);
-  color: var(--on-action-primary);
+  border: none;
+  background: var(--accent);
+  color: var(--white);
+  transition: background 0.1s ease;
+}
+.fin-header__add:hover {
+  background: var(--accent-hover);
 }
 .fin-header__bell {
   position: relative;
@@ -340,7 +393,7 @@ html {
   flex-shrink: 0;
 }
 .fin-notif-panel__title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -374,7 +427,7 @@ html {
   margin: 0;
   padding: 24px 14px;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 .fin-notif-item {
@@ -396,10 +449,10 @@ html {
   background: var(--surface-muted);
 }
 .fin-notif-item--unread {
-  background: var(--success-surface);
+  background: var(--accent-surface);
 }
 .fin-notif-item--unread:hover {
-  background: var(--success-surface);
+  background: var(--accent-surface);
   filter: brightness(0.97);
 }
 .fin-notif-item__row {
@@ -409,13 +462,13 @@ html {
   gap: 8px;
 }
 .fin-notif-item__title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
 }
 .fin-notif-item__time {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 .fin-notif-item__message {
@@ -457,16 +510,8 @@ html {
   margin-bottom: -100vh;
   overflow: hidden;
   pointer-events: none;
-  background: linear-gradient(
-    135deg,
-    var(--ambient-pink),
-    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
-    var(--ambient-blue),
-    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
-    var(--ambient-pink)
-  );
-  background-size: 300% 300%;
-  animation: fin-ambient-shift 12s ease infinite;
+  /* Padronização 2026-09-30: fundo liso (--surface-page), sem gradiente. */
+  display: none;
 }
 /* Os 3 glows radiais (paleta azul antiga, depois "Obsidian Chrome") ficam
    inativos: o efeito atual é o gradiente diagonal liso acima, sem manchas
@@ -685,7 +730,7 @@ html {
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(6px);
-  background: rgba(250, 250, 249, 0.75);
+  background: rgba(245, 245, 247, 0.75);
   animation: fin-route-loading-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .fin-route-loading__spinner {
@@ -714,7 +759,7 @@ html {
 
 .fin-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   padding: 24px;
@@ -725,6 +770,7 @@ html {
 }
 .fin-card--muted {
   background: var(--surface-muted);
+  border-color: var(--divider);
   box-shadow: none;
 }
 /* Chama atenção pro card de "Agendar Entrevista" quando o perfil já foi
@@ -750,86 +796,132 @@ html {
   }
 }
 .fin-eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  line-height: 16px;
   color: var(--text-muted);
 }
 .fin-heading {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   margin-top: 4px;
 }
 .fin-link {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--action-primary-text);
   text-decoration: none;
 }
 .fin-link:hover {
   text-decoration: underline;
 }
+
+/* ---- Botões Fluent 2 ----
+   appearance="primary": fundo --accent, texto branco; hover --accent-hover;
+   pressionado --accent-pressed. appearance padrão (secondary): branco com
+   borda --separator; hover --background-hover e borda --separator-hover.
+   Perigo (excluir): fundo --red, hover --red-hover. Altura 32px, raio 4px,
+   texto 14px semibold, largura mínima 96px. Foco: contorno preto de 2px com
+   branco por dentro. Desabilitado: fundo --background-disabled, texto
+   --disabled-label, borda --divider.
+   Mapeamento das variantes do app: confirm e primary -> primário;
+   secondary, icon-cancel, round-cancel -> padrão; danger -> perigo;
+   round-add -> primário circular. */
 .fin-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 16px;
+  gap: 6px;
+  min-width: 96px;
+  height: 32px;
+  padding: 5px 12px;
   border-radius: var(--radius-md);
-  border: none;
-  font-size: 13px;
-  font-weight: 500;
+  border: 1px solid var(--separator);
+  background: var(--white);
+  color: var(--label);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
   font-family: inherit;
   cursor: pointer;
+  transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
 }
-.fin-btn--primary {
-  background: var(--action-primary);
-  color: var(--on-action-primary);
+.fin-btn:hover:not(:disabled) {
+  background: var(--background-hover);
+  border-color: var(--separator-hover);
 }
-.fin-btn--primary:hover {
-  background: var(--action-primary-hover);
+.fin-btn:active:not(:disabled) {
+  background: var(--background-pressed);
 }
-.fin-btn--secondary {
-  background: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
+.fin-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
 }
+.fin-btn:disabled,
 .fin-btn--disabled {
-  background: var(--gray-200);
-  color: var(--white);
+  background: var(--background-disabled);
+  border-color: var(--divider);
+  color: var(--disabled-label);
   cursor: not-allowed;
 }
-/* Salvar / confirmar / atualizar */
-.fin-btn--confirm {
-  background: var(--action-confirm);
+.fin-btn--primary,
+.fin-btn--confirm,
+.fin-btn--round-add {
+  background: var(--accent);
+  border-color: transparent;
   color: var(--white);
 }
-.fin-btn--confirm:hover {
-  background: var(--action-confirm-hover);
+.fin-btn--primary:hover:not(:disabled),
+.fin-btn--confirm:hover:not(:disabled),
+.fin-btn--round-add:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: transparent;
 }
-/* Cancelar / excluir (com texto) */
+.fin-btn--primary:active:not(:disabled),
+.fin-btn--confirm:active:not(:disabled),
+.fin-btn--round-add:active:not(:disabled) {
+  background: var(--accent-pressed);
+}
 .fin-btn--danger {
-  background: var(--action-cancel);
+  background: var(--red);
+  border-color: transparent;
   color: var(--white);
 }
-.fin-btn--danger:hover {
-  background: var(--action-cancel-hover);
+.fin-btn--danger:hover:not(:disabled) {
+  background: var(--red-hover);
+  border-color: transparent;
 }
-/* "X" de cancelar edição, ao lado do Editar/Atualizar — mesma altura do botão */
+.fin-btn--danger:active:not(:disabled) {
+  background: #960b18;
+}
+.fin-btn--primary:disabled, .fin-btn--confirm:disabled, .fin-btn--danger:disabled {
+  background: var(--background-disabled);
+  border-color: var(--divider);
+  color: var(--disabled-label);
+}
+/* Botão só de ícone (o "X" de cancelar edição) — quadrado de 32px */
 .fin-btn--icon-cancel {
-  width: 44px;
+  width: 32px;
+  min-width: 32px;
   padding: 0;
   flex-shrink: 0;
-  background: var(--action-cancel);
-  color: var(--white);
 }
-.fin-btn--icon-cancel:hover {
-  background: var(--action-cancel-hover);
+/* Botão redondo (toggle incluir/cancelar ao lado dos filtros) */
+.fin-btn--round {
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
 }
-/* Ícone de excluir/remover sem fundo (lixeira em linhas de lista) */
+/* Ícone de excluir sem fundo (appearance="subtle"): cinza, vermelho no hover */
 .fin-icon-danger {
-  color: var(--action-cancel);
+  color: var(--secondary-label);
+  transition: color 0.1s ease, background 0.1s ease;
+  border-radius: var(--radius-md);
+}
+.fin-icon-danger:hover {
+  color: var(--red-text);
+  background: var(--background-hover);
 }
 
 /* ---- Botão "Upgrade" da barra superior (components/layout/UpgradeButton) ----
@@ -847,11 +939,11 @@ html {
 /* Hover: continua branco (o cinza da barra faria o botão "sumir"); só uma
    sombra leve + a seta deslizando. */
 .fin-upgrade:hover {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 .fin-upgrade:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: var(--shadow-focus);
 }
 .fin-upgrade__inner {
   display: flex;
@@ -870,17 +962,17 @@ html {
   gap: 6px;
 }
 .fin-upgrade__label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary);
 }
 .fin-upgrade__pro {
   padding: 2px 6px;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   background: var(--ink);
   color: var(--white);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.04em;
   line-height: 1.4;
 }
@@ -920,18 +1012,18 @@ html {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid #e5e3df;
+  border: 1px solid var(--separator);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
 .fin-plan-card--highlight {
-  border: 2px solid #195ab4;
-  box-shadow: var(--shadow-lg, 0 12px 32px rgba(25, 90, 180, 0.18));
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-lg);
   transform: scale(1.02);
 }
 .fin-plan-card--current {
-  border-color: #195ab4;
-  box-shadow: 0 0 0 1px #195ab4, var(--shadow-sm);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow-sm);
 }
 .fin-plan-card__badge {
   position: absolute;
@@ -941,11 +1033,11 @@ html {
   border-radius: var(--radius-full);
   background: var(--surface-muted);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .fin-plan-card__badge--highlight {
-  background: linear-gradient(135deg, #195ab4, #0f2a4a);
+  background: var(--accent);
   color: var(--white);
 }
 .fin-plan-card__top {
@@ -957,9 +1049,9 @@ html {
 }
 .fin-plan-card__name {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 500;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
   color: var(--text-secondary);
 }
 .fin-plan-card__current-tag {
@@ -967,21 +1059,21 @@ html {
   border-radius: var(--radius-full);
   background: var(--surface-muted);
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 }
 .fin-plan-card__description {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 .fin-plan-card__price {
   margin: 0;
 }
 .fin-plan-card__amount {
-  font-size: 36px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--text-primary);
 }
 .fin-plan-card__period {
@@ -991,7 +1083,7 @@ html {
 }
 .fin-plan-card__price-after {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 .fin-plan-card__features {
@@ -1001,7 +1093,7 @@ html {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 .fin-plan-card__features li {
@@ -1012,7 +1104,7 @@ html {
 .fin-plan-card__features svg {
   flex-shrink: 0;
   margin-top: 1px;
-  color: #14b8a6;
+  color: var(--green);
 }
 .fin-plan-card__feature--blocked {
   color: var(--text-muted);
@@ -1033,31 +1125,23 @@ html {
   width: 100%;
   height: 40px;
   padding: 0 24px;
-  border: 2px solid #195ab4;
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #195ab4, #0f2a4a);
-  color: var(--white);
+  border: 1px solid var(--button-border);
+  border-radius: var(--radius-md);
+  background: var(--button-bg);
+  color: var(--button-text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, opacity 0.2s ease;
 }
-.fin-plan-card__cta:hover {
-  background: transparent;
-  color: #195ab4;
-}
-.fin-plan-card__cta--outline {
-  background: transparent;
-  color: #195ab4;
-}
-.fin-plan-card__cta--outline:hover {
-  background: linear-gradient(135deg, #195ab4, #0f2a4a);
-  color: var(--white);
+.fin-plan-card__cta:hover:not(:disabled) {
+  background: var(--background-hover);
+  border-color: var(--separator-hover);
 }
 .fin-plan-card__cta:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: var(--shadow-focus);
 }
 .fin-plan-card__cta:disabled {
   border-color: var(--border);
@@ -1075,20 +1159,20 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-full);
-  border: 1.5px solid var(--icon-color);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--icon-color);
+  color: var(--secondary-label);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: background 0.1s ease, color 0.1s ease;
   text-decoration: none;
   flex-shrink: 0;
 }
 .fin-header-icon-btn:hover {
-  background: var(--icon-color);
-  color: var(--white);
+  background: var(--background-hover);
+  color: var(--icon-color, var(--accent));
 }
 .fin-header-icon-btn:disabled {
   cursor: not-allowed;
@@ -1121,12 +1205,12 @@ html {
 .fin-attention-card {
   position: relative;
   display: block;
-  color: #2e2e2f;
+  color: var(--label);
   cursor: pointer;
-  background-color: #fff;
+  background-color: var(--white);
   padding: 1rem;
-  border-radius: 8px;
-  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 1rem;
   border: 3px dashed transparent;
   max-width: 350px;
@@ -1134,11 +1218,11 @@ html {
 }
 /* Hover: só a sombra, sem contorno (mesmo ajuste dos depoimentos). */
 .fin-attention-card:hover {
-  box-shadow: rgba(99, 99, 99, 0.3) 0px 2px 8px 0px;
+  box-shadow: var(--shadow-lg);
 }
 .fin-attention-card:focus-visible {
   outline: none;
-  border-color: rgba(162, 179, 207, 0.6);
+  border-color: var(--accent);
 }
 .fin-attention-card__tags {
   width: 100%;
@@ -1147,20 +1231,20 @@ html {
   justify-content: space-between;
 }
 .fin-attention-card__tag {
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   padding: 4px 13px;
   font-size: 12px;
-  color: #ffffff;
-  background-color: #1389eb;
+  color: var(--accent);
+  background-color: var(--accent-surface);
 }
 .fin-attention-card__title {
-  font-size: 15px;
+  font-size: 14px;
   margin: 1.2rem 0;
 }
 .fin-attention-card__stats {
   position: relative;
   width: 100%;
-  color: #9fa4aa;
+  color: var(--tertiary-label);
   font-size: 12px;
   display: flex;
   align-items: center;
@@ -1177,7 +1261,7 @@ html {
   height: 100%;
   /* lucide põe width="24" no SVG; a referência só define a altura */
   width: auto;
-  stroke: #9fa4aa;
+  stroke: var(--tertiary-label);
 }
 .fin-attention-empty {
   display: inline-flex;
@@ -1195,40 +1279,16 @@ html {
 .fin-dialog {
   width: min(420px, calc(100vw - 32px));
   padding: 0;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--shadow-64);
 }
 .fin-dialog::backdrop {
-  background: rgba(29, 29, 31, 0.35);
+  background: rgba(0, 0, 0, 0.4);
 }
 .fin-dialog__body {
   padding: 20px 24px 24px;
-}
-/* ---- Botão redondo (toggle incluir/cancelar ao lado dos filtros) ---- */
-.fin-btn--round {
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  transition: transform 0.15s var(--ease-out-soft), filter 0.2s ease;
-}
-.fin-btn--round:hover {
-  filter: brightness(0.92);
-  transform: scale(1.05);
-}
-.fin-btn--round:active {
-  transform: scale(0.92);
-}
-.fin-btn.fin-btn--round-add {
-  background: var(--success);
-  color: var(--white);
-}
-.fin-btn.fin-btn--round-cancel {
-  background: var(--action-cancel);
-  color: var(--white);
 }
 /* ---- Filtro de lista (select ao lado da busca) — pílula, sem contorno azul ---- */
 .fin-input.fin-filter-select {
@@ -1237,7 +1297,7 @@ html {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 36px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2386868B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236E6E73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   background-size: 14px;
@@ -1249,23 +1309,28 @@ html {
 .fin-badge {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 12px;
-  border-radius: var(--radius-sm);
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
   font-size: 12px;
   font-weight: 600;
+  line-height: 16px;
 }
 .fin-badge--success {
-  background: var(--success-surface);
-  color: var(--success);
+  background: var(--green-surface);
+  border-color: var(--green-border);
+  color: var(--green-text);
 }
 .fin-badge--primary {
-  background: var(--action-primary);
-  color: var(--on-action-primary);
+  background: var(--accent-surface);
+  border-color: #b9d3ea;
+  color: var(--accent);
 }
 .fin-badge--danger {
-  background: var(--danger-surface);
-  color: var(--danger);
+  background: var(--red-surface);
+  border-color: var(--red-border);
+  color: var(--red-text);
 }
 .fin-statcard {
   background: var(--surface);
@@ -1275,10 +1340,10 @@ html {
   flex: 1;
 }
 .fin-statcard--selected {
-  border-color: var(--green-900);
+  border-color: var(--accent-deep);
 }
 .fin-statcard--selected {
-  background: var(--green-900);
+  background: var(--accent-deep);
 }
 /* Levantar no hover dos cards de métrica/dashboard — usa transform (não
    margin) justamente pra não afetar o layout/altura da linha do grid; com
@@ -1291,13 +1356,13 @@ html {
   box-shadow: var(--shadow-hover);
 }
 .fin-statcard__eyebrow {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
   text-transform: uppercase;
   display: block;
 }
 .fin-statcard--selected .fin-statcard__eyebrow {
-  color: var(--green-400);
+  color: rgba(255, 255, 255, 0.72);
 }
 .fin-statcard__label {
   font-size: 12px;
@@ -1306,18 +1371,18 @@ html {
 }
 .fin-statcard--selected .fin-statcard__label,
 .fin-statcard--selected .fin-statcard__meta {
-  color: #c9d8ec;
+  color: rgba(255, 255, 255, 0.72);
 }
 .fin-statcard__value {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   display: block;
   margin-top: 8px;
   font-variant-numeric: tabular-nums;
 }
 .fin-statcard--selected .fin-statcard__value {
   color: var(--on-action-primary);
-  font-size: 22px;
+  font-size: 20px;
 }
 .fin-statcard__meta {
   font-size: 12px;
@@ -1342,15 +1407,15 @@ html {
   gap: 20px;
 }
 .brand-wordmark {
-  font-family: var(--font-logo), Georgia, serif;
-  font-weight: 700;
-  font-size: 28px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 20px;
   line-height: 1;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
   color: var(--text-primary);
 }
 .brand-wordmark--light {
-  color: #fff;
+  color: var(--white);
 }
 .brand-wordmark--sm {
   font-size: 16px;
@@ -1371,11 +1436,12 @@ html {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 .fin-input {
-  height: 44px;
+  height: 32px;
+  border-bottom-color: var(--stroke-accessible) !important;
   padding: 0 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -1386,11 +1452,12 @@ html {
   width: 100%;
 }
 .fin-input::placeholder {
-  color: var(--text-muted);
+  color: var(--text-placeholder);
 }
 .fin-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--focus-ring);
+  box-shadow: inset 0 -2px 0 var(--accent);
+  border-bottom-color: var(--accent) !important;
 }
 /* ---- Linha de lista clicável (CandidatesBoard, lista de Vagas, etc.) ---- */
 .fin-list-row {
@@ -1404,7 +1471,7 @@ html {
 .fin-kanban-card {
   background: var(--white);
   border-radius: var(--radius-md);
-  box-shadow: 0 1px 2px rgba(9, 30, 66, 0.15), 0 1px 1px rgba(9, 30, 66, 0.12);
+  box-shadow: var(--shadow-sm);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -1413,7 +1480,7 @@ html {
   transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
 .fin-kanban-card:hover {
-  box-shadow: 0 4px 8px rgba(9, 30, 66, 0.2), 0 2px 4px rgba(9, 30, 66, 0.12);
+  box-shadow: var(--shadow-lg);
   transform: translateY(-1px);
 }
 .fin-kanban-card:active {
@@ -1423,16 +1490,17 @@ html {
    cinza, sem cursor de edição, sinaliza visualmente que não dá pra digitar. */
 .fin-input:disabled {
   background: var(--surface-muted);
-  color: var(--text-muted);
+  color: var(--text-placeholder);
   cursor: not-allowed;
 }
 /* Campo com erro de validação (FieldLabel com `error`) */
 .fin-input[aria-invalid="true"] {
+  border-color: var(--danger);
   box-shadow: 0 0 0 1px var(--danger);
 }
 .fin-field-error {
   font-size: 12px;
-  color: var(--danger);
+  color: var(--red-text);
 }
 /* Seta nativa do <select> fica colada na borda por padrão do navegador —
    troca por uma seta cinza com mais respiro (mesma ideia do .fin-filter-select,
@@ -1442,7 +1510,7 @@ select.fin-input {
   appearance: none;
   -webkit-appearance: none;
   padding-right: 36px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2386868B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236E6E73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   background-size: 14px;
@@ -1508,7 +1576,7 @@ select.fin-input {
   min-height: 600px;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-lg);
   background: var(--surface);
   /* alguns navegadores/SO (modo alto contraste, foco padrão em containers
      não interativos) desenham um contorno tracejado nesse card — anulamos
@@ -1528,22 +1596,22 @@ select.fin-input {
   justify-content: center;
   gap: 28px;
   padding: 56px 48px;
-  color: #fff;
-  background: linear-gradient(150deg, var(--green-900) 0%, var(--focus-ring) 100%);
+  color: var(--white);
+  background: var(--label);
   overflow: hidden;
 }
 .auth-shell__title {
   font-family: var(--font-sans);
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
   margin: 0;
   max-width: 320px;
 }
 .auth-form__heading {
   font-family: var(--font-sans);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 600;
   margin: 0;
 }
 .auth-shell__bullets {
@@ -1558,9 +1626,9 @@ select.fin-input {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
-  color: #c9d8ec;
+  color: rgba(255, 255, 255, 0.72);
 }
 .auth-shell__bullets svg {
   color: var(--focus-ring-light);
@@ -1611,7 +1679,7 @@ select.fin-input {
     padding: 8px 8px 16px;
   }
   body {
-    background: #fff;
+    background: var(--white);
   }
   .fin-card,
   .fin-statcard {

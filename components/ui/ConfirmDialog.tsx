@@ -39,10 +39,10 @@ export const ConfirmDialog = forwardRef<
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              background: variant === "danger" ? "var(--danger-surface)" : "var(--attention-surface, #fdf3d9)",
+              background: variant === "danger" ? "var(--danger-surface)" : "var(--attention)",
             }}
           >
-            <AlertTriangle size={18} style={{ color: variant === "danger" ? "var(--danger)" : "var(--attention)" }} />
+            <AlertTriangle size={18} style={{ color: variant === "danger" ? "var(--danger)" : "var(--label)" }} />
           </div>
           <h2 id="confirm-dialog-title" className="fin-heading" style={{ margin: 0, marginTop: 6 }}>
             {title}

@@ -8,7 +8,7 @@ function TrendText({ trend }: { trend: Trend }) {
   return (
     <span
       className="inline-flex items-center gap-0.5 text-xs font-medium"
-      style={{ color: trend.direction === "up" ? "var(--green-700)" : "var(--text-muted)" }}
+      style={{ color: trend.direction === "up" ? "var(--success)" : "var(--text-muted)" }}
     >
       <Icon size={12} />
       {trend.label}
@@ -38,7 +38,7 @@ export function StatCard({
 }) {
   if (selected) {
     return (
-      <div className="flex flex-1 flex-col justify-between rounded-lg p-5 text-white" style={{ background: "var(--ink)" }}>
+      <div className="flex flex-1 flex-col justify-between rounded-lg p-5 text-white" style={{ background: "var(--accent-deep)" }}>
         <div className="flex items-start justify-between gap-3">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-white/50">{label}</span>
           {Icon && (
@@ -53,7 +53,7 @@ export function StatCard({
         </div>
         {trend && (
           <div className="mt-3 flex items-center gap-1.5 text-xs">
-            <span className="font-medium" style={{ color: "var(--green-400)" }}>
+            <span className="font-medium" style={{ color: "var(--white)" }}>
               Δ {trend.label}
             </span>
             <span className="text-white/50">vs. último mês</span>

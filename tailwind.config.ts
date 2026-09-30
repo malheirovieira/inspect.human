@@ -1,63 +1,93 @@
 import type { Config } from "tailwindcss";
 
-// Paleta do design system do Inspect Talent (preto + accent verde, fundo bem
-// claro). Os mesmos hex também existem como CSS vars em app/globals.css
-// para as classes fin-* legadas; aqui expomos os tokens como cores
-// utilitárias do Tailwind para telas construídas com utility classes
-// (ex.: components/layout/Sidebar.tsx).
+// Visual Fluent 2 (Microsoft) — neutros e status de @fluentui/tokens, com a
+// paleta de marca "Nuvem limpa azul" do Inspect Talent. Mesmos valores de
+// app/globals.css. As escalas padrão do
+// Tailwind (gray-*, green-*, red-*) são redirecionadas pra esses tons.
+const label = "#242424";
+const secondaryLabel = "#424242";
+const tertiaryLabel = "#616161";
+const background = "#F7F9FB";
+const separator = "#D1D1D1";
+const accent = "#386FA4";
+const accentHover = "#2F5F8F";
+const accentDeep = "#133C55";
+const accentSky = "#59A5D8";
+const accentSurface = "#EAF4FF";
+const red = "#C50F1F";
+const redText = "#B10E1C";
+const redSurface = "#FDF3F4";
+const green = "#107C10";
+const greenText = "#0E700E";
+const greenSurface = "#F1FAF1";
+const yellow = "#F7630C";
+const yellowSurface = "#FFF9F5";
+const secondaryLabel2 = "#707070";
+
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
+    // Rampa tipográfica Fluent 2 (substitui a do Tailwind).
+    fontSize: {
+      xs: ["12px", { lineHeight: "16px" }],  // Caption 1
+      sm: ["14px", { lineHeight: "20px" }],  // Body 1
+      base: ["14px", { lineHeight: "20px" }],
+      lg: ["16px", { lineHeight: "22px" }],  // Subtitle 2
+      xl: ["20px", { lineHeight: "28px" }],  // Subtitle 1
+      "2xl": ["20px", { lineHeight: "28px" }],
+      "3xl": ["28px", { lineHeight: "36px" }], // Title 2
+      "4xl": ["28px", { lineHeight: "36px" }],
+    },
     extend: {
       colors: {
-        green: {
-          900: "#1D1D1F",
-          800: "#262626",
-          700: "#34C759",
-          600: "#26A349",
-          400: "#6FE396",
-          surface: "#E3F9E9",
-        },
+        label,
+        "secondary-label": secondaryLabel,
+        "tertiary-label": tertiaryLabel,
+        background,
+        separator,
+        ink: label,
+        primary: label,
+        accent: { DEFAULT: accent, hover: accentHover, deep: accentDeep, sky: accentSky, surface: accentSurface },
+        success: { DEFAULT: greenText, surface: greenSurface },
+        danger: { DEFAULT: redText, surface: redSurface },
+        attention: { DEFAULT: yellow, surface: yellowSurface },
+        confirm: { DEFAULT: green, hover: green },
+        cancel: { DEFAULT: red, hover: red },
         gray: {
-          50: "#F5F5F7",
-          100: "#F3F2F0",
-          200: "rgba(0,0,0,0.06)",
-          400: "#86868B",
-          600: "#515154",
-          700: "#4A4A46",
+          50: background, 100: background, 200: separator, 300: separator,
+          400: secondaryLabel2, 500: tertiaryLabel, 600: tertiaryLabel,
+          700: secondaryLabel, 800: label, 900: label,
         },
-        ink: "#1D1D1F",
-        success: { DEFAULT: "#34C759", surface: "#E3F9E9" },
-        danger: { DEFAULT: "#FF3B30", surface: "#FFE5E3" },
-        // Botões: salvar/confirmar/atualizar (verde) e cancelar/excluir
-        // (vermelho) — espelho de --action-confirm/--action-cancel.
-        confirm: { DEFAULT: "#177F0F", hover: "#11630B" },
-        cancel: { DEFAULT: "#FE0401", hover: "#D10301" },
-        // Tokens semânticos genéricos (shadcn-style) mapeados para a paleta
-        // do produto — usados por componentes que trabalham em utilitários
-        // Tailwind puros em vez das classes fin-* legadas.
-        primary: "#1D1D1F",
-        accent: "#34C759",
+        green: {
+          50: greenSurface, 200: greenSurface, surface: greenSurface,
+          400: green, 600: green, 700: green,
+          // green-800/900 eram, historicamente, o preto da marca.
+          800: label, 900: label,
+        },
+        red: { 50: redSurface, 100: redSurface, 200: redSurface, 500: red, 600: red, 700: red },
       },
       borderRadius: {
-        sm: "10px",
-        md: "10px",
-        lg: "18px",
-        xl: "10px",
+        sm: "2px",
+        md: "4px",
+        lg: "8px",
+        xl: "8px",
       },
       boxShadow: {
-        sm: "0 1px 3px rgba(0,0,0,0.03)",
-        hover: "0 8px 24px rgba(0,0,0,0.07)",
+        sm: "0 0 2px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.14)",
+        DEFAULT: "0 0 2px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.14)",
+        md: "0 0 2px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.14)",
+        lg: "0 0 2px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.14)",
+        hover: "0 0 2px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.14)",
+        focus: "inset 0 0 0 1px #fff, 0 0 0 2px #000",
       },
       fontFamily: {
         sans: [
-          "var(--font-inter)",
+          "Segoe UI",
+          "Segoe UI Web (West European)",
           "-apple-system",
           "BlinkMacSystemFont",
-          "Segoe UI",
           "Roboto",
           "Helvetica Neue",
-          "Arial",
           "sans-serif",
         ],
       },

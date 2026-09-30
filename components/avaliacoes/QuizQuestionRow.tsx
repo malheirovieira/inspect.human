@@ -48,7 +48,7 @@ export function QuizQuestionRow({
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 6 }}>
             {choices.map((c) => (
-              <span key={c.id} style={{ fontSize: 13, color: c.isCorrect ? "var(--action-confirm-text, #177f0f)" : "var(--text-muted)" }}>
+              <span key={c.id} style={{ fontSize: 13, color: c.isCorrect ? "var(--success)" : "var(--text-muted)" }}>
                 {c.isCorrect && scored ? "✓ " : "– "}
                 {c.text}
               </span>

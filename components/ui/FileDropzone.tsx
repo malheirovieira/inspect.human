@@ -97,8 +97,8 @@ export function FileDropzone({
         width: "100%",
         padding: "22px 16px",
         borderRadius: "var(--radius-md)",
-        border: `1.5px dashed ${dragOver ? "var(--action-confirm)" : "var(--gray-400)"}`,
-        background: dragOver ? "var(--green-surface)" : "var(--surface-muted)",
+        border: `1.5px dashed ${dragOver ? "var(--accent)" : "var(--tertiary-label)"}`,
+        background: dragOver ? "var(--accent-surface)" : "var(--surface-muted)",
         cursor: disabled ? "not-allowed" : "pointer",
         textAlign: "center",
         transition: "background 0.15s ease, border-color 0.15s ease",
@@ -106,7 +106,7 @@ export function FileDropzone({
     >
       <UploadCloud size={22} style={{ color: "var(--text-muted)" }} />
       <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
-        Arraste o arquivo aqui ou <span style={{ color: "var(--action-primary-text)", textDecoration: "underline" }}>clique para escolher</span>
+        Arraste o arquivo aqui ou <span style={{ color: "var(--accent)", textDecoration: "underline" }}>clique para escolher</span>
       </span>
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{hint}</span>
       <input

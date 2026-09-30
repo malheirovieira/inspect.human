@@ -8,7 +8,7 @@ type CompanyUserCount = { id: string; name: string; plan: string; userCount: num
 const PLAN_LABELS: Record<string, string> = { essencial: "Essencial", profissional: "Profissional", corporativo: "Corporativo" };
 // Mesmas cores já usadas na página de Planos (azul do destaque Profissional,
 // preto do Corporativo) — consistência entre as duas telas de gestão.
-const PLAN_COLORS: Record<string, string> = { essencial: "#9ca3af", profissional: "#195ab4", corporativo: "#131313" };
+const PLAN_COLORS: Record<string, string> = { essencial: "var(--tertiary-label)", profissional: "var(--accent)", corporativo: "var(--label)" };
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -37,7 +37,7 @@ function PlanPieChart({ planCounts }: { planCounts: PlanCount[] }) {
     const start = (acc / total) * 360;
     acc += count;
     const end = (acc / total) * 360;
-    return `${PLAN_COLORS[plan] ?? "#9ca3af"} ${start}deg ${end}deg`;
+    return `${PLAN_COLORS[plan] ?? "var(--tertiary-label)"} ${start}deg ${end}deg`;
   });
 
   return (
@@ -54,7 +54,7 @@ function PlanPieChart({ planCounts }: { planCounts: PlanCount[] }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {planCounts.map(({ plan, count }) => (
           <div key={plan} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-            <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", background: PLAN_COLORS[plan] ?? "#9ca3af", flexShrink: 0 }} />
+            <span style={{ width: 10, height: 10, borderRadius: "var(--radius-full)", background: PLAN_COLORS[plan] ?? "var(--tertiary-label)", flexShrink: 0 }} />
             <span style={{ color: "var(--ink)" }}>{PLAN_LABELS[plan] ?? plan}</span>
             <span style={{ color: "var(--text-muted)" }}>
               — {count} ({total > 0 ? Math.round((count / total) * 100) : 0}%)
@@ -111,7 +111,7 @@ export function SuperAdminDashboard({
               {companiesWithUserCount.map((c) => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "var(--radius-full)", background: PLAN_COLORS[c.plan] ?? "#9ca3af", flexShrink: 0 }} />
+                    <span style={{ width: 8, height: 8, borderRadius: "var(--radius-full)", background: PLAN_COLORS[c.plan] ?? "var(--tertiary-label)", flexShrink: 0 }} />
                     <span style={{ color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
                   </div>
                   <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>

@@ -168,7 +168,7 @@ function SimpleNavItem({
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-full bg-ink" />
+        <span className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-full bg-accent-deep" />
       )}
       <Icon size={18} className={cn("shrink-0", active ? "text-ink" : "text-gray-400")} />
       <span
