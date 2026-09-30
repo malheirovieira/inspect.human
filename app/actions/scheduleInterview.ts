@@ -62,13 +62,18 @@ export async function scheduleInterview(
       },
     });
 
-    // Busca template "Convite Entrevista"
+    // Busca template "Convite Entrevista" — a entrevista já foi salva acima
+    // independente do e-mail (perder o agendamento inteiro por falta de
+    // template seria pior); mas a falta dele nunca deve passar batido, por
+    // isso o aviso abaixo (emailWarning) em vez de um `if` mudo sem `else`.
     const template = await prisma.emailTemplate.findFirst({
       where: {
         companyId: application.job.companyId,
         name: 'Convite Entrevista',
       },
     });
+
+    let emailWarning: string | undefined;
 
     if (template) {
       const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -97,8 +102,10 @@ export async function scheduleInterview(
         );
       } catch (err) {
         console.error('[scheduleInterview] Email enqueue failed:', err);
-        // Continua mesmo se e-mail falhar
+        emailWarning = 'Entrevista agendada, mas houve um erro ao enfileirar o e-mail de convite.';
       }
+    } else {
+      emailWarning = 'Entrevista agendada, mas nenhum modelo de e-mail "Convite Entrevista" está configurado para esta empresa — o candidato não foi avisado por e-mail.';
     }
 
     // Cria evento de auditoria
@@ -113,7 +120,7 @@ export async function scheduleInterview(
       },
     });
 
-    return { success: true, data: interview };
+    return { success: true, data: interview, emailWarning };
   } catch (err) {
     console.error('[scheduleInterview]', err);
     return { success: false, error: 'Erro ao agendar entrevista' };
@@ -161,6 +168,8 @@ export async function sendInterviewLink(applicationId: string, interviewLink: st
       where: { companyId: interview.application.job.companyId, name: 'Link Entrevista' },
     });
 
+    let emailWarning: string | undefined;
+
     if (template) {
       const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
         weekday: 'long',
@@ -186,7 +195,10 @@ export async function sendInterviewLink(applicationId: string, interviewLink: st
       } catch (err) {
         console.error('[sendInterviewLink] Email enqueue failed:', err);
         // Link já foi salvo — não desfaz por causa do e-mail.
+        emailWarning = 'Link salvo, mas houve um erro ao enfileirar o e-mail.';
       }
+    } else {
+      emailWarning = 'Link salvo, mas nenhum modelo de e-mail "Link Entrevista" está configurado para esta empresa — o candidato não foi avisado por e-mail.';
     }
 
     await prisma.applicationEvent.create({
@@ -199,7 +211,7 @@ export async function sendInterviewLink(applicationId: string, interviewLink: st
       },
     });
 
-    return { success: true, data: updated };
+    return { success: true, data: updated, emailWarning };
   } catch (err) {
     console.error('[sendInterviewLink]', err);
     return { success: false, error: 'Erro ao enviar link da entrevista' };

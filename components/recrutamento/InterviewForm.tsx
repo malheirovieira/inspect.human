@@ -71,6 +71,11 @@ export function InterviewForm({
       return;
     }
 
+    // Entrevista foi salva mesmo assim — aviso não-bloqueante (alert, mesmo
+    // padrão do resto do projeto) pra não passar batido, mas sem impedir o
+    // fluxo (fecha o form normalmente depois de confirmar).
+    if (result.emailWarning) window.alert(result.emailWarning);
+
     router.refresh();
     onSaved();
   }

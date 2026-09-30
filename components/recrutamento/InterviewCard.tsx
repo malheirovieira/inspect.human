@@ -62,6 +62,9 @@ export function InterviewCard({
       setError(result.error || "Erro ao enviar link.");
       return;
     }
+    // Link foi salvo mesmo assim — mostra o aviso no mesmo lugar do erro
+    // (não bloqueia, só não deixa passar batido que o e-mail não saiu).
+    if (result.emailWarning) setError(result.emailWarning);
     router.refresh();
   }
 
