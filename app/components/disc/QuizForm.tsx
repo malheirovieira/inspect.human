@@ -87,11 +87,7 @@ export function QuizForm({ data, token }: { data: QuizPublicData; token: string 
         <button
           onClick={handleSubmit}
           disabled={!isComplete || submitting}
-          className={`px-6 py-2 rounded-md font-medium transition-colors ${
-            isComplete && !submitting
-              ? "bg-green-700 text-white hover:bg-green-800"
-              : "bg-gray-200 text-gray-500 cursor-not-allowed"
-          }`}
+          className="fin-btn fin-btn--confirm"
         >
           {submitting ? "Enviando..." : "Enviar Avaliação"}
         </button>

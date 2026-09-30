@@ -93,7 +93,7 @@ function CandidateCard({ candidate, jobId, showJob }: { candidate: KanbanCandida
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, lineHeight: 1.4, color: "var(--ink)" }}>
           {candidate.name}
           {candidate.isTest && (
-            <Badge tone="primary" style={{ fontSize: 10, padding: "0 6px" }}>
+            <Badge tone="primary" style={{ fontSize: 11, padding: "0 6px" }}>
               Teste
             </Badge>
           )}
@@ -101,12 +101,12 @@ function CandidateCard({ candidate, jobId, showJob }: { candidate: KanbanCandida
         {showJob && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{candidate.job.title}</div>}
         <AiCardSnippet skills={candidate.aiSkills} experienceYears={candidate.aiExperienceYears} />
         {candidate.discPerfil && (
-          <Badge tone="success" style={{ fontSize: 10, padding: "0 6px", marginTop: 6 }}>
+          <Badge tone="success" style={{ fontSize: 11, padding: "0 6px", marginTop: 6 }}>
             {candidate.discPerfil} | {Math.round(candidate.discScoreGeral ?? 0)}
           </Badge>
         )}
         {!candidate.discPerfil && candidate.discPending && (
-          <Badge tone="primary" style={{ fontSize: 10, padding: "0 6px", marginTop: 6 }}>
+          <Badge tone="primary" style={{ fontSize: 11, padding: "0 6px", marginTop: 6 }}>
             DISC pendente
           </Badge>
         )}

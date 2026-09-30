@@ -53,7 +53,7 @@ export function ApplicationHeader({
     <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--ink)" }}>{candidateName}</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "var(--ink)" }}>{candidateName}</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{jobTitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -62,7 +62,7 @@ export function ApplicationHeader({
             title="Ver perfil completo"
             aria-label="Ver perfil completo"
             className="fin-header-icon-btn"
-            style={{ "--icon-color": "#0b2d5b" } as React.CSSProperties}
+            style={{ "--icon-color": "var(--action-primary)" } as React.CSSProperties}
           >
             <User size={16} />
           </Link>

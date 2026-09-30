@@ -1,6 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,7 +9,6 @@ import {
   Briefcase,
   Building2,
   Handshake,
-  ClipboardList,
   Settings,
   LogOut,
   ChevronRight,
@@ -18,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { UPCOMING_MODULES, type UpcomingModule } from "@/lib/config/upcomingModules";
 
 type NavItem = {
   href: string;
@@ -29,7 +28,6 @@ type NavItem = {
 type NavGroup = {
   label: string;
   icon: LucideIcon;
-  section: string;
   // Rota da visão geral do módulo — clicar no nome do grupo navega pra cá
   // (a seta ao lado só abre/fecha o acordeão, sem navegar).
   href: string;
@@ -75,7 +73,6 @@ const GROUPS: NavGroup[] = [
   {
     label: "Recrutamento",
     icon: Briefcase,
-    section: "PESSOAS",
     href: "/recrutamento",
     items: [
       { href: "/recrutamento/vagas", label: "Vagas" },
@@ -84,16 +81,11 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
-// Item próprio no menu, fora do grupo "Recrutamento" — mesmo sendo usado
-// dentro do fluxo de recrutamento (envio de avaliação pro candidato), o
-// módulo de Avaliações é compartilhável com outras áreas no futuro.
-const AVALIACOES: NavItem & { icon: LucideIcon } = {
-  href: "/avaliacoes",
-  label: "Avaliações",
-  icon: ClipboardList,
-};
-
-const SECTION_ORDER = ["PESSOAS"];
+// Avaliações mora dentro do acordeão "Gestão de pessoas" (roadmap) — mesmo
+// sendo o único item real ali dentro, é onde ela faz mais sentido pro
+// usuário encontrar (ver injeção em upcomingWithReal, dentro do componente).
+const AVALIACOES_LABEL = "Avaliações";
+const AVALIACOES_HREF = "/avaliacoes";
 
 const OUTROS: (NavItem & { icon: LucideIcon })[] = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
@@ -168,7 +160,7 @@ function SimpleNavItem({
       )}
     >
       {active && (
-        <span className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-full bg-ink" />
+        <span className="absolute left-0 top-1/2 h-[18px] w-[3px] -translate-y-1/2 rounded-full bg-accent-deep" />
       )}
       <Icon size={18} className={cn("shrink-0", active ? "text-ink" : "text-gray-400")} />
       <span
@@ -177,6 +169,156 @@ function SimpleNavItem({
         {item.label}
       </span>
     </Link>
+  );
+}
+
+// Módulo do roadmap, ainda sem rota/backend — não navega. Clique (mouse ou
+// teclado, Enter/Espaço no <button>) dispara o toast "Em desenvolvimento";
+// title nativo cobre o hover. aria-disabled (não o atributo disabled) pra
+// continuar focável/anunciado por leitor de tela como item desabilitado,
+// em vez de sumir da navegação por teclado.
+function UpcomingNavItem({
+  label,
+  description,
+  icon: Icon,
+  collapsed,
+  onAttempt,
+}: {
+  label: string;
+  description: string;
+  icon: LucideIcon;
+  collapsed: boolean;
+  onAttempt: (label: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-disabled="true"
+      title={collapsed ? `${label} — Em breve` : `${description} — Em breve`}
+      onClick={() => onAttempt(label)}
+      className={cn(
+        "flex w-full cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-400 transition-all duration-700",
+        EASE,
+        collapsed ? "justify-center gap-0 px-0" : "gap-2"
+      )}
+    >
+      <Icon size={18} className="shrink-0" />
+      <span className={cn(LABEL_FADE, "flex-1", collapsed ? "w-0 flex-none opacity-0" : "w-auto opacity-100")}>
+        {label}
+      </span>
+      {!collapsed && (
+        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          Em breve
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Módulo do roadmap que agrupa sub-itens (ex.: Gestão de pessoas). O
+// cabeçalho SÓ abre/fecha o acordeão — não navega nem mostra toast, porque
+// abrir a lista é a própria ação (não existe uma "visão geral" pra ele como
+// existe pra Recrutamento). Dentro, cada sub-item ou é real (subModule.href
+// definido, ex.: Avaliações — Link normal) ou é folha do roadmap (sem href —
+// mesmo botão com toast "Em desenvolvimento" do UpcomingNavItem).
+function UpcomingGroupItem({
+  module,
+  collapsed,
+  isOpen,
+  onToggle,
+  onAttempt,
+  pathname,
+}: {
+  module: UpcomingModule;
+  collapsed: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  onAttempt: (label: string) => void;
+  pathname: string;
+}) {
+  const Icon = module.icon;
+  const subModules = module.subModules ?? [];
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-1 transition-all duration-700",
+        EASE,
+        isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        title={collapsed ? `${module.label} — Em breve` : undefined}
+        className={cn(
+          "flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+          EASE,
+          collapsed ? "justify-center gap-0 px-0" : "gap-2"
+        )}
+      >
+        <Icon size={18} className="shrink-0" />
+        <span
+          className={cn(
+            LABEL_FADE,
+            "flex items-center gap-2",
+            collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
+          )}
+        >
+          <span className="flex-1 text-left">{module.label}</span>
+          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            Em breve
+          </span>
+          <ChevronRight
+            size={16}
+            className={cn(
+              "shrink-0 transition-transform duration-700",
+              EASE,
+              isOpen ? "rotate-90 text-gray-500" : "text-gray-400"
+            )}
+          />
+        </span>
+      </button>
+
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-700",
+          EASE,
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <ul className="overflow-hidden pl-4 pt-1">
+          {subModules.map((sub) =>
+            sub.href ? (
+              <li key={sub.label} className="py-0.5">
+                <Link
+                  href={sub.href}
+                  className={cn(
+                    "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
+                    pathname.startsWith(sub.href) ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
+                  )}
+                >
+                  {sub.label}
+                </Link>
+              </li>
+            ) : (
+              <li key={sub.label} className="py-0.5">
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  title={`${sub.description} — Em breve`}
+                  onClick={() => onAttempt(sub.label)}
+                  className="block w-full cursor-not-allowed rounded-md px-3 py-1.5 text-left text-sm text-gray-400"
+                >
+                  {sub.label}
+                </button>
+              </li>
+            )
+          )}
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -193,6 +335,17 @@ export function Sidebar({
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [upcomingToast, setUpcomingToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!upcomingToast) return;
+    const timer = setTimeout(() => setUpcomingToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [upcomingToast]);
+
+  function handleUpcomingAttempt(label: string) {
+    setUpcomingToast(`${label} — Em desenvolvimento`);
+  }
 
   useEffect(() => {
     try {
@@ -232,6 +385,21 @@ export function Sidebar({
   const routeGroup = groupForPath(pathname);
   const [openGroup, setOpenGroup] = useState<string | null>(() => routeGroup);
 
+  // Avaliações (módulo real) entra como primeiro sub-item de "Gestão de
+  // pessoas" (módulo do roadmap) — só essa injeção pontual; os demais
+  // módulos futuros continuam vindo direto da config, sem link nenhum.
+  const upcomingWithReal = UPCOMING_MODULES.map((module) =>
+    module.label === "Gestão de pessoas"
+      ? {
+          ...module,
+          subModules: [
+            { label: AVALIACOES_LABEL, description: "Testes comportamentais e de conhecimento", href: AVALIACOES_HREF },
+            ...(module.subModules ?? []),
+          ],
+        }
+      : module
+  );
+
   useEffect(() => {
     setOpenGroup(routeGroup);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,17 +422,17 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden overflow-y-auto border-r border-gray-200 bg-white transition-[width] duration-[700ms]",
+        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden border-r border-gray-200 bg-white transition-[width] duration-[700ms]",
         EASE,
         collapsed ? "w-[76px]" : "w-[280px]"
       )}
     >
-      <div className={cn("flex h-full shrink-0 flex-col p-4", collapsed ? "w-[76px]" : "w-[280px]")}>
+      <div className={cn("flex h-full min-h-0 shrink-0 flex-col p-4", collapsed ? "w-[76px]" : "w-[280px]")}>
         <div
           className={cn(
             "fin-sidebar__profile transition-all duration-700",
             EASE,
-            collapsed ? "mb-4 flex-col items-center gap-0 !px-0 !py-3" : "mb-5"
+            collapsed ? "fin-sidebar__profile--collapsed mb-4 flex-col items-center gap-0" : "mb-5"
           )}
         >
           <div className="fin-sidebar__avatar shrink-0">{initials}</div>
@@ -274,120 +442,152 @@ export function Sidebar({
           </div>
         </div>
 
-        <nav className={cn("flex flex-1 flex-col", collapsed ? "gap-1" : "gap-0.5")}>
+        {/* Início fica fora da área rolável — sempre visível, junto do perfil. */}
+        <div className="mb-0.5 shrink-0">
           <SimpleNavItem item={DASHBOARD} pathname={pathname} collapsed={collapsed} />
+        </div>
 
-          {SECTION_ORDER.map((section) => (
-            <Fragment key={section}>
-              <SectionLabel label={section} collapsed={collapsed} />
-              {GROUPS.filter((g) => g.section === section).map((group) => {
-                const isOpen = !collapsed && openGroup === group.label;
-                const isActiveRoute = group.label === routeGroup;
-                const highlighted = collapsed ? isActiveRoute : isOpen;
-                const Icon = group.icon;
+        {/* Só esta faixa (Recrutamento, Avaliações, Em breve) rola — scrollbar
+            fina própria (.fin-sidebar-scroll). min-h-0 é necessário aqui: sem
+            ele um flex item não encolhe abaixo do tamanho do conteúdo e o
+            overflow-y-auto nunca entra em ação. */}
+        <nav
+          className={cn(
+            "fin-sidebar-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden",
+            collapsed ? "flex flex-col gap-1" : "flex flex-col gap-0.5"
+          )}
+        >
 
-                if (group.disabled) {
-                  return (
-                    <span
-                      key={group.label}
-                      title={collapsed ? group.label : undefined}
-                      className={cn(
-                        "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
-                        EASE,
-                        collapsed ? "justify-center gap-0 px-0" : "gap-2"
-                      )}
-                    >
-                      <Icon size={18} className="shrink-0" />
-                      <span
-                        className={cn(
-                          LABEL_FADE,
-                          "text-left",
-                          collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
-                        )}
-                      >
-                        {group.label}
-                      </span>
-                    </span>
-                  );
-                }
+          {GROUPS.map((group) => {
+            const isOpen = !collapsed && openGroup === group.label;
+            const isActiveRoute = group.label === routeGroup;
+            const highlighted = collapsed ? isActiveRoute : isOpen;
+            const Icon = group.icon;
 
-                return (
-                  <div
-                    key={group.label}
+            if (group.disabled) {
+              return (
+                <span
+                  key={group.label}
+                  title={collapsed ? group.label : undefined}
+                  className={cn(
+                    "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+                    EASE,
+                    collapsed ? "justify-center gap-0 px-0" : "gap-2"
+                  )}
+                >
+                  <Icon size={18} className="shrink-0" />
+                  <span
                     className={cn(
-                      "rounded-xl border p-1 transition-all duration-700",
-                      EASE,
-                      isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent",
-                      !collapsed && openGroup && !isOpen && "opacity-45"
+                      LABEL_FADE,
+                      "text-left",
+                      collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
                     )}
                   >
-                    <Link
-                      href={group.href}
-                      onClick={() => toggleGroup(group.label)}
-                      aria-expanded={isOpen}
-                      title={collapsed ? group.label : undefined}
+                    {group.label}
+                  </span>
+                </span>
+              );
+            }
+
+            return (
+              <div
+                key={group.label}
+                className={cn(
+                  "rounded-xl border p-1 transition-all duration-700",
+                  EASE,
+                  isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent",
+                  !collapsed && openGroup && !isOpen && "opacity-45"
+                )}
+              >
+                <Link
+                  href={group.href}
+                  onClick={() => toggleGroup(group.label)}
+                  aria-expanded={isOpen}
+                  title={collapsed ? group.label : undefined}
+                  className={cn(
+                    "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+                    EASE,
+                    collapsed ? "justify-center gap-0 px-0" : "gap-2",
+                    highlighted ? "bg-white text-ink" : "text-gray-600"
+                  )}
+                >
+                  <Icon size={18} className={cn("shrink-0", highlighted ? "text-ink" : "text-gray-400")} />
+                  <span
+                    className={cn(
+                      LABEL_FADE,
+                      "flex items-center gap-2",
+                      collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
+                    )}
+                  >
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronRight
+                      size={16}
                       className={cn(
-                        "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+                        "shrink-0 transition-transform duration-700",
                         EASE,
-                        collapsed ? "justify-center gap-0 px-0" : "gap-2",
-                        highlighted ? "bg-white text-ink" : "text-gray-600"
+                        isOpen ? "rotate-90 text-ink" : "text-gray-400"
                       )}
-                    >
-                      <Icon size={18} className={cn("shrink-0", highlighted ? "text-ink" : "text-gray-400")} />
-                      <span
-                        className={cn(
-                          LABEL_FADE,
-                          "flex items-center gap-2",
-                          collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
-                        )}
-                      >
-                        <span className="flex-1 text-left">{group.label}</span>
-                        <ChevronRight
-                          size={16}
-                          className={cn(
-                            "shrink-0 transition-transform duration-700",
-                            EASE,
-                            isOpen ? "rotate-90 text-ink" : "text-gray-400"
-                          )}
-                        />
-                      </span>
-                    </Link>
+                    />
+                  </span>
+                </Link>
 
-                    <div
-                      className={cn(
-                        "grid transition-[grid-template-rows,opacity] duration-700",
-                        EASE,
-                        isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                      )}
-                    >
-                      <ul className="overflow-hidden pl-4 pt-1">
-                        {group.items.map((item) => {
-                          const active = pathname.startsWith(item.href);
-                          return (
-                            <li key={item.href} className="py-0.5">
-                              <Link
-                                href={item.href}
-                                className={cn(
-                                  "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
-                                  active ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
-                                )}
-                              >
-                                {item.label}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  </div>
-                );
-              })}
-            </Fragment>
-          ))}
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-700",
+                    EASE,
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <ul className="overflow-hidden pl-4 pt-1">
+                    {group.items.map((item) => {
+                      const active = pathname.startsWith(item.href);
+                      return (
+                        <li key={item.href} className="py-0.5">
+                          <Link
+                            href={item.href}
+                            className={cn(
+                              "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
+                              active ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            );
+          })}
 
-          <SimpleNavItem item={AVALIACOES} pathname={pathname} collapsed={collapsed} />
+          {upcomingWithReal.map((module) =>
+            module.subModules ? (
+              <UpcomingGroupItem
+                key={module.label}
+                module={module}
+                collapsed={collapsed}
+                isOpen={!collapsed && openGroup === module.label}
+                onToggle={() => toggleGroup(module.label)}
+                onAttempt={handleUpcomingAttempt}
+                pathname={pathname}
+              />
+            ) : (
+              <UpcomingNavItem
+                key={module.label}
+                label={module.label}
+                description={module.description}
+                icon={module.icon}
+                collapsed={collapsed}
+                onAttempt={handleUpcomingAttempt}
+              />
+            )
+          )}
+        </nav>
 
-          <div className={cn("mt-auto flex flex-col border-t border-gray-200 pt-3", collapsed ? "gap-1" : "gap-0.5")}>
+        {/* Configurações/Sair ficam fora da área rolável — sempre estáticos
+            no rodapé, junto com o botão de recolher o menu. */}
+        <div className={cn("flex shrink-0 flex-col border-t border-gray-200 pt-3", collapsed ? "gap-1" : "gap-0.5")}>
             <button
               type="button"
               onClick={toggleCollapsed}
@@ -450,8 +650,17 @@ export function Sidebar({
               </span>
             </button>
           </div>
-        </nav>
-      </div>
+        </div>
+
+      {upcomingToast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-4 left-4 z-50 rounded-xl bg-ink px-4 py-2.5 text-sm font-medium text-white shadow-lg"
+        >
+          {upcomingToast}
+        </div>
+      )}
     </aside>
   );
 }

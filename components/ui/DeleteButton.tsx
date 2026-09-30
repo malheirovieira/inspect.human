@@ -86,6 +86,7 @@ export function DeleteButton({
           onClick={() => dialogRef.current?.showModal()}
           disabled={disabled || loading}
           aria-label={ariaLabel}
+          className="fin-icon-danger"
           style={{
             display: "flex",
             alignItems: "center",
@@ -95,7 +96,6 @@ export function DeleteButton({
             borderRadius: "var(--radius-sm)",
             border: "none",
             background: "none",
-            color: "var(--action-cancel)",
             cursor: disabled || loading ? "not-allowed" : "pointer",
           }}
         >

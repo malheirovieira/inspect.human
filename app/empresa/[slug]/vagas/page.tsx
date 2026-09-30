@@ -20,7 +20,7 @@ export default async function VagasPublicasPage({ params }: { params: Promise<{ 
       <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
         <Logo />
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Vagas em {found.company.name}</h1>
+          <h1 style={{ fontSize: 32, fontWeight: 700, margin: 0 }}>Vagas em {found.company.name}</h1>
           <p style={{ color: "var(--text-muted)", marginTop: 4 }}>
             {found.jobs.length} vaga(s) aberta(s) no momento.
           </p>
@@ -37,7 +37,7 @@ export default async function VagasPublicasPage({ params }: { params: Promise<{ 
             <Link key={job.id} href={`/empresa/${slug}/vagas/${job.id}`} style={{ textDecoration: "none", color: "inherit" }}>
               <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <span className="fin-eyebrow">{WORK_MODE_LABEL[job.workMode] ?? job.workMode}</span>
-                <div className="fin-heading" style={{ marginBottom: 0, fontSize: 18 }}>
+                <div className="fin-heading" style={{ marginBottom: 0, fontSize: 17 }}>
                   {job.title}
                 </div>
                 {job.location && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{job.location}</span>}

@@ -21,7 +21,7 @@ export default async function VagaPublicaPage({ params }: { params: Promise<{ sl
 
         <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="fin-eyebrow">{WORK_MODE_LABEL[found.job.workMode] ?? found.job.workMode}</span>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{found.job.title}</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{found.job.title}</h1>
           {found.job.location && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{found.job.location}</span>}
           <p style={{ whiteSpace: "pre-wrap", fontSize: 14, color: "var(--text-secondary)", marginTop: 12 }}>
             {found.job.description}
