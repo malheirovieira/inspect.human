@@ -100,6 +100,13 @@
   --yellow: var(--orange);
   --yellow-surface: var(--orange-surface);
 
+  /* ---- Fundo ambiente animado da tela Início (.fin-ambient/AmbientBackground)
+     ---- restaurado a pedido do usuário depois de ter sido desligado nos
+     passes de padronização visual (Apple HIG e Fluent) — gradiente diagonal
+     pastel rosa→azul, mesmas cores de antes das duas padronizações. */
+  --ambient-pink: #f9f4f3;
+  --ambient-blue: #cfe0ee;
+
   /* ---- Espaçamento Fluent (2 a 32px) ---- */
   --space-1: 4px;
   --space-2: 8px;
@@ -510,8 +517,16 @@ html {
   margin-bottom: -100vh;
   overflow: hidden;
   pointer-events: none;
-  /* Padronização 2026-09-30: fundo liso (--surface-page), sem gradiente. */
-  display: none;
+  background: linear-gradient(
+    135deg,
+    var(--ambient-pink),
+    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
+    var(--ambient-blue),
+    color-mix(in srgb, var(--ambient-pink) 45%, var(--ambient-blue)),
+    var(--ambient-pink)
+  );
+  background-size: 300% 300%;
+  animation: fin-ambient-shift 12s ease infinite;
 }
 /* Os 3 glows radiais (paleta azul antiga, depois "Obsidian Chrome") ficam
    inativos: o efeito atual é o gradiente diagonal liso acima, sem manchas
