@@ -1,6 +1,5 @@
 "use client";
 
-import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -10,7 +9,6 @@ import {
   Briefcase,
   Building2,
   Handshake,
-  ClipboardList,
   Settings,
   LogOut,
   ChevronRight,
@@ -18,7 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UPCOMING_MODULES } from "@/lib/config/upcomingModules";
+import { UPCOMING_MODULES, type UpcomingModule } from "@/lib/config/upcomingModules";
 
 type NavItem = {
   href: string;
@@ -30,7 +28,6 @@ type NavItem = {
 type NavGroup = {
   label: string;
   icon: LucideIcon;
-  section: string;
   // Rota da visão geral do módulo — clicar no nome do grupo navega pra cá
   // (a seta ao lado só abre/fecha o acordeão, sem navegar).
   href: string;
@@ -76,7 +73,6 @@ const GROUPS: NavGroup[] = [
   {
     label: "Recrutamento",
     icon: Briefcase,
-    section: "PESSOAS",
     href: "/recrutamento",
     items: [
       { href: "/recrutamento/vagas", label: "Vagas" },
@@ -85,16 +81,11 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
-// Item próprio no menu, fora do grupo "Recrutamento" — mesmo sendo usado
-// dentro do fluxo de recrutamento (envio de avaliação pro candidato), o
-// módulo de Avaliações é compartilhável com outras áreas no futuro.
-const AVALIACOES: NavItem & { icon: LucideIcon } = {
-  href: "/avaliacoes",
-  label: "Avaliações",
-  icon: ClipboardList,
-};
-
-const SECTION_ORDER = ["PESSOAS"];
+// Avaliações mora dentro do acordeão "Gestão de pessoas" (roadmap) — mesmo
+// sendo o único item real ali dentro, é onde ela faz mais sentido pro
+// usuário encontrar (ver injeção em upcomingWithReal, dentro do componente).
+const AVALIACOES_LABEL = "Avaliações";
+const AVALIACOES_HREF = "/avaliacoes";
 
 const OUTROS: (NavItem & { icon: LucideIcon })[] = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
@@ -224,6 +215,113 @@ function UpcomingNavItem({
   );
 }
 
+// Módulo do roadmap que agrupa sub-itens (ex.: Gestão de pessoas). O
+// cabeçalho SÓ abre/fecha o acordeão — não navega nem mostra toast, porque
+// abrir a lista é a própria ação (não existe uma "visão geral" pra ele como
+// existe pra Recrutamento). Dentro, cada sub-item ou é real (subModule.href
+// definido, ex.: Avaliações — Link normal) ou é folha do roadmap (sem href —
+// mesmo botão com toast "Em desenvolvimento" do UpcomingNavItem).
+function UpcomingGroupItem({
+  module,
+  collapsed,
+  isOpen,
+  onToggle,
+  onAttempt,
+  pathname,
+}: {
+  module: UpcomingModule;
+  collapsed: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  onAttempt: (label: string) => void;
+  pathname: string;
+}) {
+  const Icon = module.icon;
+  const subModules = module.subModules ?? [];
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-1 transition-all duration-700",
+        EASE,
+        isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent"
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        title={collapsed ? `${module.label} — Em breve` : undefined}
+        className={cn(
+          "flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+          EASE,
+          collapsed ? "justify-center gap-0 px-0" : "gap-2"
+        )}
+      >
+        <Icon size={18} className="shrink-0" />
+        <span
+          className={cn(
+            LABEL_FADE,
+            "flex items-center gap-2",
+            collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
+          )}
+        >
+          <span className="flex-1 text-left">{module.label}</span>
+          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            Em breve
+          </span>
+          <ChevronRight
+            size={16}
+            className={cn(
+              "shrink-0 transition-transform duration-700",
+              EASE,
+              isOpen ? "rotate-90 text-gray-500" : "text-gray-400"
+            )}
+          />
+        </span>
+      </button>
+
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-700",
+          EASE,
+          isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        )}
+      >
+        <ul className="overflow-hidden pl-4 pt-1">
+          {subModules.map((sub) =>
+            sub.href ? (
+              <li key={sub.label} className="py-0.5">
+                <Link
+                  href={sub.href}
+                  className={cn(
+                    "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
+                    pathname.startsWith(sub.href) ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
+                  )}
+                >
+                  {sub.label}
+                </Link>
+              </li>
+            ) : (
+              <li key={sub.label} className="py-0.5">
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  title={`${sub.description} — Em breve`}
+                  onClick={() => onAttempt(sub.label)}
+                  className="block w-full cursor-not-allowed rounded-md px-3 py-1.5 text-left text-sm text-gray-400"
+                >
+                  {sub.label}
+                </button>
+              </li>
+            )
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar({
   userName = "Gabriel Malheiro",
   companyName = "Sua empresa",
@@ -287,6 +385,21 @@ export function Sidebar({
   const routeGroup = groupForPath(pathname);
   const [openGroup, setOpenGroup] = useState<string | null>(() => routeGroup);
 
+  // Avaliações (módulo real) entra como primeiro sub-item de "Gestão de
+  // pessoas" (módulo do roadmap) — só essa injeção pontual; os demais
+  // módulos futuros continuam vindo direto da config, sem link nenhum.
+  const upcomingWithReal = UPCOMING_MODULES.map((module) =>
+    module.label === "Gestão de pessoas"
+      ? {
+          ...module,
+          subModules: [
+            { label: AVALIACOES_LABEL, description: "Testes comportamentais e de conhecimento", href: AVALIACOES_HREF },
+            ...(module.subModules ?? []),
+          ],
+        }
+      : module
+  );
+
   useEffect(() => {
     setOpenGroup(routeGroup);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -345,127 +458,131 @@ export function Sidebar({
           )}
         >
 
-          {SECTION_ORDER.map((section) => (
-            <Fragment key={section}>
-              <SectionLabel label={section} collapsed={collapsed} />
-              {GROUPS.filter((g) => g.section === section).map((group) => {
-                const isOpen = !collapsed && openGroup === group.label;
-                const isActiveRoute = group.label === routeGroup;
-                const highlighted = collapsed ? isActiveRoute : isOpen;
-                const Icon = group.icon;
+          {GROUPS.map((group) => {
+            const isOpen = !collapsed && openGroup === group.label;
+            const isActiveRoute = group.label === routeGroup;
+            const highlighted = collapsed ? isActiveRoute : isOpen;
+            const Icon = group.icon;
 
-                if (group.disabled) {
-                  return (
-                    <span
-                      key={group.label}
-                      title={collapsed ? group.label : undefined}
-                      className={cn(
-                        "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
-                        EASE,
-                        collapsed ? "justify-center gap-0 px-0" : "gap-2"
-                      )}
-                    >
-                      <Icon size={18} className="shrink-0" />
-                      <span
-                        className={cn(
-                          LABEL_FADE,
-                          "text-left",
-                          collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
-                        )}
-                      >
-                        {group.label}
-                      </span>
-                    </span>
-                  );
-                }
-
-                return (
-                  <div
-                    key={group.label}
+            if (group.disabled) {
+              return (
+                <span
+                  key={group.label}
+                  title={collapsed ? group.label : undefined}
+                  className={cn(
+                    "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+                    EASE,
+                    collapsed ? "justify-center gap-0 px-0" : "gap-2"
+                  )}
+                >
+                  <Icon size={18} className="shrink-0" />
+                  <span
                     className={cn(
-                      "rounded-xl border p-1 transition-all duration-700",
-                      EASE,
-                      isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent",
-                      !collapsed && openGroup && !isOpen && "opacity-45"
+                      LABEL_FADE,
+                      "text-left",
+                      collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
                     )}
                   >
-                    <Link
-                      href={group.href}
-                      onClick={() => toggleGroup(group.label)}
-                      aria-expanded={isOpen}
-                      title={collapsed ? group.label : undefined}
+                    {group.label}
+                  </span>
+                </span>
+              );
+            }
+
+            return (
+              <div
+                key={group.label}
+                className={cn(
+                  "rounded-xl border p-1 transition-all duration-700",
+                  EASE,
+                  isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent",
+                  !collapsed && openGroup && !isOpen && "opacity-45"
+                )}
+              >
+                <Link
+                  href={group.href}
+                  onClick={() => toggleGroup(group.label)}
+                  aria-expanded={isOpen}
+                  title={collapsed ? group.label : undefined}
+                  className={cn(
+                    "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+                    EASE,
+                    collapsed ? "justify-center gap-0 px-0" : "gap-2",
+                    highlighted ? "bg-white text-ink" : "text-gray-600"
+                  )}
+                >
+                  <Icon size={18} className={cn("shrink-0", highlighted ? "text-ink" : "text-gray-400")} />
+                  <span
+                    className={cn(
+                      LABEL_FADE,
+                      "flex items-center gap-2",
+                      collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
+                    )}
+                  >
+                    <span className="flex-1 text-left">{group.label}</span>
+                    <ChevronRight
+                      size={16}
                       className={cn(
-                        "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+                        "shrink-0 transition-transform duration-700",
                         EASE,
-                        collapsed ? "justify-center gap-0 px-0" : "gap-2",
-                        highlighted ? "bg-white text-ink" : "text-gray-600"
+                        isOpen ? "rotate-90 text-ink" : "text-gray-400"
                       )}
-                    >
-                      <Icon size={18} className={cn("shrink-0", highlighted ? "text-ink" : "text-gray-400")} />
-                      <span
-                        className={cn(
-                          LABEL_FADE,
-                          "flex items-center gap-2",
-                          collapsed ? "w-0 flex-none opacity-0" : "w-auto flex-1 opacity-100"
-                        )}
-                      >
-                        <span className="flex-1 text-left">{group.label}</span>
-                        <ChevronRight
-                          size={16}
-                          className={cn(
-                            "shrink-0 transition-transform duration-700",
-                            EASE,
-                            isOpen ? "rotate-90 text-ink" : "text-gray-400"
-                          )}
-                        />
-                      </span>
-                    </Link>
+                    />
+                  </span>
+                </Link>
 
-                    <div
-                      className={cn(
-                        "grid transition-[grid-template-rows,opacity] duration-700",
-                        EASE,
-                        isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                      )}
-                    >
-                      <ul className="overflow-hidden pl-4 pt-1">
-                        {group.items.map((item) => {
-                          const active = pathname.startsWith(item.href);
-                          return (
-                            <li key={item.href} className="py-0.5">
-                              <Link
-                                href={item.href}
-                                className={cn(
-                                  "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
-                                  active ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
-                                )}
-                              >
-                                {item.label}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  </div>
-                );
-              })}
-            </Fragment>
-          ))}
+                <div
+                  className={cn(
+                    "grid transition-[grid-template-rows,opacity] duration-700",
+                    EASE,
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <ul className="overflow-hidden pl-4 pt-1">
+                    {group.items.map((item) => {
+                      const active = pathname.startsWith(item.href);
+                      return (
+                        <li key={item.href} className="py-0.5">
+                          <Link
+                            href={item.href}
+                            className={cn(
+                              "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
+                              active ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            );
+          })}
 
-          <SimpleNavItem item={AVALIACOES} pathname={pathname} collapsed={collapsed} />
-
-          <SectionLabel label="EM BREVE" collapsed={collapsed} />
-          {UPCOMING_MODULES.map((module) => (
-            <UpcomingNavItem
-              key={module.label}
-              label={module.label}
-              description={module.description}
-              icon={module.icon}
-              collapsed={collapsed}
-              onAttempt={handleUpcomingAttempt}
-            />
-          ))}
+          {upcomingWithReal.map((module) =>
+            module.subModules ? (
+              <UpcomingGroupItem
+                key={module.label}
+                module={module}
+                collapsed={collapsed}
+                isOpen={!collapsed && openGroup === module.label}
+                onToggle={() => toggleGroup(module.label)}
+                onAttempt={handleUpcomingAttempt}
+                pathname={pathname}
+              />
+            ) : (
+              <UpcomingNavItem
+                key={module.label}
+                label={module.label}
+                description={module.description}
+                icon={module.icon}
+                collapsed={collapsed}
+                onAttempt={handleUpcomingAttempt}
+              />
+            )
+          )}
         </nav>
 
         {/* Configurações/Sair ficam fora da área rolável — sempre estáticos

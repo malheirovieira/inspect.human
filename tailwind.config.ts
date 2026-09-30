@@ -8,7 +8,11 @@ const label = "#242424";
 const secondaryLabel = "#424242";
 const tertiaryLabel = "#616161";
 const background = "#F7F9FB";
-const separator = "#D1D1D1";
+// Suavizado a pedido do usuário (2026-09-30) — mesmo valor de
+// app/globals.css --separator: preto translúcido em vez de cinza sólido,
+// pra todo contorno do sistema (inclusive gray-200/300 via Tailwind aqui
+// embaixo) ficar mais leve.
+const separator = "rgba(0, 0, 0, 0.08)";
 const accent = "#386FA4";
 const accentHover = "#2F5F8F";
 const accentDeep = "#133C55";

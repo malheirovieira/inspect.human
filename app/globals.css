@@ -26,9 +26,12 @@
   --background-pressed: #e0e0e0;/* colorNeutralBackground1Pressed */
   --background-disabled: #f0f0f0;/* colorNeutralBackgroundDisabled */
   --white: #ffffff;             /* colorNeutralBackground1 */
-  --separator: #d1d1d1;         /* colorNeutralStroke1 */
-  --separator-hover: #c7c7c7;   /* colorNeutralStroke1Hover */
-  --divider: #e0e0e0;           /* colorNeutralStroke2 */
+  /* Suavizado a pedido do usuário (2026-09-30): contornos do sistema
+     inteiro (botões, campos, cards, painéis) mais leves e translúcidos —
+     preto a baixa opacidade em vez de cinza sólido do Fluent original. */
+  --separator: rgba(0, 0, 0, 0.08);  /* colorNeutralStroke1 */
+  --separator-hover: rgba(0, 0, 0, 0.16); /* colorNeutralStroke1Hover */
+  --divider: rgba(0, 0, 0, 0.06);    /* colorNeutralStroke2 */
   --stroke-accessible: #616161; /* colorNeutralStrokeAccessible — linha de baixo dos campos */
   --accent: #386fa4;            /* marca: botão primário, links, abas, progresso (branco 5.3:1) */
   --accent-hover: #2f5f8f;      /* hover do primário (branco 6.7:1) */
@@ -983,7 +986,10 @@ html {
 .fin-upgrade {
   display: inline-flex;
   flex-shrink: 0;
-  border-radius: var(--radius-sm);
+  /* Meio-termo pedido pelo usuário: nem o raio pequeno do Fluent (4px,
+     parece reto), nem --radius-lg dos cards (18px vira pílula 100%
+     redonda num botão de 36px de altura) — um valor fixo entre os dois. */
+  border-radius: 12px;
   background: var(--surface);
   text-decoration: none;
   transition: box-shadow 0.2s ease;
@@ -1020,7 +1026,7 @@ html {
 }
 .fin-upgrade__pro {
   padding: 2px 6px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   background: var(--ink);
   color: var(--white);
   font-size: 12px;
