@@ -95,6 +95,14 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Reserva o espaço da barra de rolagem sempre — sem isso, trocar pra uma
+   página mais curta/longa faz a scrollbar sumir/aparecer e todo o conteúdo
+   dá um salto horizontal de ~15px (sintoma: "travadinha, vai pra direita"
+   ao navegar, mesmo a animação de entrada sendo só vertical). */
+html {
+  scrollbar-gutter: stable;
+}
+
 .fin-app {
   display: flex;
   min-height: 100vh;
