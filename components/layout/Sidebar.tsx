@@ -495,8 +495,7 @@ export function Sidebar({
                 className={cn(
                   "rounded-xl border p-1 transition-all duration-700",
                   EASE,
-                  isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent",
-                  !collapsed && openGroup && !isOpen && "opacity-45"
+                  isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent"
                 )}
               >
                 <Link
