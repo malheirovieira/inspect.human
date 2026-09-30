@@ -1,18 +1,60 @@
 import { Suspense } from "react";
 import { DiscForm } from "@/app/components/disc/DiscForm";
 import { QuizForm } from "@/app/components/disc/QuizForm";
-import type { PublicAssessmentData } from "@/lib/types/disc";
+import { prisma } from "@/lib/prisma";
+import type { DiscPublicQuestion, PublicAssessmentData } from "@/lib/types/disc";
 
 interface PageProps {
   params: { token: string };
 }
 
+// Consulta o Prisma direto em vez de fazer self-fetch pra
+// /api/avaliacao/[token]: esse fetch dependia de VERCEL_URL, que só existe
+// em deploys na Vercel — fora dela cai no fallback "http://localhost:3000",
+// que não responde em produção e derruba a página com "Application error".
 async function loadAssessment(token: string): Promise<PublicAssessmentData | null> {
-  const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
+  const discResponse = await prisma.discResponse.findUnique({
+    where: { token },
+    include: { assessment: true },
+  });
 
-  const res = await fetch(`${baseUrl}/api/avaliacao/${token}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
+  if (discResponse) {
+    if (discResponse.submittedAt || discResponse.expiresAt < new Date()) return null;
+
+    const questions = await prisma.discQuestion.findMany({
+      where: { assessmentId: discResponse.assessmentId },
+      orderBy: { position: "asc" },
+      select: { id: true, position: true, section: true, dimension: true, text: true },
+    });
+
+    return { type: "DISC", title: discResponse.assessment.title, questions: questions as DiscPublicQuestion[] };
+  }
+
+  const quizResponse = await prisma.quizResponse.findUnique({
+    where: { token },
+    include: { assessment: true },
+  });
+
+  if (quizResponse) {
+    if (quizResponse.submittedAt || quizResponse.expiresAt < new Date()) return null;
+
+    const questions = await prisma.quizQuestion.findMany({
+      where: { assessmentId: quizResponse.assessmentId },
+      orderBy: { position: "asc" },
+      include: {
+        // is_correct nunca vai pro cliente — omitido explicitamente abaixo.
+        choices: { orderBy: { position: "asc" }, select: { id: true, position: true, text: true } },
+      },
+    });
+
+    return {
+      type: "QUIZ",
+      title: quizResponse.assessment.title,
+      questions: questions.map((q) => ({ id: q.id, position: q.position, text: q.text, choices: q.choices })),
+    };
+  }
+
+  return null;
 }
 
 export default async function AvaliacaoPage({ params }: PageProps) {
