@@ -10,6 +10,7 @@ import {
   Briefcase,
   Building2,
   Handshake,
+  ClipboardList,
   Settings,
   LogOut,
   ChevronRight,
@@ -79,10 +80,18 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/recrutamento/vagas", label: "Vagas" },
       { href: "/recrutamento/banco-de-talentos", label: "Banco de Talentos" },
-      { href: "/recrutamento/disc", label: "DISC" },
     ],
   },
 ];
+
+// Item próprio no menu, fora do grupo "Recrutamento" — mesmo sendo usado
+// dentro do fluxo de recrutamento (envio de avaliação pro candidato), o
+// módulo de Avaliações é compartilhável com outras áreas no futuro.
+const AVALIACOES: NavItem & { icon: LucideIcon } = {
+  href: "/avaliacoes",
+  label: "Avaliações",
+  icon: ClipboardList,
+};
 
 const SECTION_ORDER = ["PESSOAS"];
 
@@ -375,6 +384,8 @@ export function Sidebar({
               })}
             </Fragment>
           ))}
+
+          <SimpleNavItem item={AVALIACOES} pathname={pathname} collapsed={collapsed} />
 
           <div className={cn("mt-auto flex flex-col border-t border-gray-200 pt-3", collapsed ? "gap-1" : "gap-0.5")}>
             <button

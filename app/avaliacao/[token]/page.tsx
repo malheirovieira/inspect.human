@@ -1,12 +1,13 @@
 import { Suspense } from "react";
 import { DiscForm } from "@/app/components/disc/DiscForm";
-import type { DiscPublicData } from "@/lib/types/disc";
+import { QuizForm } from "@/app/components/disc/QuizForm";
+import type { PublicAssessmentData } from "@/lib/types/disc";
 
 interface PageProps {
   params: { token: string };
 }
 
-async function loadDisc(token: string): Promise<DiscPublicData | null> {
+async function loadAssessment(token: string): Promise<PublicAssessmentData | null> {
   const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
 
   const res = await fetch(`${baseUrl}/api/avaliacao/${token}`, { cache: "no-store" });
@@ -15,7 +16,7 @@ async function loadDisc(token: string): Promise<DiscPublicData | null> {
 }
 
 export default async function AvaliacaoPage({ params }: PageProps) {
-  const data = await loadDisc(params.token);
+  const data = await loadAssessment(params.token);
 
   if (!data) {
     return (
@@ -38,7 +39,11 @@ export default async function AvaliacaoPage({ params }: PageProps) {
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow p-8">
           <Suspense fallback={<div className="text-center text-gray-500">Carregando questionário...</div>}>
-            <DiscForm data={data} token={params.token} />
+            {data.type === "DISC" ? (
+              <DiscForm data={data} token={params.token} />
+            ) : (
+              <QuizForm data={data} token={params.token} />
+            )}
           </Suspense>
         </div>
       </div>

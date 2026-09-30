@@ -37,11 +37,7 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
   );
 }
 
-export default async function SucessoPage({ params }: { params: { token: string } }) {
-  const response = await prisma.discResponse.findUnique({ where: { token: params.token } });
-
-  const submitted = response?.submittedAt != null;
-
+function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4 py-8">
       <div className="max-w-lg w-full">
@@ -49,45 +45,8 @@ export default async function SucessoPage({ params }: { params: { token: string 
           <div className="flex justify-center mb-6">
             <CheckCircle2 className="w-16 h-16 text-green-600" />
           </div>
-
           <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">Avaliação Concluída!</h1>
-
-          {!submitted && (
-            <p className="text-gray-600 mb-6 text-center">Sua avaliação foi enviada com sucesso.</p>
-          )}
-
-          {submitted && response && (
-            <div className="space-y-6 mt-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                <p className="text-xs text-green-700 uppercase font-semibold tracking-wide">Índice Geral</p>
-                <p className="text-3xl font-bold text-green-800 mt-1">
-                  {Number(response.scoreGeral).toFixed(0)}/100
-                </p>
-                <p className="text-sm text-green-700">{response.nivelGeral}</p>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Competências</h2>
-                <div className="space-y-3">
-                  {COMPETENCIA_DIMENSIONS.map((dim) => (
-                    <ScoreBar key={dim} label={dim} score={competenciaScores(response)[dim]} />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
-                  Perfil DISC: <span className="text-green-700">{response.perfilDisc}</span>
-                </h2>
-                <div className="space-y-3">
-                  {DISC_DIMENSIONS.map((dim) => (
-                    <ScoreBar key={dim} label={DISC_DIMENSION_LABELS[dim]} score={discScores(response)[dim]} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
+          {children}
           <p className="text-sm text-gray-500 mt-6 text-center">
             O recrutador receberá seus resultados e entrará em contato em breve.
           </p>
@@ -95,5 +54,77 @@ export default async function SucessoPage({ params }: { params: { token: string 
         </div>
       </div>
     </div>
+  );
+}
+
+export default async function SucessoPage({ params }: { params: { token: string } }) {
+  const discResponse = await prisma.discResponse.findUnique({
+    where: { token: params.token },
+    include: { assessment: { include: { questions: { select: { section: true } } } } },
+  });
+
+  if (discResponse) {
+    const hasCompetencias = discResponse.assessment.questions.some((q) => q.section === "COMPETENCIAS");
+    return (
+      <Frame>
+        <div className="space-y-6 mt-6">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+            <p className="text-xs text-green-700 uppercase font-semibold tracking-wide">Índice Geral</p>
+            <p className="text-3xl font-bold text-green-800 mt-1">{Number(discResponse.scoreGeral).toFixed(0)}/100</p>
+            <p className="text-sm text-green-700">{discResponse.nivelGeral}</p>
+          </div>
+
+          {hasCompetencias && (
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Competências</h2>
+              <div className="space-y-3">
+                {COMPETENCIA_DIMENSIONS.map((dim) => (
+                  <ScoreBar key={dim} label={dim} score={competenciaScores(discResponse)[dim]} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+              Perfil DISC: <span className="text-green-700">{discResponse.perfilDisc}</span>
+            </h2>
+            <div className="space-y-3">
+              {DISC_DIMENSIONS.map((dim) => (
+                <ScoreBar key={dim} label={DISC_DIMENSION_LABELS[dim]} score={discScores(discResponse)[dim]} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </Frame>
+    );
+  }
+
+  const quizResponse = await prisma.quizResponse.findUnique({
+    where: { token: params.token },
+    include: { assessment: true },
+  });
+
+  if (quizResponse) {
+    return (
+      <Frame>
+        {quizResponse.assessment.scored ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center mt-6">
+            <p className="text-xs text-green-700 uppercase font-semibold tracking-wide">Pontuação</p>
+            <p className="text-3xl font-bold text-green-800 mt-1">
+              {quizResponse.score}/{quizResponse.maxScore} pts
+            </p>
+          </div>
+        ) : (
+          <p className="text-gray-600 mb-6 text-center mt-6">Sua avaliação foi enviada com sucesso.</p>
+        )}
+      </Frame>
+    );
+  }
+
+  return (
+    <Frame>
+      <p className="text-gray-600 mb-6 text-center">Sua avaliação foi enviada com sucesso.</p>
+    </Frame>
   );
 }

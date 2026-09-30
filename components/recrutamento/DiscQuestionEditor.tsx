@@ -2,19 +2,24 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Field";
-import { updateDiscQuestion } from "@/app/actions/discQuestions";
+import { updateDiscQuestion, deleteDiscQuestion } from "@/app/actions/discQuestions";
 
 export function DiscQuestionEditor({
   questionId,
   position,
   text,
+  deletable,
 }: {
   questionId: string;
   position: number;
   text: string;
+  // Só perguntas criadas pelo recrutador (avaliações DISC customizadas)
+  // podem ser excluídas — as 60 afirmações do modelo padrão só têm o texto
+  // editável (ResetDiscQuestionsButton depende delas continuarem existindo).
+  deletable?: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -47,6 +52,18 @@ export function DiscQuestionEditor({
     setError(null);
   }
 
+  async function handleDelete() {
+    setLoading(true);
+    setError(null);
+    const result = await deleteDiscQuestion(questionId);
+    setLoading(false);
+    if (!result.success) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  }
+
   return (
     <div
       style={{
@@ -77,16 +94,31 @@ export function DiscQuestionEditor({
         ) : (
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
             <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.5, margin: 0 }}>{text}</p>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setEditing(true)}
-              aria-label="Editar pergunta"
-              title="Editar pergunta"
-              style={{ flexShrink: 0, padding: "6px 10px" }}
-            >
-              <Pencil size={14} />
-            </Button>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditing(true)}
+                aria-label="Editar pergunta"
+                title="Editar pergunta"
+                style={{ padding: "6px 10px" }}
+              >
+                <Pencil size={14} />
+              </Button>
+              {deletable && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  aria-label="Excluir pergunta"
+                  title="Excluir pergunta"
+                  style={{ padding: "6px 10px" }}
+                >
+                  <Trash2 size={14} />
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </div>

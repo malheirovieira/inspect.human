@@ -12,7 +12,8 @@ export async function getApplication(applicationId: string) {
       candidate: { select: { id: true, name: true, email: true, phone: true, linkedinUrl: true } },
       job: { select: { id: true, title: true } },
       interviews: { orderBy: { createdAt: "desc" } },
-      discResponses: { orderBy: { createdAt: "desc" } },
+      discResponses: { orderBy: { createdAt: "desc" }, include: { assessment: { select: { title: true } } } },
+      quizResponses: { orderBy: { createdAt: "desc" }, include: { assessment: { select: { title: true, scored: true } } } },
     },
   });
 }

@@ -6,17 +6,19 @@ import { CandidaturaTabs, type CandidaturaTab } from "@/components/recrutamento/
 import { CandidateProcessChecklist } from "@/components/recrutamento/CandidateProcessChecklist";
 import { CandidateTimeline } from "@/components/recrutamento/CandidateTimeline";
 import { InterviewSection } from "@/components/recrutamento/InterviewSection";
-import { DiscSection } from "@/components/recrutamento/DiscSection";
+import { AssessmentSelector } from "@/components/recrutamento/AssessmentSelector";
+import { AssessmentsTab, type AssessmentTabItem } from "@/components/recrutamento/AssessmentsTab";
 import { getApplication } from "@/services/applications";
 import { listApplicationEvents } from "@/services/applicationEvents";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
 import { getProfileAiState } from "@/services/resumeAnalyses";
+import { listActiveAssessments } from "@/services/assessments";
 import { CANDIDATE_STAGES, type CANDIDATE_TAGS } from "@/schemas/candidate";
 
 type Stage = (typeof CANDIDATE_STAGES)[number];
 type Tag = (typeof CANDIDATE_TAGS)[number];
 
-const VALID_TABS: CandidaturaTab[] = ["entrevista", "processo", "disc", "historico"];
+const VALID_TABS: CandidaturaTab[] = ["entrevista", "processo", "avaliacoes", "historico"];
 
 export default async function CandidaturaDetalhePage({
   params,
@@ -32,11 +34,34 @@ export default async function CandidaturaDetalhePage({
   const application = await getApplication(applicationId);
   if (!application || application.jobId !== jobId) notFound();
 
-  const [events, stageLabels, aiState] = await Promise.all([
+  const [events, stageLabels, aiState, assessmentOptions] = await Promise.all([
     listApplicationEvents(applicationId),
     getKanbanStageLabels(),
     getProfileAiState(application.candidateId),
+    listActiveAssessments(application.companyId),
   ]);
+
+  const assessmentItems: AssessmentTabItem[] = [
+    ...(application.discResponses ?? []).map((r) => ({
+      kind: "DISC" as const,
+      id: r.id,
+      title: r.assessment.title,
+      submittedAt: r.submittedAt,
+      expiresAt: r.expiresAt,
+      perfilDisc: r.perfilDisc,
+      scoreGeral: r.scoreGeral,
+    })),
+    ...(application.quizResponses ?? []).map((r) => ({
+      kind: "QUIZ" as const,
+      id: r.id,
+      title: r.assessment.title,
+      submittedAt: r.submittedAt,
+      expiresAt: r.expiresAt,
+      scored: r.assessment.scored,
+      score: r.score,
+      maxScore: r.maxScore,
+    })),
+  ];
 
   // Etapa em que a candidatura estava antes de ser reprovada — pega do
   // último evento STAGE_CHANGED com destino REJECTED (events já vem em
@@ -93,8 +118,11 @@ export default async function CandidaturaDetalhePage({
           />
         )}
 
-        {activeTab === "disc" && (
-          <DiscSection applicationId={application.id} response={application.discResponses?.[0] ?? null} />
+        {activeTab === "avaliacoes" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <AssessmentSelector applicationId={application.id} options={assessmentOptions} />
+            <AssessmentsTab items={assessmentItems} />
+          </div>
         )}
 
         {activeTab === "historico" && <CandidateTimeline applicationId={application.id} events={events} />}

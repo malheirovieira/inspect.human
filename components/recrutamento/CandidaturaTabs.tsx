@@ -1,11 +1,11 @@
 import Link from "next/link";
 
-export type CandidaturaTab = "entrevista" | "processo" | "disc" | "historico";
+export type CandidaturaTab = "entrevista" | "processo" | "avaliacoes" | "historico";
 
 export const CANDIDATURA_TABS: { key: CandidaturaTab; label: string }[] = [
   { key: "entrevista", label: "Entrevista" },
   { key: "processo", label: "Processo" },
-  { key: "disc", label: "DISC" },
+  { key: "avaliacoes", label: "Avaliações" },
   { key: "historico", label: "Histórico" },
 ];
 

@@ -63,6 +63,8 @@ model Company {
   discAssessments     DiscAssessment[]
   discResponses       DiscResponse[]
   discAnswers         DiscAnswer[]
+  quizAssessments     QuizAssessment[]
+  quizResponses       QuizResponse[]
 
   @@map("companies")
   @@schema("public")
@@ -282,6 +284,7 @@ model Application {
   emailLogs EmailLog[]
   interviews Interview[]
   discResponses DiscResponse[]
+  quizResponses QuizResponse[]
 
   @@index([companyId])
   @@index([companyId, jobId])
@@ -729,7 +732,7 @@ model DiscQuestion {
 model DiscResponse {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   companyId     String    @map("company_id") @db.Uuid
-  applicationId String    @unique @map("application_id") @db.Uuid
+  applicationId String    @map("application_id") @db.Uuid
   assessmentId  String    @map("assessment_id") @db.Uuid
   token         String    @unique
   expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
@@ -757,6 +760,7 @@ model DiscResponse {
   assessment  DiscAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   answers     DiscAnswer[]
 
+  @@unique([applicationId, assessmentId])
   @@index([token])
   @@index([applicationId])
   @@index([companyId])
@@ -798,5 +802,108 @@ model Partner {
 
   @@index([active, position])
   @@map("partners")
+  @@schema("public")
+}
+
+// "Avaliações" — segundo tipo além de DISC, ao lado dele em /avaliacoes.
+// scored=true: múltipla escolha com gabarito, resultado "N/M pts" (decisão
+// de produto: reconstrói o cálculo do sistema genérico removido na migration
+// 0035, mas desta vez integrado na mesma tela de gestão que o DISC, não
+// duplicado). scored=false: só coleta a escolha, sem certo/errado/nota —
+// mesmas tabelas, is_correct nas choices e score nas answers ficam sem uso.
+model QuizAssessment {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  title     String
+  scored    Boolean  @default(true)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company   Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+  responses QuizResponse[]
+
+  @@index([companyId])
+  @@map("quiz_assessments")
+  @@schema("public")
+}
+
+model QuizQuestion {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  assessmentId String   @map("assessment_id") @db.Uuid
+  position     Int
+  text         String
+  maxScore     Int      @default(1) @map("max_score")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  assessment QuizAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  choices    QuizChoice[]
+  answers    QuizAnswer[]
+
+  @@index([assessmentId, position])
+  @@map("quiz_questions")
+  @@schema("public")
+}
+
+model QuizChoice {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  position   Int
+  text       String
+  isCorrect  Boolean  @default(false) @map("is_correct")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answers  QuizAnswer[]
+
+  @@index([questionId, position])
+  @@map("quiz_choices")
+  @@schema("public")
+}
+
+model QuizResponse {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  applicationId String    @map("application_id") @db.Uuid
+  assessmentId  String    @map("assessment_id") @db.Uuid
+  token         String    @unique
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz(6)
+  submittedAt   DateTime? @map("submitted_at") @db.Timestamptz(6)
+  score         Int?
+  maxScore      Int?      @map("max_score")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  application Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  assessment  QuizAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers     QuizAnswer[]
+
+  @@unique([applicationId, assessmentId])
+  @@index([token])
+  @@index([applicationId])
+  @@index([companyId])
+  @@map("quiz_responses")
+  @@schema("public")
+}
+
+model QuizAnswer {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  responseId String   @map("response_id") @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  choiceId   String   @map("choice_id") @db.Uuid
+  score      Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  response QuizResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  choice   QuizChoice   @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@unique([responseId, questionId])
+  @@index([responseId])
+  @@map("quiz_answers")
   @@schema("public")
 }

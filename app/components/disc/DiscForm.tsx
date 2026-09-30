@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { submitDiscAssessment } from "@/app/actions/submitDiscAssessment";
-import type { DiscPublicData } from "@/lib/types/disc";
+import type { PublicAssessmentData } from "@/lib/types/disc";
+
+type DiscPublicData = Extract<PublicAssessmentData, { type: "DISC" }>;
 
 const LIKERT_LABELS: Record<number, string> = {
   1: "Discordo totalmente",
