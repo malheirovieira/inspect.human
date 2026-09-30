@@ -263,16 +263,24 @@ html {
    largo); só o conteúdo de dentro (.fin-topbar__inner) é limitado e
    centralizado, junto com o header/conteúdo abaixo. */
 .fin-topbar {
+  /* sticky (não fixed): fica preso ao topo em TODA página/rolagem do
+     sistema sem precisar saber a largura atual da sidebar (76px recolhida
+     ou 280px expandida) — como é filho de .fin-main (que já começa depois
+     da sidebar, via flexbox), o sticky nunca cobre nem desalinha com ela,
+     ao contrário de um position:fixed que exigiria sincronizar a largura
+     via JS. Nenhum ancestral tem overflow próprio, então gruda mesmo com
+     a página inteira rolando (não é um scroll interno). */
   position: sticky;
   top: 0;
   z-index: 8;
   min-height: 52px;
   padding: 0 40px;
   /* Transparente de verdade (não branco translúcido) — só o blur cria a
-     separação visual do conteúdo por trás, sem tingir de branco. */
+     separação visual do conteúdo por trás, sem tingir de branco. Borrão
+     pequeno (pedido do usuário) — era 36px/saturate 180%, exagerado. */
   background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
   border-bottom: 1px solid var(--border);
 }
 .fin-topbar__inner {
