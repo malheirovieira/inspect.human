@@ -139,6 +139,13 @@ export async function updateAssessment(id: string, input: CreateAssessmentInput)
     const validation = CreateAssessmentSchema.parse(input);
     const totalScore = validation.questions.reduce((sum, q) => sum + q.maxScore, 0);
 
+    // Confirma que o teste pertence à empresa do usuário antes de mexer
+    // nele — sem isso, qualquer ADMIN/HR autenticado editava teste de
+    // QUALQUER empresa só sabendo o id (falha de isolamento apontada na
+    // auditoria).
+    const owned = await prisma.assessment.findFirst({ where: { id, companyId: session.companyId } });
+    if (!owned) return { success: false, error: 'Teste não encontrado' };
+
     // Verifica se há responses — se houver, só permite atualizar descrição
     const existingResponses = await prisma.assessmentResponse.findFirst({
       where: { assessmentId: id },
@@ -201,7 +208,12 @@ export async function updateAssessment(id: string, input: CreateAssessmentInput)
 
 export async function deleteAssessment(id: string) {
   try {
-    await requireRole(["ADMIN", "HR"]);
+    const session = await requireRole(["ADMIN", "HR"]);
+
+    // Mesma checagem de posse de updateAssessment — sem isso, dava pra
+    // apagar teste de outra empresa só sabendo o id.
+    const owned = await prisma.assessment.findFirst({ where: { id, companyId: session.companyId } });
+    if (!owned) return { success: false, error: 'Teste não encontrado' };
 
     // Verifica se há responses
     const existingResponses = await prisma.assessmentResponse.findFirst({
