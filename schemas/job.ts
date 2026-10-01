@@ -15,6 +15,8 @@ export const jobSchema = z.object({
   interviewDeadline: z.string().optional(),
   hiringDeadline: z.string().optional(),
   expectedStartDate: z.string().optional(),
+  // Sprint 1 (multipostagem/SEO) — validThrough do JobPosting JSON-LD.
+  validThrough: z.string().optional(),
 });
 
 export type JobInput = z.infer<typeof jobSchema>;

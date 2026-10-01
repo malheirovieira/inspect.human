@@ -9,6 +9,15 @@ import { zodFieldErrors } from "@/lib/fieldErrors";
 import { createJob, updateJob } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { jobSchema, type JobInput } from "@/schemas/job";
 
+// Sugestão de 30 dias pra validade da vaga (SEO/Google Jobs) — só o valor
+// inicial do campo numa vaga NOVA; o recrutador pode mudar livremente antes
+// de salvar, e vaga existente nunca é alterada automaticamente.
+function suggestedValidThrough(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 30);
+  return date.toISOString().slice(0, 10);
+}
+
 const INITIAL: JobInput = {
   title: "",
   description: "",
@@ -20,6 +29,7 @@ const INITIAL: JobInput = {
   interviewDeadline: "",
   hiringDeadline: "",
   expectedStartDate: "",
+  validThrough: "",
 };
 
 export function JobForm({
@@ -38,7 +48,8 @@ export function JobForm({
   // sem querer — padrão compartilhado com o perfil do candidato
   // (components/ui/EditLock). Vaga nova (sem jobId) não bloqueia.
   const isExisting = Boolean(jobId);
-  const lock = useEditLock<JobInput>(initial ?? INITIAL, isExisting);
+  const startingValues = initial ?? { ...INITIAL, validThrough: suggestedValidThrough() };
+  const lock = useEditLock<JobInput>(startingValues, isExisting);
   const { values: form, setValues: setForm, locked, fieldErrors } = lock;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,6 +184,24 @@ export function JobForm({
                 disabled={fieldsDisabled}
                 value={form.expectedStartDate}
                 onChange={(e) => update("expectedStartDate", e.target.value)}
+              />
+            </FieldLabel>
+          </div>
+        </div>
+
+        <div>
+          <span className="fin-eyebrow">SEO / GOOGLE JOBS</span>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 12px" }}>
+            Data até quando a vaga é válida — o Google trata isso como obrigatório na
+            prática pra indexar a vaga (sugestão de 30 dias, pode ajustar).
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            <FieldLabel label="Vaga válida até">
+              <Input
+                type="date"
+                disabled={fieldsDisabled}
+                value={form.validThrough}
+                onChange={(e) => update("validThrough", e.target.value)}
               />
             </FieldLabel>
           </div>

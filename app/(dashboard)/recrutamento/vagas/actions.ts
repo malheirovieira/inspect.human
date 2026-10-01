@@ -32,6 +32,7 @@ export async function createJob(input: JobInput): Promise<ActionResult | never> 
       interviewDeadline: parsed.data.interviewDeadline ? new Date(parsed.data.interviewDeadline) : null,
       hiringDeadline: parsed.data.hiringDeadline ? new Date(parsed.data.hiringDeadline) : null,
       expectedStartDate: parsed.data.expectedStartDate ? new Date(parsed.data.expectedStartDate) : null,
+      validThrough: parsed.data.validThrough ? new Date(parsed.data.validThrough) : null,
     },
   });
 
@@ -63,6 +64,7 @@ export async function updateJob(jobId: string, input: JobInput): Promise<ActionR
       interviewDeadline: parsed.data.interviewDeadline ? new Date(parsed.data.interviewDeadline) : null,
       hiringDeadline: parsed.data.hiringDeadline ? new Date(parsed.data.hiringDeadline) : null,
       expectedStartDate: parsed.data.expectedStartDate ? new Date(parsed.data.expectedStartDate) : null,
+      validThrough: parsed.data.validThrough ? new Date(parsed.data.validThrough) : null,
     },
   });
 

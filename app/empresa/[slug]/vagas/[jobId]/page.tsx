@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { ApplyForm } from "@/components/recrutamento/ApplyForm";
 import { getPublicOpenJob } from "@/services/jobs";
+import { buildJobPostingJsonLd } from "@/lib/seo/jobPosting";
 
 const WORK_MODE_LABEL: Record<string, string> = {
   PRESENCIAL: "Presencial",
@@ -14,8 +15,22 @@ export default async function VagaPublicaPage({ params }: { params: Promise<{ sl
   const found = await getPublicOpenJob(slug, jobId);
   if (!found) notFound();
 
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const jobPostingJsonLd = buildJobPostingJsonLd({
+    job: found.job,
+    company: found.company,
+    jobUrl: `${baseUrl}/empresa/${slug}/vagas/${found.job.id}`,
+  });
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-page)", padding: "48px 24px" }}>
+      {/* eslint-disable-next-line react/no-danger */}
+      <script
+        type="application/ld+json"
+        // Escapa "<" pra nenhum valor dentro do JSON (ex.: descrição com
+        // "</script>" literal) fechar a tag prematuramente.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd).replace(/</g, "\\u003c") }}
+      />
       <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
         <span className="brand-wordmark">{found.company.name}</span>
 

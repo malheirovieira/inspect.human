@@ -162,6 +162,7 @@ export default async function VagaDetalhePage({
                 location: job.location ?? "",
                 workMode: job.workMode as "PRESENCIAL" | "REMOTO" | "HIBRIDO",
                 employmentType: job.employmentType ?? "",
+                validThrough: job.validThrough ? job.validThrough.toISOString().slice(0, 10) : "",
               }}
               employmentTypeOptions={employmentTypes.map((o) => o.label)}
               departmentOptions={departments.map((o) => o.label)}

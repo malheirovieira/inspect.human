@@ -3,11 +3,14 @@ import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { OptionList } from "@/components/configuracoes/OptionList";
+import { CompanyAddressForm } from "@/components/configuracoes/CompanyAddressForm";
 import { listAllCompanyOptions } from "@/services/companyOptions";
+import { getCompany } from "@/services/company";
 import { requireSession } from "@/lib/session";
 
 export default async function ConfiguracoesPage() {
   const [session, options] = await Promise.all([requireSession(), listAllCompanyOptions()]);
+  const company = session.companyId ? await getCompany(session.companyId) : null;
 
   return (
     <>
@@ -45,6 +48,18 @@ export default async function ConfiguracoesPage() {
               <Button variant="secondary">Ver tarefas</Button>
             </Link>
           </Card>
+        )}
+
+        {session.role === "ADMIN" && company && (
+          <CompanyAddressForm
+            initial={{
+              addressStreet: company.addressStreet ?? "",
+              addressCity: company.addressCity ?? "",
+              addressState: company.addressState ?? "",
+              addressZip: company.addressZip ?? "",
+              addressCountry: company.addressCountry ?? "BR",
+            }}
+          />
         )}
 
         <div>

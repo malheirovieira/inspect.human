@@ -28,6 +28,15 @@ model Company {
   slug        String   @unique
   description String?
   active      Boolean  @default(true)
+  // Endereço estruturado (Sprint 1 — multipostagem/SEO) — opcional, usado só
+  // pra montar o jobLocation.address do JobPosting JSON-LD. Sem isso
+  // preenchido, a vaga pública sai sem address_street/city/state/zip (o
+  // JSON-LD cai pro fallback de só país).
+  addressStreet  String? @map("address_street")
+  addressCity    String? @map("address_city")
+  addressState   String? @map("address_state")
+  addressZip     String? @map("address_zip")
+  addressCountry String? @default("BR") @map("address_country")
   // Plano (id de lib/plans.ts — hoje PLACEHOLDER). Sem check constraint:
   // valor desconhecido cai no plano básico (getPlan). Sem cobrança ainda.
   plan        String   @default("essencial")
@@ -199,6 +208,12 @@ model Job {
   interviewDeadline DateTime? @map("interview_deadline") @db.Date
   hiringDeadline    DateTime? @map("hiring_deadline") @db.Date
   expectedStartDate DateTime? @map("expected_start_date") @db.Date
+  // Sprint 1 (multipostagem/SEO) — expiração da vaga pro JobPosting
+  // JSON-LD (Google trata como obrigatório na prática). Configurável no
+  // formulário, sugestão de 30 dias calculada no cliente; sem valor, a
+  // vaga sai do JSON-LD sem validThrough (campo opcional do schema.org,
+  // mas penalizado pelo Google sem ele).
+  validThrough   DateTime? @map("valid_through") @db.Timestamptz(6)
   createdById    String?  @map("created_by") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
