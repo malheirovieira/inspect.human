@@ -59,6 +59,10 @@
   --surface: var(--white);
   --surface-muted: var(--background);
   --surface-selected: var(--accent-surface);
+  /* Branco quase opaco (pedido do usuário) — usado pela sidebar, botão de
+     Upgrade e sino de notificações: "um pouco transparente, porém bem
+     pouco" (não é o vidro bem transparente do .fin-topbar). */
+  --surface-translucent: rgba(255, 255, 255, 0.92);
   --border: var(--separator);
   --text-primary: var(--label);
   --text-secondary: var(--secondary-label);
@@ -365,8 +369,9 @@ html {
 .fin-header__bell {
   position: relative;
   border-radius: var(--radius-full);
-  /* Branco (pedido do usuário) — hover num cinza bem claro. */
-  background: var(--surface);
+  /* Branco quase opaco, pouca transparência (pedido do usuário) — hover
+     num cinza bem claro. */
+  background: var(--surface-translucent);
   color: var(--text-secondary);
   transition: background 0.2s ease, transform 0.15s var(--ease-out-soft);
 }
@@ -998,7 +1003,8 @@ html {
      parece reto), nem --radius-lg dos cards (18px vira pílula 100%
      redonda num botão de 36px de altura) — um valor fixo entre os dois. */
   border-radius: 12px;
-  background: var(--surface);
+  /* Branco quase opaco, pouca transparência (pedido do usuário). */
+  background: var(--surface-translucent);
   text-decoration: none;
   transition: box-shadow 0.2s ease;
 }

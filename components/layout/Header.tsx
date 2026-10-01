@@ -6,11 +6,21 @@ import { UpgradeButton } from "./UpgradeButton";
 
 export type BreadcrumbItem = { label: string; href?: string };
 
+// Data de hoje, formatada — mesmo formato que só a tela Início passava
+// manualmente antes (ex.: "1 de outubro, 2026"). Vira o padrão de todas as
+// páginas: `date` continua aceito pra quem quiser sobrescrever, mas agora é
+// opcional de verdade (sem ele, nunca mais fica em branco).
+function todayLabel(): string {
+  const now = new Date();
+  const dayMonth = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(now);
+  return `${dayMonth}, ${now.getFullYear()}`;
+}
+
 export function Header({
   eyebrow = "INSPECT TALENT",
   title,
   subtitle,
-  date,
+  date = todayLabel(),
   searchPlaceholder,
   backHref,
   breadcrumb,

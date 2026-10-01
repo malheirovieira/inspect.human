@@ -35,7 +35,13 @@ type NavGroup = {
   disabled?: boolean;
 };
 
-const EASE = "[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]";
+// cubic-bezier(0.4,0,0.2,1) = curva "ease" padrão de dashboards (Material),
+// trocada pela curva "spring" (cubic-bezier(0.22,1,0.36,1), com overshoot)
+// que causava parte da sensação de "salto" ao abrir/fechar a sidebar —
+// aquela curva passa do alvo e volta, o que colide mal com o layout
+// reflow do flexbox abaixo. 300ms (era 700ms): rápido o bastante pra não
+// parecer lento, devagar o bastante pra não parecer instantâneo.
+const EASE = "[transition-timing-function:cubic-bezier(0.4,0,0.2,1)]";
 const COLLAPSE_STORAGE_KEY = "inspect-talent:sidebar-collapsed";
 // Chave do nome antigo do sistema (Inspect Human). Lida só pra migrar a
 // preferência de quem já usava o sistema (ver readCollapsedPreference);
@@ -58,7 +64,7 @@ function readCollapsedPreference(): boolean {
 // Label some texto que só existe quando expandida — sempre montado, só
 // desvanece via opacidade, pra acompanhar a largura animando junto em vez
 // de sumir/aparecer de golpe.
-const LABEL_FADE = cn("overflow-hidden whitespace-nowrap transition-opacity duration-700", EASE);
+const LABEL_FADE = cn("overflow-hidden whitespace-nowrap transition-opacity duration-300", EASE);
 
 // Não faz parte de nenhum grupo (fica fora de GROUPS, sem rótulo de seção
 // acima) — é o pouso fixo pós-login, por isso nenhum grupo fica marcado
@@ -129,7 +135,7 @@ function SimpleNavItem({
       <span
         title={collapsed ? item.label : undefined}
         className={cn(
-          "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+          "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-300",
           EASE,
           collapsed ? "justify-center gap-0 px-0" : "gap-2"
         )}
@@ -153,7 +159,7 @@ function SimpleNavItem({
       href={item.href}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "relative flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+        "relative flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300",
         EASE,
         collapsed ? "justify-center gap-0 px-0" : "gap-2",
         active ? "bg-gray-100 text-ink" : "text-gray-600 hover:bg-gray-100"
@@ -197,7 +203,7 @@ function UpcomingNavItem({
       title={collapsed ? `${label} — Em breve` : `${description} — Em breve`}
       onClick={() => onAttempt(label)}
       className={cn(
-        "flex w-full cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-400 transition-all duration-700",
+        "flex w-full cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-400 transition-all duration-300",
         EASE,
         collapsed ? "justify-center gap-0 px-0" : "gap-2"
       )}
@@ -242,7 +248,7 @@ function UpcomingGroupItem({
   return (
     <div
       className={cn(
-        "rounded-xl border p-1 transition-all duration-700",
+        "rounded-xl border p-1 transition-all duration-300",
         EASE,
         isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent"
       )}
@@ -253,7 +259,7 @@ function UpcomingGroupItem({
         aria-expanded={isOpen}
         title={collapsed ? `${module.label} — Em breve` : undefined}
         className={cn(
-          "flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+          "flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-300",
           EASE,
           collapsed ? "justify-center gap-0 px-0" : "gap-2"
         )}
@@ -273,7 +279,7 @@ function UpcomingGroupItem({
           <ChevronRight
             size={16}
             className={cn(
-              "shrink-0 transition-transform duration-700",
+              "shrink-0 transition-transform duration-300",
               EASE,
               isOpen ? "rotate-90 text-gray-500" : "text-gray-400"
             )}
@@ -283,7 +289,7 @@ function UpcomingGroupItem({
 
       <div
         className={cn(
-          "grid transition-[grid-template-rows,opacity] duration-700",
+          "grid transition-[grid-template-rows,opacity] duration-300",
           EASE,
           isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         )}
@@ -295,7 +301,7 @@ function UpcomingGroupItem({
                 <Link
                   href={sub.href}
                   className={cn(
-                    "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
+                    "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-300",
                     pathname.startsWith(sub.href) ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
                   )}
                 >
@@ -421,16 +427,23 @@ export function Sidebar({
 
   return (
     <aside
+      style={{ background: "var(--surface-translucent)" }}
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden border-r border-gray-200 bg-white transition-[width] duration-[700ms]",
+        "sticky top-0 flex h-screen shrink-0 flex-col overflow-x-hidden border-r border-gray-200 transition-[width] duration-300 [will-change:width]",
         EASE,
         collapsed ? "w-[76px]" : "w-[280px]"
       )}
     >
-      <div className={cn("flex h-full min-h-0 shrink-0 flex-col p-4", collapsed ? "w-[76px]" : "w-[280px]")}>
+      {/* Sem largura própria (era w-[76px]/w-[280px] igual ao <aside>, sem
+          transition nenhuma) — ela mudava instantaneamente enquanto o
+          <aside> ainda estava animando a largura, fazendo o conteúdo de
+          dentro "pular" antes da sidebar terminar de abrir/fechar. w-full
+          deixa a largura animada do <aside> mandar sozinha, sem duplicar
+          (e dessincronizar) o estado. */}
+      <div className="flex h-full min-h-0 w-full shrink-0 flex-col p-4">
         <div
           className={cn(
-            "fin-sidebar__profile transition-all duration-700",
+            "fin-sidebar__profile transition-all duration-300",
             EASE,
             collapsed ? "fin-sidebar__profile--collapsed mb-4 flex-col items-center gap-0" : "mb-5"
           )}
@@ -470,7 +483,7 @@ export function Sidebar({
                   key={group.label}
                   title={collapsed ? group.label : undefined}
                   className={cn(
-                    "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-700",
+                    "flex cursor-not-allowed items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-400 transition-all duration-300",
                     EASE,
                     collapsed ? "justify-center gap-0 px-0" : "gap-2"
                   )}
@@ -493,7 +506,7 @@ export function Sidebar({
               <div
                 key={group.label}
                 className={cn(
-                  "rounded-xl border p-1 transition-all duration-700",
+                  "rounded-xl border p-1 transition-all duration-300",
                   EASE,
                   isOpen ? "border-gray-200 bg-white shadow-sm" : "border-transparent"
                 )}
@@ -504,7 +517,7 @@ export function Sidebar({
                   aria-expanded={isOpen}
                   title={collapsed ? group.label : undefined}
                   className={cn(
-                    "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-700",
+                    "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300",
                     EASE,
                     collapsed ? "justify-center gap-0 px-0" : "gap-2",
                     highlighted ? "bg-white text-ink" : "text-gray-600"
@@ -522,7 +535,7 @@ export function Sidebar({
                     <ChevronRight
                       size={16}
                       className={cn(
-                        "shrink-0 transition-transform duration-700",
+                        "shrink-0 transition-transform duration-300",
                         EASE,
                         isOpen ? "rotate-90 text-ink" : "text-gray-400"
                       )}
@@ -532,7 +545,7 @@ export function Sidebar({
 
                 <div
                   className={cn(
-                    "grid transition-[grid-template-rows,opacity] duration-700",
+                    "grid transition-[grid-template-rows,opacity] duration-300",
                     EASE,
                     isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
                   )}
@@ -545,7 +558,7 @@ export function Sidebar({
                           <Link
                             href={item.href}
                             className={cn(
-                              "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-700",
+                              "block w-full rounded-md px-3 py-1.5 text-left text-sm transition-colors duration-300",
                               active ? "font-medium text-primary" : "text-gray-500 hover:text-gray-800"
                             )}
                           >
@@ -592,7 +605,7 @@ export function Sidebar({
               onClick={toggleCollapsed}
               title={collapsed ? "Expandir menu" : "Recolher menu"}
               className={cn(
-                "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition-all duration-700 hover:bg-gray-100",
+                "flex items-center rounded-xl px-3 py-2.5 text-sm font-medium text-gray-600 transition-all duration-300 hover:bg-gray-100",
                 EASE,
                 collapsed ? "justify-center gap-0 px-0" : "gap-2"
               )}
@@ -635,7 +648,7 @@ export function Sidebar({
               disabled={loggingOut}
               title={collapsed ? (loggingOut ? "Saindo..." : "Sair") : undefined}
               className={cn(
-                "flex items-center gap-2 rounded-xl border-l-[3px] border-transparent px-3 py-2.5 text-left text-sm font-medium text-gray-600 transition-all duration-700",
+                "flex items-center gap-2 rounded-xl border-l-[3px] border-transparent px-3 py-2.5 text-left text-sm font-medium text-gray-600 transition-all duration-300",
                 EASE,
                 collapsed && "justify-center px-0",
                 loggingOut ? "cursor-not-allowed opacity-60" : "hover:bg-gray-100"

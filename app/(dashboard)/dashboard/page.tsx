@@ -7,11 +7,6 @@ import { getCompanyPlan } from "@/services/plans";
 import { DEFAULT_PLAN_ID, PLANS } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 
-function formatHeaderDate(date: Date): string {
-  const dayMonth = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "long" }).format(date);
-  return `${dayMonth}, ${date.getFullYear()}`;
-}
-
 // Pouso fixo pós-login (sempre aqui, nunca no último módulo visitado — ver
 // Sidebar.tsx: fica fora de GROUPS, por isso nenhuma seção do menu acende
 // quando o usuário está nesta página). O fundo ambiente vem do layout
@@ -33,7 +28,6 @@ export default async function InicioPage() {
   const header = (
     <Header
       title={firstName ? `Que bom ter você de volta, ${firstName}` : "Que bom ter você de volta"}
-      date={formatHeaderDate(new Date())}
     />
   );
 
