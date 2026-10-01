@@ -7,6 +7,9 @@ import { Briefcase } from "lucide-react";
 import { listJobs } from "@/services/jobs";
 import { listCompanyOptions } from "@/services/companyOptions";
 import { JOB_STATUSES } from "@/schemas/job";
+import { getJobBoardAvailability } from "@/lib/config/jobBoards";
+import { getCompany } from "@/services/company";
+import { requireRole } from "@/lib/session";
 import Link from "next/link";
 
 const STATUS_LABEL: Record<(typeof JOB_STATUSES)[number], string> = {
@@ -27,11 +30,18 @@ export default async function VagasPage({
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
   const { q, status } = await searchParams;
-  const [jobs, employmentTypes, departments] = await Promise.all([
+  const session = await requireRole(["ADMIN", "HR"]);
+  const [jobs, employmentTypes, departments, company] = await Promise.all([
     listJobs({ q, status }),
     listCompanyOptions("MODALIDADE_CONTRATACAO"),
     listCompanyOptions("SETOR"),
+    getCompany(session.companyId),
   ]);
+  const jobBoards = getJobBoardAvailability({
+    indeedEmployerEmail: company?.indeedEmployerEmail ?? null,
+    linkedinCompanyId: company?.linkedinCompanyId ?? null,
+    infojobsId: company?.infojobsId ?? null,
+  });
   const hasFilters = Boolean(q || status);
 
   return (
@@ -41,6 +51,7 @@ export default async function VagasPage({
         <VagasToolbar
           employmentTypeOptions={employmentTypes.map((o) => o.label)}
           departmentOptions={departments.map((o) => o.label)}
+          jobBoards={jobBoards}
         />
 
         {jobs.length === 0 ? (

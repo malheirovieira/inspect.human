@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { OPTION_CATEGORIES, type OptionCategory } from "@/services/companyOptions";
 import { companyAddressSchema, type CompanyAddressInput } from "@/schemas/companyAddress";
+import { companyIntegrationsSchema, type CompanyIntegrationsInput } from "@/schemas/companyIntegrations";
 import { zodFieldErrors, type FieldErrors } from "@/lib/fieldErrors";
 
 export type ActionResult = { error: string } | { success: true };
@@ -35,6 +36,33 @@ export async function updateCompanyAddress(
   });
 
   revalidatePath("/configuracoes");
+  return { success: true };
+}
+
+// Parametrização — Indeed (self-service, só e-mail), LinkedIn/InfoJobs (ID
+// preenchível desde já, só funciona de verdade quando a flag global de
+// cada um for ligada — ver lib/config/jobBoards.ts).
+export async function updateCompanyIntegrations(
+  input: CompanyIntegrationsInput
+): Promise<ActionResult | { error: string; fieldErrors: FieldErrors }> {
+  const session = await requireRole(["ADMIN"]);
+
+  const parsed = companyIntegrationsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Corrija os campos destacados.", fieldErrors: zodFieldErrors(parsed.error) };
+  }
+
+  await prisma.company.update({
+    where: { id: session.companyId },
+    data: {
+      indeedEmployerEmail: parsed.data.indeedEmployerEmail || null,
+      linkedinCompanyId: parsed.data.linkedinCompanyId || null,
+      infojobsId: parsed.data.infojobsId || null,
+    },
+  });
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/configuracoes/parametrizacao");
   return { success: true };
 }
 

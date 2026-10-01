@@ -37,6 +37,15 @@ model Company {
   addressState   String? @map("address_state")
   addressZip     String? @map("address_zip")
   addressCountry String? @default("BR") @map("address_country")
+  // Parametrização — integrações de divulgação de vagas (Configurações >
+  // Parametrização). Indeed é self-service (e-mail da conta de empregador);
+  // LinkedIn e InfoJobs exigem parceria comercial prévia da Inspect Talent —
+  // o campo pode ser preenchido desde já, mas só funciona de verdade quando
+  // a flag global correspondente (env var, ver lib/config/jobBoards.ts)
+  // estiver ligada. Jooble e Google não têm campo (ver mesmo arquivo).
+  indeedEmployerEmail String? @map("indeed_employer_email")
+  linkedinCompanyId   String? @map("linkedin_company_id")
+  infojobsId          String? @map("infojobs_id")
   // Plano (id de lib/plans.ts — hoje PLACEHOLDER). Sem check constraint:
   // valor desconhecido cai no plano básico (getPlan). Sem cobrança ainda.
   plan        String   @default("essencial")
@@ -214,6 +223,15 @@ model Job {
   // vaga sai do JSON-LD sem validThrough (campo opcional do schema.org,
   // mas penalizado pelo Google sem ele).
   validThrough   DateTime? @map("valid_through") @db.Timestamptz(6)
+  // Parametrização — onde esta vaga específica deve ser divulgada (opt-in,
+  // default false). Controla: geração do JSON-LD pro Google
+  // (publishGoogle), inclusão nos feeds de Indeed/Jooble, e reserva o dado
+  // pra quando LinkedIn/InfoJobs ficarem ativos de verdade.
+  publishGoogle    Boolean @default(false) @map("publish_google")
+  publishIndeed    Boolean @default(false) @map("publish_indeed")
+  publishJooble    Boolean @default(false) @map("publish_jooble")
+  publishLinkedin  Boolean @default(false) @map("publish_linkedin")
+  publishInfojobs  Boolean @default(false) @map("publish_infojobs")
   createdById    String?  @map("created_by") @db.Uuid
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)

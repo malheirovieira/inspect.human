@@ -24,8 +24,13 @@ export type FeedCompany = {
 };
 
 // Mesma checagem de "vaga pública" usada em services/jobs.ts
-// (getPublicOpenJob/getPublicOpenJobs) — só status OPEN de empresa ativa.
-export async function listFeedJobs(companySlug: string): Promise<{ company: FeedCompany; jobs: FeedJob[] } | null> {
+// (getPublicOpenJob/getPublicOpenJobs) — só status OPEN de empresa ativa —
+// mais o checkbox "Divulgar em" da própria vaga (Parametrização): só entra
+// no feed quem o recrutador marcou pra essa plataforma especificamente.
+export async function listFeedJobs(
+  companySlug: string,
+  platform: "indeed" | "jooble"
+): Promise<{ company: FeedCompany; jobs: FeedJob[] } | null> {
   const company = await prisma.company.findUnique({
     where: { slug: companySlug, active: true },
     select: { id: true, name: true, slug: true, addressCity: true, addressState: true, addressZip: true, addressCountry: true },
@@ -33,7 +38,11 @@ export async function listFeedJobs(companySlug: string): Promise<{ company: Feed
   if (!company) return null;
 
   const jobs = await prisma.job.findMany({
-    where: { companyId: company.id, status: "OPEN" },
+    where: {
+      companyId: company.id,
+      status: "OPEN",
+      ...(platform === "indeed" ? { publishIndeed: true } : { publishJooble: true }),
+    },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

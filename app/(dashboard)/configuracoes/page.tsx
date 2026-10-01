@@ -50,6 +50,23 @@ export default async function ConfiguracoesPage() {
           </Card>
         )}
 
+        {session.role === "ADMIN" && (
+          <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+            <div>
+              <span className="fin-eyebrow">DIVULGAÇÃO</span>
+              <div className="fin-heading" style={{ marginBottom: 0 }}>
+                Parametrização
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                Integrações com LinkedIn, Indeed, InfoJobs, Jooble e Google for Jobs.
+              </p>
+            </div>
+            <Link href="/configuracoes/parametrizacao">
+              <Button variant="secondary">Abrir parametrização</Button>
+            </Link>
+          </Card>
+        )}
+
         {session.role === "ADMIN" && company && (
           <CompanyAddressForm
             initial={{

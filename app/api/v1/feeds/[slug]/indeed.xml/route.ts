@@ -31,7 +31,7 @@ function mapJobType(value: string | null): string | null {
 
 export async function GET(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const found = await listFeedJobs(slug);
+  const found = await listFeedJobs(slug, "indeed");
   if (!found) return new NextResponse("Empresa não encontrada", { status: 404 });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";

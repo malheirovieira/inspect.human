@@ -8,6 +8,15 @@ import { FieldLabel, Input, Select, Textarea } from "@/components/ui/Field";
 import { zodFieldErrors } from "@/lib/fieldErrors";
 import { createJob, updateJob } from "@/app/(dashboard)/recrutamento/vagas/actions";
 import { jobSchema, type JobInput } from "@/schemas/job";
+import type { JobBoardAvailability, JobBoardKey } from "@/lib/config/jobBoards";
+
+const PUBLISH_FIELD: Record<JobBoardKey, keyof JobInput> = {
+  google: "publishGoogle",
+  jooble: "publishJooble",
+  indeed: "publishIndeed",
+  linkedin: "publishLinkedin",
+  infojobs: "publishInfojobs",
+};
 
 // Sugestão de 30 dias pra validade da vaga (SEO/Google Jobs) — só o valor
 // inicial do campo numa vaga NOVA; o recrutador pode mudar livremente antes
@@ -30,6 +39,11 @@ const INITIAL: JobInput = {
   hiringDeadline: "",
   expectedStartDate: "",
   validThrough: "",
+  publishGoogle: false,
+  publishIndeed: false,
+  publishJooble: false,
+  publishLinkedin: false,
+  publishInfojobs: false,
 };
 
 export function JobForm({
@@ -37,11 +51,16 @@ export function JobForm({
   initial,
   employmentTypeOptions = [],
   departmentOptions = [],
+  jobBoards = [],
 }: {
   jobId?: string;
   initial?: JobInput;
   employmentTypeOptions?: string[];
   departmentOptions?: string[];
+  // Disponibilidade por empresa (Configurações > Parametrização) — ver
+  // lib/config/jobBoards.ts. Plataforma indisponível fica desabilitada no
+  // checkbox, com tooltip explicando o motivo.
+  jobBoards?: JobBoardAvailability[];
 }) {
   const router = useRouter();
   // Vaga existente abre BLOQUEADA (cinza, somente leitura) pra evitar edição
@@ -204,6 +223,45 @@ export function JobForm({
                 onChange={(e) => update("validThrough", e.target.value)}
               />
             </FieldLabel>
+          </div>
+        </div>
+
+        <div>
+          <span className="fin-eyebrow">DIVULGAR EM</span>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 12px" }}>
+            Escolha onde esta vaga específica deve ser divulgada. Plataformas não
+            configuradas aparecem desabilitadas — configure em Configurações &gt;
+            Parametrização.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {jobBoards.map((board) => {
+              const field = PUBLISH_FIELD[board.key];
+              return (
+                <label
+                  key={board.key}
+                  title={!board.available ? board.unavailableReason : undefined}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 14,
+                    color: board.available ? "var(--text-primary)" : "var(--text-muted)",
+                    cursor: fieldsDisabled || !board.available ? "not-allowed" : "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    disabled={fieldsDisabled || !board.available}
+                    checked={Boolean(form[field]) && board.available}
+                    onChange={(e) => update(field, e.target.checked as JobInput[typeof field])}
+                  />
+                  {board.label}
+                  {!board.available && (
+                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>(indisponível)</span>
+                  )}
+                </label>
+              );
+            })}
           </div>
         </div>
 

@@ -6,9 +6,31 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/session";
 import { zodFieldErrors, type FieldErrors } from "@/lib/fieldErrors";
 import { jobSchema, JOB_STATUSES, type JobInput } from "@/schemas/job";
+import { getJobBoardAvailability } from "@/lib/config/jobBoards";
 
 // fieldErrors: erro por campo (validação) — o formulário mostra embaixo do campo.
 export type ActionResult = { error: string; fieldErrors?: FieldErrors } | { success: true };
+
+// Nunca confia nos checkboxes "Divulgar em" vindos do cliente sem checar de
+// novo: se a empresa não tem Indeed/LinkedIn/InfoJobs disponível (campo não
+// preenchido, ou flag global desligada), o checkbox correspondente é
+// forçado pra false aqui, mesmo que o payload tenha mandado true.
+async function clampPublishFlags(companyId: string, data: JobInput) {
+  const company = await prisma.company.findUniqueOrThrow({
+    where: { id: companyId },
+    select: { indeedEmployerEmail: true, linkedinCompanyId: true, infojobsId: true },
+  });
+  const availability = getJobBoardAvailability(company);
+  const isAvailable = (key: string) => availability.find((a) => a.key === key)?.available ?? false;
+
+  return {
+    publishGoogle: data.publishGoogle,
+    publishJooble: data.publishJooble,
+    publishIndeed: data.publishIndeed && isAvailable("indeed"),
+    publishLinkedin: data.publishLinkedin && isAvailable("linkedin"),
+    publishInfojobs: data.publishInfojobs && isAvailable("infojobs"),
+  };
+}
 
 export async function createJob(input: JobInput): Promise<ActionResult | never> {
   const session = await requireRole(["ADMIN", "HR"]);
@@ -17,6 +39,8 @@ export async function createJob(input: JobInput): Promise<ActionResult | never> 
   if (!parsed.success) {
     return { error: "Corrija os campos destacados.", fieldErrors: zodFieldErrors(parsed.error) };
   }
+
+  const publishFlags = await clampPublishFlags(session.companyId, parsed.data);
 
   const job = await prisma.job.create({
     data: {
@@ -33,6 +57,7 @@ export async function createJob(input: JobInput): Promise<ActionResult | never> 
       hiringDeadline: parsed.data.hiringDeadline ? new Date(parsed.data.hiringDeadline) : null,
       expectedStartDate: parsed.data.expectedStartDate ? new Date(parsed.data.expectedStartDate) : null,
       validThrough: parsed.data.validThrough ? new Date(parsed.data.validThrough) : null,
+      ...publishFlags,
     },
   });
 
@@ -51,6 +76,8 @@ export async function updateJob(jobId: string, input: JobInput): Promise<ActionR
   const job = await prisma.job.findFirst({ where: { id: jobId, companyId: session.companyId } });
   if (!job) return { error: "Vaga não encontrada." };
 
+  const publishFlags = await clampPublishFlags(session.companyId, parsed.data);
+
   await prisma.job.update({
     where: { id: jobId },
     data: {
@@ -65,6 +92,7 @@ export async function updateJob(jobId: string, input: JobInput): Promise<ActionR
       hiringDeadline: parsed.data.hiringDeadline ? new Date(parsed.data.hiringDeadline) : null,
       expectedStartDate: parsed.data.expectedStartDate ? new Date(parsed.data.expectedStartDate) : null,
       validThrough: parsed.data.validThrough ? new Date(parsed.data.validThrough) : null,
+      ...publishFlags,
     },
   });
 

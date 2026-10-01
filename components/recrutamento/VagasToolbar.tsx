@@ -5,13 +5,16 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ListToolbar } from "@/components/ui/ListToolbar";
 import { JobForm } from "./JobForm";
+import type { JobBoardAvailability } from "@/lib/config/jobBoards";
 
 export function VagasToolbar({
   employmentTypeOptions,
   departmentOptions,
+  jobBoards,
 }: {
   employmentTypeOptions: string[];
   departmentOptions: string[];
+  jobBoards: JobBoardAvailability[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -45,7 +48,7 @@ export function VagasToolbar({
 
       {open && (
         <div style={{ width: "100%" }}>
-          <JobForm employmentTypeOptions={employmentTypeOptions} departmentOptions={departmentOptions} />
+          <JobForm employmentTypeOptions={employmentTypeOptions} departmentOptions={departmentOptions} jobBoards={jobBoards} />
         </div>
       )}
     </>

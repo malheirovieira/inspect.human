@@ -17,6 +17,7 @@ import { listCompanyOptions } from "@/services/companyOptions";
 import { getKanbanStageLabels } from "@/services/kanbanLabels";
 import { getAiSnippets } from "@/services/resumeAnalyses";
 import { CANDIDATE_STAGES } from "@/schemas/candidate";
+import { getJobBoardAvailability } from "@/lib/config/jobBoards";
 
 const TABS = [
   { key: "detalhes", label: "Detalhes" },
@@ -55,6 +56,12 @@ export default async function VagaDetalhePage({
   ]);
 
   if (!job) notFound();
+
+  const jobBoards = getJobBoardAvailability({
+    indeedEmployerEmail: company?.indeedEmployerEmail ?? null,
+    linkedinCompanyId: company?.linkedinCompanyId ?? null,
+    infojobsId: company?.infojobsId ?? null,
+  });
 
   const publicPath = `/empresa/${company?.slug}/vagas/${job.id}`;
   // Tags + experiência do resumo por IA nos cards (sem o resumo).
@@ -163,9 +170,15 @@ export default async function VagaDetalhePage({
                 workMode: job.workMode as "PRESENCIAL" | "REMOTO" | "HIBRIDO",
                 employmentType: job.employmentType ?? "",
                 validThrough: job.validThrough ? job.validThrough.toISOString().slice(0, 10) : "",
+                publishGoogle: job.publishGoogle,
+                publishIndeed: job.publishIndeed,
+                publishJooble: job.publishJooble,
+                publishLinkedin: job.publishLinkedin,
+                publishInfojobs: job.publishInfojobs,
               }}
               employmentTypeOptions={employmentTypes.map((o) => o.label)}
               departmentOptions={departments.map((o) => o.label)}
+              jobBoards={jobBoards}
             />
           </>
         )}
