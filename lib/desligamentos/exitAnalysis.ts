@@ -164,7 +164,40 @@ export type SegmentBreakdown = {
   controllableReasonPct: number | null;
   badEnvironmentPct: number | null;
   notRecommendPct: number | null;
+  relationshipPositivePct: number | null;
 };
+
+export type LeaderClassification = "PRIORIDADE" | "ATENCAO" | "ACOMPANHAR" | "REFERENCIA";
+
+export const LEADER_CLASSIFICATION_LABELS: Record<LeaderClassification, string> = {
+  PRIORIDADE: "Prioridade",
+  ATENCAO: "Atenção",
+  ACOMPANHAR: "Acompanhar",
+  REFERENCIA: "Referência",
+};
+
+// Critérios de corte (Fase 6, confirmados com o usuário) sobre os
+// indicadores já calculados por líder — nenhum dado novo, só limiares sobre
+// % relação positiva (nota 4-5), % motivo controlável e % não recomendaria:
+// - PRIORIDADE: relação muito ruim, OU rejeição alta, OU maioria por motivo
+//   controlável — sinal de que a liderança pede ação imediata.
+// - REFERÊNCIA: relação muito boa e rejeição baixa — time saudável.
+// - ATENÇÃO: abaixo do ideal sem ser crítico.
+// - ACOMPANHAR: dentro do esperado, nem alerta nem destaque.
+// Ausência de dado (null) nunca penaliza nem beneficia sozinha.
+export function classifyLeader(segment: Pick<SegmentBreakdown, "relationshipPositivePct" | "controllableReasonPct" | "notRecommendPct">): LeaderClassification | null {
+  const { relationshipPositivePct: rel, controllableReasonPct: ctrl, notRecommendPct: notRec } = segment;
+  if (rel === null && ctrl === null && notRec === null) return null;
+
+  const relV = rel ?? 100;
+  const ctrlV = ctrl ?? 0;
+  const notRecV = notRec ?? 0;
+
+  if (relV < 40 || notRecV >= 50 || ctrlV >= 60) return "PRIORIDADE";
+  if (relV >= 70 && notRecV <= 20) return "REFERENCIA";
+  if (relV < 60 || notRecV >= 30) return "ATENCAO";
+  return "ACOMPANHAR";
+}
 
 export type PeriodMetrics = {
   totalExits: number;
@@ -261,6 +294,7 @@ export function computePeriodMetrics(rows: ExitAnalysisRow[], minVolume = 10): P
           controllableReasonPct: rate(g.items.filter((r) => isControllableReason(r.reason)).length, g.items.length),
           badEnvironmentPct: scoreBadRate(segResponses.map((r) => r.environmentScore)),
           notRecommendPct: boolFalseRate(segResponses.map((r) => r.wouldRecommend)),
+          relationshipPositivePct: scorePositiveRate(segResponses.map((r) => r.leaderRelationshipScore)),
         };
       })
       .sort((a, b) => b.exitCount - a.exitCount);

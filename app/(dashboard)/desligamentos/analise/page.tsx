@@ -1,21 +1,26 @@
 import { Header } from "@/components/layout/Header";
 import { ExitAnalysisDashboard } from "@/components/desligamentos/analise/ExitAnalysisDashboard";
 import { getExitAnalysis, getExitAnalysisReport, defaultPeriods } from "@/services/exitAnalysis";
+import { requireRole } from "@/lib/session";
+import { getCompany } from "@/services/company";
 
 const MIN_VOLUME = 10;
 
 export default async function AnaliseDesligamentosPage() {
   const { current, previous } = defaultPeriods();
-  const [data, report] = await Promise.all([
+  const [session, data, report] = await Promise.all([
+    requireRole(["ADMIN", "HR"]),
     getExitAnalysis(current, previous, MIN_VOLUME),
     getExitAnalysisReport(current),
   ]);
+  const company = await getCompany(session.companyId);
 
   return (
     <>
       <Header eyebrow="PESSOAS" title="Análise de Desligamentos" />
       <div className="fin-content">
         <ExitAnalysisDashboard
+          companyName={company?.name ?? "Empresa"}
           initialCurrent={current}
           initialPrevious={previous}
           initialMinVolume={MIN_VOLUME}

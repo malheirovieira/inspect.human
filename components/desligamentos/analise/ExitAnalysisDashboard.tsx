@@ -1,12 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowUp, ArrowDown, Minus, Printer } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 import { Card } from "@/components/ui/Card";
 import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { FieldLabel, Input, Textarea } from "@/components/ui/Field";
-import { classifyTrend, type PeriodMetrics, type Trend } from "@/lib/desligamentos/exitAnalysis";
+import {
+  classifyTrend,
+  classifyLeader,
+  LEADER_CLASSIFICATION_LABELS,
+  type LeaderClassification,
+  type PeriodMetrics,
+  type SegmentBreakdown,
+  type Trend,
+} from "@/lib/desligamentos/exitAnalysis";
 import {
   fetchExitAnalysis,
   fetchExitAnalysisReport,
@@ -33,10 +52,74 @@ function monthLabel(month: string): string {
   return new Date(Date.UTC(year, m - 1, 1)).toLocaleDateString("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" });
 }
 
+function formatDateBr(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" });
+}
+
+// Seta + cor além da palavra (nunca só texto) — pedido explícito da Fase 6
+// pra ficar visualmente claro de relance, inclusive impresso em P&B (a seta
+// some, mas a palavra continua).
 function TrendBadge({ trend }: { trend: Trend }) {
   if (trend === "SEM_DADOS") return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
-  if (trend === "ESTAVEL") return <Badge tone="primary">Estável</Badge>;
-  return <Badge tone={trend === "MELHOROU" ? "success" : "danger"}>{trend === "MELHOROU" ? "Melhorou" : "Piorou"}</Badge>;
+  if (trend === "ESTAVEL")
+    return (
+      <Badge tone="primary">
+        <Minus size={12} style={{ marginRight: 2, verticalAlign: -1 }} />
+        Estável
+      </Badge>
+    );
+  const Icon = trend === "MELHOROU" ? ArrowUp : ArrowDown;
+  return (
+    <Badge tone={trend === "MELHOROU" ? "success" : "danger"}>
+      <Icon size={12} style={{ marginRight: 2, verticalAlign: -1 }} />
+      {trend === "MELHOROU" ? "Melhorou" : "Piorou"}
+    </Badge>
+  );
+}
+
+const CHART_COLORS = { current: "var(--accent-deep)", previous: "#9aa5b1" };
+
+function MonthlyVolumeChart({ data }: { data: { month: string; count: number }[] }) {
+  const chartData = data.map((m) => ({ label: monthLabel(m.month), count: m.count }));
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+        <Tooltip />
+        <Bar dataKey="count" name="Desligamentos" fill={CHART_COLORS.current} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ReasonComparisonChart({
+  current,
+  previous,
+}: {
+  current: { reason: string; label: string; pct: number }[];
+  previous: { reason: string; pct: number }[] | undefined;
+}) {
+  const data = current.map((r) => ({
+    label: r.label,
+    atual: Number(r.pct.toFixed(1)),
+    anterior: previous ? Number((previous.find((p) => p.reason === r.reason)?.pct ?? 0).toFixed(1)) : undefined,
+  }));
+  const height = Math.max(180, data.length * 42);
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
+        <XAxis type="number" unit="%" tick={{ fontSize: 12 }} />
+        <YAxis type="category" dataKey="label" width={180} tick={{ fontSize: 12 }} />
+        <Tooltip formatter={(value) => `${value}%`} />
+        <Legend />
+        <Bar dataKey="atual" name="Período atual" fill={CHART_COLORS.current} radius={[0, 4, 4, 0]} />
+        {previous && <Bar dataKey="anterior" name="Período anterior" fill={CHART_COLORS.previous} radius={[0, 4, 4, 0]} />}
+      </BarChart>
+    </ResponsiveContainer>
+  );
 }
 
 function PerceptionRow({
@@ -71,12 +154,21 @@ function PerceptionRow({
   );
 }
 
+const CLASSIFICATION_TONE: Record<LeaderClassification, "success" | "primary" | "danger"> = {
+  REFERENCIA: "success",
+  ACOMPANHAR: "primary",
+  ATENCAO: "danger",
+  PRIORIDADE: "danger",
+};
+
 function SegmentTable({
   title,
   segments,
+  showClassification,
 }: {
   title: string;
-  segments: { name: string; exitCount: number; controllableReasonPct: number | null; badEnvironmentPct: number | null; notRecommendPct: number | null }[];
+  segments: SegmentBreakdown[];
+  showClassification?: boolean;
 }) {
   return (
     <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -95,18 +187,31 @@ function SegmentTable({
                 <th style={{ padding: "6px 8px", textAlign: "right" }}>% motivo controlável</th>
                 <th style={{ padding: "6px 8px", textAlign: "right" }}>% ambiente ruim</th>
                 <th style={{ padding: "6px 8px", textAlign: "right" }}>% não recomendaria</th>
+                {showClassification && <th style={{ padding: "6px 8px", textAlign: "right" }}>Classificação</th>}
               </tr>
             </thead>
             <tbody>
-              {segments.map((s) => (
-                <tr key={s.name} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td style={{ padding: "6px 8px" }}>{s.name}</td>
-                  <td style={{ padding: "6px 8px", textAlign: "right" }}>{s.exitCount}</td>
-                  <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.controllableReasonPct)}</td>
-                  <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.badEnvironmentPct)}</td>
-                  <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.notRecommendPct)}</td>
-                </tr>
-              ))}
+              {segments.map((s) => {
+                const classification = showClassification ? classifyLeader(s) : null;
+                return (
+                  <tr key={s.name} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ padding: "6px 8px" }}>{s.name}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{s.exitCount}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.controllableReasonPct)}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.badEnvironmentPct)}</td>
+                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.notRecommendPct)}</td>
+                    {showClassification && (
+                      <td style={{ padding: "6px 8px", textAlign: "right" }}>
+                        {classification ? (
+                          <Badge tone={CLASSIFICATION_TONE[classification]}>{LEADER_CLASSIFICATION_LABELS[classification]}</Badge>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -116,12 +221,14 @@ function SegmentTable({
 }
 
 export function ExitAnalysisDashboard({
+  companyName,
   initialCurrent,
   initialPrevious,
   initialMinVolume,
   initialData,
   initialReport,
 }: {
+  companyName: string;
   initialCurrent: PeriodInput;
   initialPrevious: PeriodInput | null;
   initialMinVolume: number;
@@ -210,12 +317,35 @@ export function ExitAnalysisDashboard({
   }, [report?.themeStatus]);
 
   const { current: curMetrics, previous: prevMetrics } = data;
-  const maxMonthCount = Math.max(1, ...curMetrics.monthlyExitCounts.map((m) => m.count));
+
+  function handleExportPdf() {
+    window.print();
+  }
 
   return (
     <>
-      <Card style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <span className="fin-eyebrow">PERÍODO</span>
+      {/* Só aparece impresso/exportado em PDF — ver .print-only em
+          globals.css. Mesma função do slide 1 do PDF de referência
+          ("Apresentação à diretoria"): empresa, período, data de geração. */}
+      <div className="print-only" style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Análise de Desligamentos — {companyName}</h1>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "4px 0 0" }}>
+          Período: {formatDateBr(current.from)} a {formatDateBr(current.to)}
+          {comparePeriods && previous ? ` · Comparado com ${formatDateBr(previous.from)} a ${formatDateBr(previous.to)}` : ""}
+        </p>
+        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>
+          Gerado em {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        </p>
+      </div>
+
+      <Card className="no-print" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span className="fin-eyebrow">PERÍODO</span>
+          <Button type="button" variant="secondary" onClick={handleExportPdf}>
+            <Printer size={14} />
+            Exportar PDF
+          </Button>
+        </div>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <FieldLabel label="De">
             <Input type="date" value={current.from} onChange={(e) => setCurrent((p) => ({ ...p, from: e.target.value }))} />
@@ -261,8 +391,14 @@ export function ExitAnalysisDashboard({
       </Card>
 
       <div className="fin-row" style={{ flexWrap: "wrap" }}>
-        <StatCard label="Total de respostas" value={String(curMetrics.totalResponses)} meta={`${curMetrics.totalExits} desligamento(s) no período`} />
         <StatCard
+          selected
+          label="Total de respostas"
+          value={String(curMetrics.totalResponses)}
+          meta={`${curMetrics.totalExits} desligamento(s) no período`}
+        />
+        <StatCard
+          selected
           label="Saída voluntária"
           value={pct(curMetrics.voluntaryPct)}
           meta={prevMetrics ? `Período anterior: ${pct(prevMetrics.voluntaryPct)}` : undefined}
@@ -279,52 +415,17 @@ export function ExitAnalysisDashboard({
         {curMetrics.monthlyExitCounts.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Nenhum desligamento no período.</p>
         ) : (
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 140 }}>
-            {curMetrics.monthlyExitCounts.map((m) => (
-              <div key={m.month} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1 }}>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{m.count}</span>
-                <div
-                  style={{
-                    width: "100%",
-                    maxWidth: 32,
-                    height: `${(m.count / maxMonthCount) * 100}px`,
-                    background: "var(--accent-deep)",
-                    borderRadius: 4,
-                  }}
-                />
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{monthLabel(m.month)}</span>
-              </div>
-            ))}
-          </div>
+          <MonthlyVolumeChart data={curMetrics.monthlyExitCounts} />
         )}
       </Card>
 
       <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span className="fin-eyebrow">MOTIVOS DE SAÍDA</span>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {curMetrics.reasonBreakdown.map((r) => {
-            const prevReason = prevMetrics?.reasonBreakdown.find((p) => p.reason === r.reason);
-            return (
-              <div
-                key={r.reason}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 100px 100px",
-                  gap: 12,
-                  padding: "8px 0",
-                  borderTop: "1px solid var(--border)",
-                  fontSize: 13,
-                }}
-              >
-                <span>{r.label}</span>
-                <span style={{ textAlign: "right", fontWeight: 600 }}>{pct(r.pct)}</span>
-                <span style={{ textAlign: "right", color: "var(--text-muted)" }}>
-                  {prevMetrics ? pct(prevReason?.pct ?? 0) : "—"}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        {curMetrics.reasonBreakdown.length === 0 ? (
+          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Nenhum desligamento no período.</p>
+        ) : (
+          <ReasonComparisonChart current={curMetrics.reasonBreakdown} previous={prevMetrics?.reasonBreakdown} />
+        )}
       </Card>
 
       {curMetrics.reasonDetailBreakdown.length > 0 && (
@@ -397,7 +498,11 @@ export function ExitAnalysisDashboard({
       </div>
 
       <SegmentTable title={`RECORTE POR SETOR (mín. ${minVolume} saídas)`} segments={curMetrics.departmentBreakdown} />
-      <SegmentTable title={`RECORTE POR LÍDER (mín. ${minVolume} respostas)`} segments={curMetrics.leaderBreakdown} />
+      <SegmentTable
+        title={`RECORTE POR LÍDER (mín. ${minVolume} respostas)`}
+        segments={curMetrics.leaderBreakdown}
+        showClassification
+      />
 
       <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <span className="fin-eyebrow">ANÁLISE DE TEMA DOS COMENTÁRIOS (IA)</span>

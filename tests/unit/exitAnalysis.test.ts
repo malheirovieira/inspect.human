@@ -7,6 +7,7 @@ import {
   isControllableReason,
   computePeriodMetrics,
   classifyTrend,
+  classifyLeader,
   extractImportedReasonDetail,
   type ExitAnalysisRow,
 } from "@/lib/desligamentos/exitAnalysis";
@@ -151,6 +152,30 @@ describe("computePeriodMetrics", () => {
     const metrics = computePeriodMetrics(rows, 1);
     const pessoais = metrics.reasonDetailBreakdown.find((r) => r.category === "Motivos pessoais ou familiares");
     expect(pessoais?.count).toBe(2);
+  });
+});
+
+describe("classifyLeader", () => {
+  it("sem nenhum dado, não classifica", () => {
+    expect(classifyLeader({ relationshipPositivePct: null, controllableReasonPct: null, notRecommendPct: null })).toBeNull();
+  });
+
+  it("PRIORIDADE quando relação muito ruim, rejeição alta ou motivo controlável predominante", () => {
+    expect(classifyLeader({ relationshipPositivePct: 30, controllableReasonPct: 0, notRecommendPct: 0 })).toBe("PRIORIDADE");
+    expect(classifyLeader({ relationshipPositivePct: 90, controllableReasonPct: 0, notRecommendPct: 55 })).toBe("PRIORIDADE");
+    expect(classifyLeader({ relationshipPositivePct: 90, controllableReasonPct: 65, notRecommendPct: 0 })).toBe("PRIORIDADE");
+  });
+
+  it("REFERÊNCIA quando relação muito boa e rejeição baixa", () => {
+    expect(classifyLeader({ relationshipPositivePct: 80, controllableReasonPct: 10, notRecommendPct: 10 })).toBe("REFERENCIA");
+  });
+
+  it("ATENÇÃO quando abaixo do ideal sem ser crítico", () => {
+    expect(classifyLeader({ relationshipPositivePct: 50, controllableReasonPct: 10, notRecommendPct: 10 })).toBe("ATENCAO");
+  });
+
+  it("ACOMPANHAR no meio do caminho", () => {
+    expect(classifyLeader({ relationshipPositivePct: 65, controllableReasonPct: 10, notRecommendPct: 10 })).toBe("ACOMPANHAR");
   });
 });
 

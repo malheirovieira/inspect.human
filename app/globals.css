@@ -1758,4 +1758,14 @@ select.fin-input {
     box-shadow: none;
     break-inside: avoid;
   }
+  .print-only {
+    display: block !important;
+  }
+}
+
+/* Visível só na impressão/exportação em PDF (ex.: cabeçalho de
+   "Análise de Desligamentos" com empresa/período/data de geração) — ver
+   regra @media print acima que reverte pra display:block. */
+.print-only {
+  display: none;
 }
