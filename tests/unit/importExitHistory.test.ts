@@ -50,6 +50,17 @@ describe("parseDateFlexible", () => {
     expect(parseDateFlexible("não é data")).toBeNull();
     expect(parseDateFlexible("")).toBeNull();
   });
+
+  it("aceita separadores variados (ponto, espaço, sem separador)", () => {
+    expect(parseDateFlexible("15.03.2024")?.toISOString().slice(0, 10)).toBe("2024-03-15");
+    expect(parseDateFlexible("15 03 2024")?.toISOString().slice(0, 10)).toBe("2024-03-15");
+    expect(parseDateFlexible("15032024")?.toISOString().slice(0, 10)).toBe("2024-03-15");
+  });
+
+  it("aceita nome do mês por extenso em português", () => {
+    expect(parseDateFlexible("08 de abril de 2026")?.toISOString().slice(0, 10)).toBe("2026-04-08");
+    expect(parseDateFlexible("13 de março 2026")?.toISOString().slice(0, 10)).toBe("2026-03-13");
+  });
 });
 
 describe("normalizeExitType / normalizeReason", () => {
@@ -64,6 +75,11 @@ describe("normalizeExitType / normalizeReason", () => {
     expect(normalizeReason("pediu demissão")).toBe("PEDIU_DEMISSAO");
     expect(normalizeReason("FIM_DE_CONTRATO")).toBe("FIM_DE_CONTRATO");
     expect(normalizeReason("inválido")).toBeNull();
+  });
+
+  it("reconhece sinônimos de formulários (Google Forms etc.)", () => {
+    expect(normalizeExitType("Pedi o desligamento")).toBe("VOLUNTARIA");
+    expect(normalizeExitType("Fui desligado(a)")).toBe("INVOLUNTARIA");
   });
 });
 
@@ -80,6 +96,18 @@ describe("parseScore", () => {
     expect(parseScore("3.5").ok).toBe(false);
     expect(parseScore("abc").ok).toBe(false);
   });
+
+  it("aceita rótulos qualitativos (formulários que não usam número)", () => {
+    expect(parseScore("Muito ruim")).toEqual({ ok: true, value: 1 });
+    expect(parseScore("Ruim")).toEqual({ ok: true, value: 2 });
+    expect(parseScore("Regular")).toEqual({ ok: true, value: 3 });
+    expect(parseScore("Bom")).toEqual({ ok: true, value: 4 });
+    expect(parseScore("Muito bom")).toEqual({ ok: true, value: 5 });
+    expect(parseScore("Excelente")).toEqual({ ok: true, value: 5 });
+    expect(parseScore("Mais ou menos")).toEqual({ ok: true, value: 3 });
+    expect(parseScore("Muito ruins")).toEqual({ ok: true, value: 1 });
+    expect(parseScore("Bons")).toEqual({ ok: true, value: 4 });
+  });
 });
 
 describe("parseOptionalBoolean", () => {
@@ -92,8 +120,20 @@ describe("parseOptionalBoolean", () => {
     expect(parseOptionalBoolean("yes")).toEqual({ ok: true, value: true });
     expect(parseOptionalBoolean("0")).toEqual({ ok: true, value: false });
   });
+  it("trata resposta intermediária (talvez/em partes) como sem resposta, não como erro", () => {
+    expect(parseOptionalBoolean("Talvez")).toEqual({ ok: true, value: null });
+    expect(parseOptionalBoolean("Em partes")).toEqual({ ok: true, value: null });
+  });
+
+  it("reconhece frases completas de formulários", () => {
+    expect(parseOptionalBoolean("Com certeza sim")).toEqual({ ok: true, value: true });
+    expect(parseOptionalBoolean("Sim, com certeza")).toEqual({ ok: true, value: true });
+    expect(parseOptionalBoolean("Não voltaria")).toEqual({ ok: true, value: false });
+    expect(parseOptionalBoolean("Não recomendaria")).toEqual({ ok: true, value: false });
+  });
+
   it("rejeita valor não reconhecido", () => {
-    expect(parseOptionalBoolean("talvez").ok).toBe(false);
+    expect(parseOptionalBoolean("blablabla").ok).toBe(false);
   });
 });
 
@@ -144,6 +184,22 @@ describe("validateMappedRow", () => {
 
   it("rejeita nota de pesquisa fora do range", () => {
     const result = validateMappedRow(baseRow({ growthScore: "9" }));
+    expect(result.ok).toBe(false);
+  });
+
+  it("motivo multi-seleção que não bate com o enum cai em OUTRO e preserva o texto original em notes", () => {
+    const result = validateMappedRow(
+      baseRow({ reason: "Consegui outro emprego, Não estava satisfeito(a) com a liderança" })
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.employeeExit.reason).toBe("OUTRO");
+      expect(result.employeeExit.notes).toContain("Consegui outro emprego, Não estava satisfeito(a) com a liderança");
+    }
+  });
+
+  it("rejeita motivo vazio", () => {
+    const result = validateMappedRow(baseRow({ reason: "  " }));
     expect(result.ok).toBe(false);
   });
 });

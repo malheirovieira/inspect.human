@@ -72,8 +72,36 @@ const SURVEY_FIELD_IDS: ImportFieldId[] = [
 
 export type MappedExitHistoryRow = Record<ImportFieldId, string>;
 
+const MONTH_NAMES: Record<string, number> = {
+  janeiro: 1,
+  fevereiro: 2,
+  "março": 3,
+  marco: 3,
+  abril: 4,
+  maio: 5,
+  junho: 6,
+  julho: 7,
+  agosto: 8,
+  setembro: 9,
+  outubro: 10,
+  novembro: 11,
+  dezembro: 12,
+};
+
+function buildUtcDate(day: number, month: number, year: number): Date | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(d.getTime())) return null;
+  if (d.getUTCDate() !== day || d.getUTCMonth() !== month - 1) return null;
+  return d;
+}
+
+// Planilhas migradas de Google Forms/Excel trazem datas em formatos bem
+// variados (separador /, -, ., espaço, nome do mês por extenso, sem
+// separador nenhum) — tentamos reconhecer os mais comuns; o que não bater
+// em nenhum padrão vira erro de linha (não trava o resto da importação).
 export function parseDateFlexible(raw: string): Date | null {
-  const trimmed = raw.trim();
+  let trimmed = raw.trim().toLowerCase();
   if (!trimmed) return null;
 
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
@@ -81,24 +109,50 @@ export function parseDateFlexible(raw: string): Date | null {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  const brMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-  if (brMatch) {
-    const [, day, month, year] = brMatch;
-    const d = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-    if (Number.isNaN(d.getTime())) return null;
-    if (d.getUTCDate() !== Number(day) || d.getUTCMonth() !== Number(month) - 1) return null;
-    return d;
+  // "dia 23/6/2026" / "dia 08 de abril 2026" — remove ruído antes de testar.
+  trimmed = trimmed.replace(/^dia\s+/, "").trim();
+
+  const numericMatch = trimmed.match(/^(\d{1,2})[^\d](\d{1,2})[^\d](\d{4})$/);
+  if (numericMatch) {
+    const [, day, month, year] = numericMatch;
+    return buildUtcDate(Number(day), Number(month), Number(year));
+  }
+
+  const eightDigits = trimmed.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (eightDigits) {
+    const [, day, month, year] = eightDigits;
+    return buildUtcDate(Number(day), Number(month), Number(year));
+  }
+
+  // "08 de abril de 2026" / "08 de abril 2026" / "13 de março 2026"
+  const monthNameMatch = trimmed
+    .replace(/\//g, " ")
+    .match(/^(\d{1,2})\s*(?:de\s+)?([a-zç]+)\s*(?:de\s+)?(\d{4})$/);
+  if (monthNameMatch) {
+    const [, day, monthName, year] = monthNameMatch;
+    const month = MONTH_NAMES[monthName];
+    if (month) return buildUtcDate(Number(day), month, Number(year));
   }
 
   return null;
 }
+
+const EXIT_TYPE_SYNONYMS: Record<string, (typeof EXIT_TYPES)[number]> = {
+  "pedi o desligamento": "VOLUNTARIA",
+  "pedi demissao": "VOLUNTARIA",
+  "fui desligado(a)": "INVOLUNTARIA",
+  "fui desligada": "INVOLUNTARIA",
+  "fui desligado": "INVOLUNTARIA",
+};
 
 export function normalizeExitType(raw: string): (typeof EXIT_TYPES)[number] | null {
   const v = raw.trim().toUpperCase();
   if (!v) return null;
   const byKey = EXIT_TYPES.find((t) => t === v);
   if (byKey) return byKey;
-  return EXIT_TYPES.find((t) => EXIT_TYPE_LABELS[t].toUpperCase() === v) ?? null;
+  const byLabel = EXIT_TYPES.find((t) => EXIT_TYPE_LABELS[t].toUpperCase() === v);
+  if (byLabel) return byLabel;
+  return EXIT_TYPE_SYNONYMS[v.toLowerCase()] ?? null;
 }
 
 export function normalizeReason(raw: string): (typeof EXIT_REASONS)[number] | null {
@@ -111,9 +165,29 @@ export function normalizeReason(raw: string): (typeof EXIT_REASONS)[number] | nu
 
 export type ParsedOptionalInt = { ok: true; value: number | null } | { ok: false };
 
+// Nem toda planilha usa número 1-5 — formulários (ex. Google Forms) costumam
+// usar rótulos qualitativos num mesmo espectro de 5 pontos. Aceita os dois.
+const QUALITATIVE_SCORE_LABELS: Record<string, number> = {
+  "muito ruim": 1,
+  "muito ruins": 1,
+  ruim: 2,
+  ruins: 2,
+  regular: 3,
+  "mais ou menos": 3,
+  bom: 4,
+  bons: 4,
+  "muito bom": 5,
+  "muito bons": 5,
+  excelente: 5,
+};
+
 export function parseScore(raw: string): ParsedOptionalInt {
   const trimmed = raw.trim();
   if (!trimmed) return { ok: true, value: null };
+
+  const label = QUALITATIVE_SCORE_LABELS[trimmed.toLowerCase()];
+  if (label !== undefined) return { ok: true, value: label };
+
   const n = Number(trimmed);
   if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false };
   return { ok: true, value: n };
@@ -121,12 +195,37 @@ export function parseScore(raw: string): ParsedOptionalInt {
 
 export type ParsedOptionalBool = { ok: true; value: boolean | null } | { ok: false };
 
-const TRUE_VALUES = new Set(["sim", "s", "yes", "y", "true", "1"]);
-const FALSE_VALUES = new Set(["não", "nao", "n", "no", "false", "0"]);
+const TRUE_VALUES = new Set([
+  "sim",
+  "s",
+  "yes",
+  "y",
+  "true",
+  "1",
+  "com certeza sim",
+  "sim, com certeza",
+]);
+const FALSE_VALUES = new Set([
+  "não",
+  "nao",
+  "n",
+  "no",
+  "false",
+  "0",
+  "não voltaria",
+  "nao voltaria",
+  "não recomendaria",
+  "nao recomendaria",
+]);
+// Resposta intermediária ("talvez"/"em partes") não tem representação fiel
+// num booleano opcional — tratamos como "sem resposta" (null) em vez de
+// rejeitar a linha inteira por causa disso.
+const NEUTRAL_VALUES = new Set(["talvez", "em partes"]);
 
 export function parseOptionalBoolean(raw: string): ParsedOptionalBool {
   const v = raw.trim().toLowerCase();
   if (!v) return { ok: true, value: null };
+  if (NEUTRAL_VALUES.has(v)) return { ok: true, value: null };
   if (TRUE_VALUES.has(v)) return { ok: true, value: true };
   if (FALSE_VALUES.has(v)) return { ok: true, value: false };
   return { ok: false };
@@ -177,8 +276,15 @@ export function validateMappedRow(row: MappedExitHistoryRow): ValidateRowResult 
   const exitType = normalizeExitType(row.exitType);
   if (!exitType) return { ok: false, error: `Tipo de desligamento inválido ("${row.exitType}")` };
 
-  const reason = normalizeReason(row.reason);
-  if (!reason) return { ok: false, error: `Motivo inválido ("${row.reason}")` };
+  // Planilhas de Google Forms costumam trazer o motivo como texto livre
+  // multi-seleção (ex. "Consegui outro emprego, Ambiente difícil"), que
+  // raramente bate com um único valor do nosso enum. Em vez de rejeitar a
+  // linha, cai em "Outro" e preserva o texto original nas observações.
+  const reasonRaw = row.reason.trim();
+  if (!reasonRaw) return { ok: false, error: "Motivo vazio" };
+  const reasonMatch = normalizeReason(reasonRaw);
+  const reason = reasonMatch ?? "OUTRO";
+  const reasonNote = reasonMatch ? null : `Motivo original da planilha: ${reasonRaw}`;
 
   const admissionDateRaw = row.admissionDate ?? "";
   let admissionDate: Date | null = null;
@@ -209,6 +315,8 @@ export function validateMappedRow(row: MappedExitHistoryRow): ValidateRowResult 
   const wouldRecommendParsed = parseOptionalBoolean(row.wouldRecommend ?? "");
   if (!wouldRecommendParsed.ok) return { ok: false, error: `Valor inválido em "recomendaria a empresa" ("${row.wouldRecommend}")` };
 
+  const notesParts = [emptyToNull(row.notes ?? ""), reasonNote].filter((p): p is string => Boolean(p));
+
   const employeeExit: ValidatedEmployeeExit = {
     userName,
     department: emptyToNull(row.department ?? ""),
@@ -217,7 +325,7 @@ export function validateMappedRow(row: MappedExitHistoryRow): ValidateRowResult 
     exitDate,
     exitType,
     reason,
-    notes: emptyToNull(row.notes ?? ""),
+    notes: notesParts.length > 0 ? notesParts.join(" | ") : null,
     rehireEligible: rehireParsed.value,
   };
 
