@@ -54,8 +54,8 @@ describe.skipIf(!!skipReason)("triagem com IA (Postgres real)", () => {
   function deps(provider: AiProvider | null, env: Record<string, string> = {}): AnalyzeDeps {
     return {
       db,
-      provider,
-      config: parseAiConfig(env),
+      providerOverride: provider,
+      resolveConfig: async () => parseAiConfig(env),
       async downloadResume(path) {
         const f = files.get(path);
         if (!f) throw new Error("arquivo ausente");

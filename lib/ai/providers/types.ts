@@ -10,7 +10,7 @@ export type StructuredRequest = {
 // Todo provedor devolve o TEXTO cru da resposta (JSON em string) — a
 // validação é do chamador (lib/ai/screening.ts), igual pra todos.
 export interface AiProvider {
-  readonly name: "mock" | "gemini" | "openai";
+  readonly name: "mock" | "gemini" | "openai" | "anthropic";
   readonly model: string;
   readonly isMock: boolean;
   generate(req: StructuredRequest): Promise<string>;

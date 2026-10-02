@@ -1,4 +1,5 @@
 import type { AiConfig } from "../config";
+import { createAnthropicProvider } from "./anthropic";
 import { createGeminiProvider } from "./gemini";
 import { createMockProvider } from "./mock";
 import { createOpenAiProvider } from "./openai";
@@ -17,5 +18,7 @@ export function createAiProvider(config: AiConfig, opts: { fetch?: FetchLike; mo
       return createGeminiProvider({ apiKey: config.apiKey!, model: config.model, fetch: opts.fetch });
     case "openai":
       return createOpenAiProvider({ apiKey: config.apiKey!, model: config.model, fetch: opts.fetch });
+    case "anthropic":
+      return createAnthropicProvider({ apiKey: config.apiKey!, model: config.model, fetch: opts.fetch });
   }
 }

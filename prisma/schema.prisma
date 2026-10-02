@@ -83,8 +83,34 @@ model Company {
   discAnswers         DiscAnswer[]
   quizAssessments     QuizAssessment[]
   quizResponses       QuizResponse[]
+  aiConfig            CompanyAiConfig?
 
   @@map("companies")
+  @@schema("public")
+}
+
+// Parametrização de IA por empresa (BYOK, Fase 1) — uma linha por empresa
+// (companyId único: a empresa tem UM provider ativo por vez). apiKeyEncrypted
+// NUNCA guarda texto puro (AES-256-GCM, ver lib/ai/credentials.ts) e nunca é
+// devolvida ao cliente em nenhuma resposta — só o indicador mascarado
+// (ver lib/ai/credentials.ts maskApiKey). Sem config própria, a triagem usa
+// a chave da plataforma (fallback, ver lib/ai/resolveConfig.ts).
+model CompanyAiConfig {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId        String   @unique @map("company_id") @db.Uuid
+  provider         String   // "anthropic" | "openai" | "gemini"
+  apiKeyEncrypted  String   @map("api_key_encrypted")
+  model            String
+  enabled          Boolean  @default(true)
+  // Preparação pra integração futura com ERP — não implementado agora.
+  dataSource       String   @default("manual") @map("data_source")
+  externalRef      String?  @map("external_ref")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_ai_configs")
   @@schema("public")
 }
 

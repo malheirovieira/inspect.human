@@ -6,7 +6,10 @@ import { requireRole } from "@/lib/session";
 import { OPTION_CATEGORIES, type OptionCategory } from "@/services/companyOptions";
 import { companyAddressSchema, type CompanyAddressInput } from "@/schemas/companyAddress";
 import { companyIntegrationsSchema, type CompanyIntegrationsInput } from "@/schemas/companyIntegrations";
+import { companyAiConfigSchema, type CompanyAiConfigInput } from "@/schemas/companyAiConfig";
 import { zodFieldErrors, type FieldErrors } from "@/lib/fieldErrors";
+import { createAiProvider } from "@/lib/ai/providers";
+import { encryptApiKey, decryptApiKey } from "@/lib/ai/credentials";
 
 export type ActionResult = { error: string } | { success: true };
 
@@ -64,6 +67,92 @@ export async function updateCompanyIntegrations(
   revalidatePath("/configuracoes");
   revalidatePath("/configuracoes/parametrizacao");
   return { success: true };
+}
+
+// Parametrização — IA própria da empresa (BYOK, Fase 1). apiKey write-only:
+// vazio = mantém a chave já salva (só permitido se o provider não mudou —
+// trocar de provider sem mandar chave nova seria usar uma credencial do
+// provider ERRADO). Nunca loga nem devolve a chave em texto puro.
+export async function updateCompanyAiConfig(
+  input: CompanyAiConfigInput
+): Promise<ActionResult | { error: string; fieldErrors: FieldErrors }> {
+  const session = await requireRole(["ADMIN"]);
+
+  const parsed = companyAiConfigSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Corrija os campos destacados.", fieldErrors: zodFieldErrors(parsed.error) };
+  }
+
+  const existing = await prisma.companyAiConfig.findUnique({ where: { companyId: session.companyId } });
+
+  let apiKeyEncrypted: string;
+  if (parsed.data.apiKey) {
+    apiKeyEncrypted = encryptApiKey(parsed.data.apiKey);
+  } else if (existing && existing.provider === parsed.data.provider) {
+    apiKeyEncrypted = existing.apiKeyEncrypted;
+  } else {
+    return {
+      error: "Corrija os campos destacados.",
+      fieldErrors: { apiKey: "Informe a chave de API (obrigatória ao configurar pela primeira vez ou trocar de provedor)." },
+    };
+  }
+
+  await prisma.companyAiConfig.upsert({
+    where: { companyId: session.companyId },
+    create: {
+      companyId: session.companyId,
+      provider: parsed.data.provider,
+      apiKeyEncrypted,
+      model: parsed.data.model,
+      enabled: parsed.data.enabled,
+    },
+    update: { provider: parsed.data.provider, apiKeyEncrypted, model: parsed.data.model, enabled: parsed.data.enabled },
+  });
+
+  revalidatePath("/configuracoes/parametrizacao");
+  return { success: true };
+}
+
+export type TestAiConnectionResult = { success: true } | { success: false; error: string };
+
+// "Testar conexão" — chamada MÍNIMA real ao provider, não grava nada. Com
+// apiKey vazio, usa a chave já salva (decifrada só na memória do servidor
+// pra esta chamada, nunca volta ao cliente).
+export async function testCompanyAiConnection(input: CompanyAiConfigInput): Promise<TestAiConnectionResult> {
+  const session = await requireRole(["ADMIN"]);
+
+  const parsed = companyAiConfigSchema.safeParse(input);
+  if (!parsed.success) return { success: false, error: "Corrija os campos antes de testar." };
+
+  let apiKey = parsed.data.apiKey;
+  if (!apiKey) {
+    const existing = await prisma.companyAiConfig.findUnique({ where: { companyId: session.companyId } });
+    if (!existing || existing.provider !== parsed.data.provider) {
+      return { success: false, error: "Informe a chave de API para testar." };
+    }
+    try {
+      apiKey = decryptApiKey(existing.apiKeyEncrypted);
+    } catch {
+      return { success: false, error: "Credencial salva corrompida — informe a chave novamente." };
+    }
+  }
+
+  const provider = createAiProvider({ provider: parsed.data.provider, model: parsed.data.model, apiKey, allowRealData: true, error: null });
+  if (!provider) return { success: false, error: "Provedor inválido." };
+
+  try {
+    const raw = await provider.generate({
+      system: "Responda apenas com o JSON pedido, nada além disso.",
+      input: "Teste de conexão — confirme respondendo o schema.",
+      schemaName: "teste_conexao",
+      jsonSchema: { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] },
+    });
+    JSON.parse(raw); // só confirma que voltou algo parseável — o conteúdo exato não importa aqui.
+    return { success: true };
+  } catch (err) {
+    // Mensagens dos providers (providerHttpError etc.) já vêm sem dado sensível — seguras pra mostrar.
+    return { success: false, error: err instanceof Error ? err.message : "Falha ao conectar com o provedor." };
+  }
 }
 
 export async function createCompanyOption(category: OptionCategory, label: string): Promise<ActionResult> {

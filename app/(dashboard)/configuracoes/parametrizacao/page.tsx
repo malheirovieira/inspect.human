@@ -1,12 +1,17 @@
 import { Header } from "@/components/layout/Header";
 import { Card } from "@/components/ui/Card";
 import { JobBoardIntegrationsForm } from "@/components/configuracoes/JobBoardIntegrationsForm";
+import { AiConfigForm } from "@/components/configuracoes/AiConfigForm";
 import { getCompany } from "@/services/company";
+import { getCompanyAiConfigMasked } from "@/services/companyAiConfig";
 import { requireRole } from "@/lib/session";
 
 export default async function ParametrizacaoPage() {
   const session = await requireRole(["ADMIN"]);
-  const company = await getCompany(session.companyId);
+  const [company, aiConfig] = await Promise.all([
+    getCompany(session.companyId),
+    getCompanyAiConfigMasked(session.companyId),
+  ]);
 
   return (
     <>
@@ -33,6 +38,8 @@ export default async function ParametrizacaoPage() {
           linkedinLive={process.env.LINKEDIN_INTEGRATION_LIVE === "true"}
           infojobsLive={process.env.INFOJOBS_INTEGRATION_LIVE === "true"}
         />
+
+        <AiConfigForm existing={aiConfig} />
 
         <div>
           <span className="fin-eyebrow">OUTRAS PARAMETRIZAÇÕES</span>

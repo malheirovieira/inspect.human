@@ -2,7 +2,7 @@ import type { Prisma, PrismaClient } from "@prisma/client";
 import type { AiConfig } from "@/lib/ai/config";
 import { getAiBlockReason } from "@/lib/ai/availability";
 import { extractResumeText } from "@/lib/ai/extract";
-import type { AiProvider } from "@/lib/ai/providers";
+import { createAiProvider, type AiProvider } from "@/lib/ai/providers";
 import { redactResumeText, truncateForAi } from "@/lib/ai/redact";
 import {
   PROMPT_VERSION,
@@ -28,8 +28,14 @@ import { hasActiveAiConsent } from "./request";
 export type AnalyzeDeps = {
   db: PrismaClient;
   downloadResume(storagePath: string): Promise<Uint8Array>;
-  config: AiConfig;
-  provider: AiProvider | null;
+  // Resolvida AQUI DENTRO (não antes) porque só sabemos o companyId depois
+  // de carregar a análise — fonte real: lib/ai/resolveConfig.ts (BYOK da
+  // empresa, com fallback pra config da plataforma).
+  resolveConfig(companyId: string): Promise<AiConfig>;
+  // Só pra teste: injeta um provider pronto (ex. com respostas roteirizadas)
+  // em vez de deixar createAiProvider(config) decidir. Produção nunca passa
+  // isso — undefined é o normal.
+  providerOverride?: AiProvider | null;
 };
 
 // Códigos curtos gravados em resume_analyses.error_code (sem dado pessoal).
@@ -58,11 +64,15 @@ export async function analyzeResume(deps: AnalyzeDeps, analysisId: string, ctx: 
   const { resume, companyId } = analysis;
   const candidate = resume.candidate;
 
+  // Resolvida só agora que sabemos o companyId — BYOK da empresa se
+  // configurado e ativo, senão a config da plataforma (fallback).
+  const config = await deps.resolveConfig(companyId);
+
   // Regra conferida DE NOVO aqui — a configuração pode ter mudado enquanto
   // a tarefa esperava na fila.
   const blockReason = getAiBlockReason({
     isTest: candidate.isTest,
-    allowRealData: deps.config.allowRealData,
+    allowRealData: config.allowRealData,
     companyEnabled: analysis.company.aiScreeningEnabled,
     hasAiConsent: await hasActiveAiConsent(db, companyId, candidate.id),
   });
@@ -74,20 +84,21 @@ export async function analyzeResume(deps: AnalyzeDeps, analysisId: string, ctx: 
     return;
   }
 
+  const provider = deps.providerOverride !== undefined ? deps.providerOverride : config.error ? null : createAiProvider(config);
+
   const finishFailed = (errorCode: AnalysisErrorCode) =>
     finish(
       db,
       analysis,
-      { status: "FAILED", errorCode, provider: deps.provider?.name ?? null, model: deps.provider?.model ?? null },
+      { status: "FAILED", errorCode, provider: provider?.name ?? null, model: provider?.model ?? null },
       AI_EVENT_TYPES.FAILED,
       { errorCode }
     );
 
-  if (deps.config.error || !deps.provider) {
+  if (config.error || !provider) {
     await finishFailed("CONFIG");
-    throw new PermanentTaskError(`Configuração de IA inválida: ${deps.config.error ?? "sem provedor"}`);
+    throw new PermanentTaskError(`Configuração de IA inválida: ${config.error ?? "sem provedor"}`);
   }
-  const provider = deps.provider;
 
   // ---- texto (extraído uma vez por versão; reaproveitado em nova geração)
   let textStatus = resume.textStatus;
