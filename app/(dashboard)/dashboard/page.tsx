@@ -1,4 +1,3 @@
-import { Header } from "@/components/layout/Header";
 import { PartnersCarousel } from "@/components/inicio/PartnersCarousel";
 import { SuperAdminDashboard } from "@/components/admin/SuperAdminDashboard";
 import { requireSession } from "@/lib/session";
@@ -6,30 +5,25 @@ import { listActivePartners } from "@/app/actions/partners";
 import { getCompanyPlan } from "@/services/plans";
 import { DEFAULT_PLAN_ID, PLANS } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
+import { getCompany } from "@/services/company";
+import { InicioLayout } from "@/components/inicio/InicioLayout";
 
-// Pouso fixo pós-login (sempre aqui, nunca no último módulo visitado — ver
-// Sidebar.tsx: fica fora de GROUPS, por isso nenhuma seção do menu acende
-// quando o usuário está nesta página). O fundo ambiente vem do layout
-// (components/layout/AmbientBackground).
+// Pouso fixo pós-login (sempre aqui, nunca no último módulo visitado).
 //
 // SUPERADMIN não tem empresa (companyId null) — não faz sentido mostrar
 // parceiros de uma empresa específica pra quem não pertence a nenhuma; em
 // vez disso vê stats globais do SaaS (SuperAdminDashboard).
 //
-// Título = saudação neutra (serve pra qualquer gênero) com o primeiro nome;
-// o item do menu ("Início"), a aba do navegador e o rótulo acima do título
-// continuam iguais.
+// Cabeçalho no estilo da referência do menu lateral (2026-10-02): data,
+// saudação por horário (neutra — serve pra qualquer gênero) e uma linha de
+// apoio; faixa "Visão ativa" no rodapé da área.
 //
 // "Precisa da sua atenção" saiu da tela, mas a lógica continua pronta pra
 // uso futuro em outro lugar: services/attention.ts + AttentionCard.
+
 export default async function InicioPage() {
   const session = await requireSession();
   const firstName = session.name.trim().split(/\s+/)[0] ?? "";
-  const header = (
-    <Header
-      title={firstName ? `Que bom ter você de volta, ${firstName}` : "Que bom ter você de volta"}
-    />
-  );
 
   if (session.role === "SUPERADMIN") {
     // groupBy fora do $transaction([...]) — dentro de um array heterogêneo
@@ -70,45 +64,38 @@ export default async function InicioPage() {
     const averageTicket = payingCompanies > 0 ? revenueSum / payingCompanies : 0;
 
     return (
-      <>
-        {header}
-        <div className="fin-content">
-          <SuperAdminDashboard
-            totalActiveCompanies={totalActiveCompanies}
-            planCounts={planCounts.map((p) => ({ plan: p.plan, count: p._count._all }))}
-            totalUsers={totalUsers}
-            totalPartners={totalPartners}
-            companiesWithUserCount={companiesWithUserCount.map((c) => ({ id: c.id, name: c.name, plan: c.plan, userCount: c._count.users }))}
-            averageTicket={averageTicket}
-            adminName={session.name}
-            adminEmail={session.email}
-          />
-        </div>
-      </>
+      <InicioLayout firstName={firstName} companyName={null}>
+        <SuperAdminDashboard
+          totalActiveCompanies={totalActiveCompanies}
+          planCounts={planCounts.map((p) => ({ plan: p.plan, count: p._count._all }))}
+          totalUsers={totalUsers}
+          totalPartners={totalPartners}
+          companiesWithUserCount={companiesWithUserCount.map((c) => ({ id: c.id, name: c.name, plan: c.plan, userCount: c._count.users }))}
+          averageTicket={averageTicket}
+          adminName={session.name}
+          adminEmail={session.email}
+        />
+      </InicioLayout>
     );
   }
 
   // ADMIN/HR/EMPLOYEE sempre têm companyId — defensivo, não deveria disparar.
-  if (!session.companyId) return header;
+  if (!session.companyId) return <InicioLayout firstName={firstName} companyName={null} />;
   const { companyId } = session;
 
   // Parceiros aparecem pra TODOS os usuários da empresa (inclusive EMPLOYEE).
-  const [partners, plan] = await Promise.all([listActivePartners(), getCompanyPlan(companyId)]);
+  const [partners, plan, company] = await Promise.all([listActivePartners(), getCompanyPlan(companyId), getCompany(companyId)]);
   const canClose = plan.id !== DEFAULT_PLAN_ID;
+  const companyName = company?.name ?? null;
 
-  if (partners.length === 0) return header;
+  if (partners.length === 0) return <InicioLayout firstName={firstName} companyName={companyName} />;
 
   return (
-    <>
-      {header}
-      <div className="fin-content">
-        <div style={{ marginTop: "auto", paddingBottom: 24 }}>
-          <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)", margin: "0 0 16px" }}>
-            Parceiros de benefícios
-          </p>
-          <PartnersCarousel partners={partners} canClose={canClose} />
-        </div>
+    <InicioLayout firstName={firstName} companyName={companyName}>
+      <div>
+        <p className="mb-4 text-[10px] uppercase tracking-[0.16em] text-neutral-500">Parceiros de benefícios</p>
+        <PartnersCarousel partners={partners} canClose={canClose} />
       </div>
-    </>
+    </InicioLayout>
   );
 }

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { AppShell } from "@/components/layout/Sidebar";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { AmbientBackground } from "@/components/layout/AmbientBackground";
 import { requireSession } from "@/lib/session";
 import { getCompany } from "@/services/company";
 
@@ -16,17 +15,11 @@ export default async function DashboardGroupLayout({ children }: { children: Rea
   // SUPERADMIN não tem empresa (companyId null) — mostra rótulo do sistema
   // no lugar do nome de uma empresa que ele não pertence mais.
   const company = session.companyId ? await getCompany(session.companyId) : null;
-  const companyName = session.role === "SUPERADMIN" ? "Painel do Sistema" : company?.name;
+  const companyName = session.role === "SUPERADMIN" ? "Painel do Sistema" : (company?.name ?? "Sua empresa");
 
   return (
-    <div className="fin-app">
-      <Sidebar userName={session.name} companyName={companyName} role={session.role} />
-      <div className="fin-main">
-        {/* Primeira camada da ÁREA DA PÁGINA (a Sidebar é branca e fica de
-            fora): fundo ambiente, só renderiza na tela Início. */}
-        <AmbientBackground />
-        <PageTransition>{children}</PageTransition>
-      </div>
-    </div>
+    <AppShell userName={session.name} userEmail={session.email} companyName={companyName} role={session.role}>
+      <PageTransition>{children}</PageTransition>
+    </AppShell>
   );
 }
