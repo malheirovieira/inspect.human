@@ -32,3 +32,9 @@ export const AI_BLOCK_REASON_LABELS: Record<AiBlockReason, string> = {
 
 // Finalidade de consentimento exigida (tabela consents).
 export const AI_SCREENING_CONSENT_PURPOSE = "AI_SCREENING";
+
+// Fase 2/3 — consentimento do colaborador (ou do desligamento específico)
+// pra análise por IA do comentário livre da pesquisa de saída. Mesmo padrão
+// do AI_SCREENING_CONSENT_PURPOSE, sujeito diferente (ver Consent no
+// schema: candidateId/userId/employeeExitId).
+export const EXIT_SURVEY_AI_ANALYSIS_CONSENT_PURPOSE = "EXIT_SURVEY_AI_ANALYSIS";

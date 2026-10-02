@@ -215,6 +215,7 @@ model User {
   uploadedResumes     CandidateResume[]    @relation("ResumeUploadedBy")
   editedAnalyses      ResumeAnalysis[]     @relation("AnalysisSkillsEditedBy")
   aiScreeningChanges  Company[]            @relation("CompanyAiScreeningChangedBy")
+  consents            Consent[]            @relation("ConsentUser")
 
   @@unique([companyId, email])
   @@unique([companyId, cpf])
@@ -426,24 +427,40 @@ model ResumeAnalysis {
 
 // Consentimento genérico: finalidade + versão/hash do texto exato exibido.
 // Registro de prova — nunca editar; revogar = preencher revokedAt.
+//
+// Sujeito do consentimento (Fase 2) — EXATAMENTE um dos três deve estar
+// preenchido: candidateId (candidato, fluxo original), userId (colaborador
+// avulso respondendo algo fora do contexto de um desligamento específico),
+// ou employeeExitId (vinculado a UM desligamento, ex. pesquisa de saída).
+// O banco só garante "pelo menos um" (constraint consents_has_subject,
+// CHECK não dá XOR exato de forma robusta com NULLs) — o XOR de verdade é
+// validado na aplicação, ver lib/consent.ts (assertConsentSubject), usado
+// por todo código que cria um Consent.
 model Consent {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  companyId     String    @map("company_id") @db.Uuid
-  candidateId   String    @map("candidate_id") @db.Uuid
-  applicationId String?   @map("application_id") @db.Uuid
-  // APPLICATION_PROCESSING | AI_SCREENING | … (validado no Zod)
-  purpose       String
-  textVersion   String    @map("text_version")
-  textHash      String    @map("text_hash")
-  source        String
-  grantedAt     DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
-  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  candidateId    String?   @map("candidate_id") @db.Uuid
+  userId         String?   @map("user_id") @db.Uuid
+  employeeExitId String?   @map("employee_exit_id") @db.Uuid
+  applicationId  String?   @map("application_id") @db.Uuid
+  // APPLICATION_PROCESSING | AI_SCREENING | EXIT_SURVEY_AI_ANALYSIS | …
+  // (validado no Zod/lib/ai/availability.ts)
+  purpose        String
+  textVersion    String    @map("text_version")
+  textHash       String    @map("text_hash")
+  source         String
+  grantedAt      DateTime  @default(now()) @map("granted_at") @db.Timestamptz(6)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
 
-  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  candidate   Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  company     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate   Candidate?    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user        User?         @relation("ConsentUser", fields: [userId], references: [id], onDelete: Cascade)
+  employeeExit EmployeeExit? @relation(fields: [employeeExitId], references: [id], onDelete: Cascade)
+  application Application?  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([companyId, candidateId, purpose], map: "idx_consents_company_candidate_purpose")
+  @@index([companyId, userId, purpose], map: "idx_consents_company_user_purpose")
+  @@index([companyId, employeeExitId, purpose], map: "idx_consents_company_exit_purpose")
   @@map("consents")
   @@schema("public")
 }
@@ -572,6 +589,7 @@ model EmployeeExit {
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user      User?   @relation("ExitUser", fields: [userId], references: [id], onDelete: SetNull)
   createdBy User?   @relation("ExitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  consents  Consent[]
 
   @@index([companyId, exitDate])
   @@map("employee_exits")
