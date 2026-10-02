@@ -1,13 +1,10 @@
 import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes } from "react";
 
-// Padronização 2026-09-30: TODO botão é branco em repouso e só ganha cor no
-// hover. A variante escolhe a cor do hover: confirm = salvar/confirmar/
-// atualizar/criar (verde, --action-confirm); danger/icon-cancel/round-cancel =
-// cancelar/excluir/remover (vermelho, --action-cancel); round-add = incluir
-// (verde); primary = ação principal que não grava, ex.: Entrar, Lista/Kanban
-// (azul, --action-primary); secondary = neutra (cinza claro). Ver .fin-btn em
-// app/globals.css.
+// Fluent 2: primary/confirm/round-add preenchidos em --accent (salvar é a
+// ação primária); danger/icon-cancel/round-cancel em --red (cancelar/
+// excluir/remover); secondary branco com borda. Ver .fin-btn em
+// app/globals.css — a fonte da verdade das cores é lá, não este comentário.
 type Variant = "primary" | "secondary" | "confirm" | "danger" | "disabled" | "round-add" | "round-cancel" | "icon-cancel";
 
 export function Button({

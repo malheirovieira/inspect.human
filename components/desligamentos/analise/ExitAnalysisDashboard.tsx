@@ -1,37 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, ArrowDown, Minus, Printer } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-} from "recharts";
+import { Printer } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { StatCard } from "@/components/ui/StatCard";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { FieldLabel, Input, Textarea } from "@/components/ui/Field";
-import {
-  classifyTrend,
-  classifyLeader,
-  LEADER_CLASSIFICATION_LABELS,
-  type LeaderClassification,
-  type PeriodMetrics,
-  type SegmentBreakdown,
-  type Trend,
-} from "@/lib/desligamentos/exitAnalysis";
+import { SectionLabel } from "@/components/ui/SectionLabel";
+import { classifyLeader, type PeriodMetrics, type SegmentBreakdown } from "@/lib/desligamentos/exitAnalysis";
 import {
   fetchExitAnalysis,
   fetchExitAnalysisReport,
   saveExitAnalysisRecommendations,
   requestExitThemeAnalysis,
 } from "@/app/(dashboard)/desligamentos/analise/actions";
+import { CategoryChartCard, EmptyChart, MonthlyVolumeChart, ReasonComparisonChart, ReportCard } from "./charts";
+import {
+  HeadlineStat,
+  LeaderLegend,
+  LeaderPill,
+  PerceptionHead,
+  PerceptionRow,
+  countComparison,
+  fmtPct,
+  pctComparison,
+} from "./widgets";
 
 type PeriodInput = { from: string; to: string };
 type ExitAnalysisResult = { current: PeriodMetrics; previous: PeriodMetrics | null };
@@ -43,10 +36,6 @@ type ReportState = {
   themeResponsesAnalyzed: number | null;
 } | null;
 
-function pct(value: number | null): string {
-  return value === null ? "—" : `${value.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
-}
-
 function monthLabel(month: string): string {
   const [year, m] = month.split("-").map(Number);
   return new Date(Date.UTC(year, m - 1, 1)).toLocaleDateString("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" });
@@ -56,169 +45,49 @@ function formatDateBr(iso: string): string {
   return new Date(`${iso}T00:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" });
 }
 
-// Seta + cor além da palavra (nunca só texto) — pedido explícito da Fase 6
-// pra ficar visualmente claro de relance, inclusive impresso em P&B (a seta
-// some, mas a palavra continua).
-function TrendBadge({ trend }: { trend: Trend }) {
-  if (trend === "SEM_DADOS") return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
-  if (trend === "ESTAVEL")
-    return (
-      <Badge tone="primary">
-        <Minus size={12} style={{ marginRight: 2, verticalAlign: -1 }} />
-        Estável
-      </Badge>
-    );
-  const Icon = trend === "MELHOROU" ? ArrowUp : ArrowDown;
+function SegmentTable({ segments, showClassification }: { segments: SegmentBreakdown[]; showClassification?: boolean }) {
+  if (segments.length === 0) {
+    return <EmptyChart>Nenhum grupo atingiu o volume mínimo configurado no período.</EmptyChart>;
+  }
   return (
-    <Badge tone={trend === "MELHOROU" ? "success" : "danger"}>
-      <Icon size={12} style={{ marginRight: 2, verticalAlign: -1 }} />
-      {trend === "MELHOROU" ? "Melhorou" : "Piorou"}
-    </Badge>
-  );
-}
-
-const CHART_COLORS = { current: "var(--accent-deep)", previous: "#9aa5b1" };
-
-function MonthlyVolumeChart({ data }: { data: { month: string; count: number }[] }) {
-  const chartData = data.map((m) => ({ label: monthLabel(m.month), count: m.count }));
-  return (
-    <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-        <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-        <Tooltip />
-        <Bar dataKey="count" name="Desligamentos" fill={CHART_COLORS.current} radius={[4, 4, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function ReasonComparisonChart({
-  current,
-  previous,
-}: {
-  current: { reason: string; label: string; pct: number }[];
-  previous: { reason: string; pct: number }[] | undefined;
-}) {
-  const data = current.map((r) => ({
-    label: r.label,
-    atual: Number(r.pct.toFixed(1)),
-    anterior: previous ? Number((previous.find((p) => p.reason === r.reason)?.pct ?? 0).toFixed(1)) : undefined,
-  }));
-  const height = Math.max(180, data.length * 42);
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
-        <XAxis type="number" unit="%" tick={{ fontSize: 12 }} />
-        <YAxis type="category" dataKey="label" width={180} tick={{ fontSize: 12 }} />
-        <Tooltip formatter={(value) => `${value}%`} />
-        <Legend />
-        <Bar dataKey="atual" name="Período atual" fill={CHART_COLORS.current} radius={[0, 4, 4, 0]} />
-        {previous && <Bar dataKey="anterior" name="Período anterior" fill={CHART_COLORS.previous} radius={[0, 4, 4, 0]} />}
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-function PerceptionRow({
-  label,
-  current,
-  previous,
-}: {
-  label: string;
-  current: number | null;
-  previous: number | null | undefined;
-}) {
-  const { trend } = classifyTrend(current, previous ?? null);
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 100px 100px 120px",
-        gap: 12,
-        alignItems: "center",
-        padding: "10px 0",
-        borderTop: "1px solid var(--border)",
-        fontSize: 13,
-      }}
-    >
-      <span>{label}</span>
-      <span style={{ textAlign: "right", fontWeight: 600 }}>{pct(current)}</span>
-      <span style={{ textAlign: "right", color: "var(--text-muted)" }}>{pct(previous ?? null)}</span>
-      <span style={{ textAlign: "right" }}>
-        <TrendBadge trend={trend} />
-      </span>
+    <div className="fin-report-table-wrap">
+      <table className="fin-report-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Saídas</th>
+            <th>Motivo controlável</th>
+            <th>Ambiente ruim</th>
+            <th>Não recomendaria</th>
+            {showClassification && <th>Classificação</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {segments.map((s) => {
+            const classification = showClassification ? classifyLeader(s) : null;
+            return (
+              <tr key={s.name}>
+                <td>{s.name}</td>
+                <td>{s.exitCount}</td>
+                <td>{fmtPct(s.controllableReasonPct)}</td>
+                <td>{fmtPct(s.badEnvironmentPct)}</td>
+                <td>{fmtPct(s.notRecommendPct)}</td>
+                {showClassification && <td>{classification ? <LeaderPill classification={classification} /> : "—"}</td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-const CLASSIFICATION_TONE: Record<LeaderClassification, "success" | "primary" | "danger"> = {
-  REFERENCIA: "success",
-  ACOMPANHAR: "primary",
-  ATENCAO: "danger",
-  PRIORIDADE: "danger",
+const THEME_STATUS_LABEL: Record<string, string> = {
+  PENDING: "Processando...",
+  DONE: "Concluído",
+  FAILED: "Falhou",
+  INSUFFICIENT_DATA: "Dados insuficientes",
 };
-
-function SegmentTable({
-  title,
-  segments,
-  showClassification,
-}: {
-  title: string;
-  segments: SegmentBreakdown[];
-  showClassification?: boolean;
-}) {
-  return (
-    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span className="fin-eyebrow">{title}</span>
-      {segments.length === 0 ? (
-        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
-          Nenhum grupo atingiu o volume mínimo configurado no período.
-        </p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ textAlign: "left", color: "var(--text-muted)" }}>
-                <th style={{ padding: "6px 8px" }}>Nome</th>
-                <th style={{ padding: "6px 8px", textAlign: "right" }}>Nº saídas</th>
-                <th style={{ padding: "6px 8px", textAlign: "right" }}>% motivo controlável</th>
-                <th style={{ padding: "6px 8px", textAlign: "right" }}>% ambiente ruim</th>
-                <th style={{ padding: "6px 8px", textAlign: "right" }}>% não recomendaria</th>
-                {showClassification && <th style={{ padding: "6px 8px", textAlign: "right" }}>Classificação</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {segments.map((s) => {
-                const classification = showClassification ? classifyLeader(s) : null;
-                return (
-                  <tr key={s.name} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: "6px 8px" }}>{s.name}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{s.exitCount}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.controllableReasonPct)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.badEnvironmentPct)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}>{pct(s.notRecommendPct)}</td>
-                    {showClassification && (
-                      <td style={{ padding: "6px 8px", textAlign: "right" }}>
-                        {classification ? (
-                          <Badge tone={CLASSIFICATION_TONE[classification]}>{LEADER_CLASSIFICATION_LABELS[classification]}</Badge>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </Card>
-  );
-}
 
 export function ExitAnalysisDashboard({
   companyName,
@@ -316,32 +185,49 @@ export function ExitAnalysisDashboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [report?.themeStatus]);
 
-  const { current: curMetrics, previous: prevMetrics } = data;
+  const { current: cur, previous: prev } = data;
+  const hasPrevious = prev !== null;
 
-  function handleExportPdf() {
-    window.print();
-  }
+  // Comparação de motivos: união dos dois períodos — um motivo que só
+  // aparece no período anterior também entra (com 0% no atual).
+  const reasonComparison = prev
+    ? Array.from(new Set([...cur.reasonBreakdown.map((r) => r.reason), ...prev.reasonBreakdown.map((r) => r.reason)])).map(
+        (reason) => {
+          const c = cur.reasonBreakdown.find((r) => r.reason === reason);
+          const p = prev.reasonBreakdown.find((r) => r.reason === reason);
+          return {
+            label: c?.label ?? p?.label ?? reason,
+            atual: Number((c?.pct ?? 0).toFixed(1)),
+            anterior: Number((p?.pct ?? 0).toFixed(1)),
+          };
+        }
+      )
+    : [];
 
   return (
-    <>
+    <div className="fin-report">
       {/* Só aparece impresso/exportado em PDF — ver .print-only em
-          globals.css. Mesma função do slide 1 do PDF de referência
+          globals.css. Mesma função da capa do PDF de referência
           ("Apresentação à diretoria"): empresa, período, data de geração. */}
-      <div className="print-only" style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Análise de Desligamentos — {companyName}</h1>
-        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "4px 0 0" }}>
+      <div className="print-only">
+        <SectionLabel>Apresentação à diretoria</SectionLabel>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: "6px 0 0", color: "var(--accent-deep)" }}>
+          Análise de Desligamentos — {companyName}
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0" }}>
           Período: {formatDateBr(current.from)} a {formatDateBr(current.to)}
-          {comparePeriods && previous ? ` · Comparado com ${formatDateBr(previous.from)} a ${formatDateBr(previous.to)}` : ""}
+          {comparePeriods && previous ? ` · comparado com ${formatDateBr(previous.from)} a ${formatDateBr(previous.to)}` : ""}
         </p>
         <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>
-          Gerado em {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          Gerado em {new Date().toLocaleDateString("pt-BR")} às{" "}
+          {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </p>
       </div>
 
-      <Card className="no-print" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span className="fin-eyebrow">PERÍODO</span>
-          <Button type="button" variant="secondary" onClick={handleExportPdf}>
+      <Card className="fin-report-card no-print">
+        <div className="fin-report-card__head">
+          <SectionLabel>Período analisado</SectionLabel>
+          <Button type="button" variant="secondary" onClick={() => window.print()}>
             <Printer size={14} />
             Exportar PDF
           </Button>
@@ -353,7 +239,7 @@ export function ExitAnalysisDashboard({
           <FieldLabel label="Até">
             <Input type="date" value={current.to} onChange={(e) => setCurrent((p) => ({ ...p, to: e.target.value }))} />
           </FieldLabel>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, height: 32 }}>
             <input type="checkbox" checked={comparePeriods} onChange={(e) => setComparePeriods(e.target.checked)} />
             Comparar com outro período
           </label>
@@ -390,179 +276,175 @@ export function ExitAnalysisDashboard({
         </div>
       </Card>
 
-      <div className="fin-row" style={{ flexWrap: "wrap" }}>
-        <StatCard
-          selected
-          label="Total de respostas"
-          value={String(curMetrics.totalResponses)}
-          meta={`${curMetrics.totalExits} desligamento(s) no período`}
-        />
-        <StatCard
-          selected
-          label="Saída voluntária"
-          value={pct(curMetrics.voluntaryPct)}
-          meta={prevMetrics ? `Período anterior: ${pct(prevMetrics.voluntaryPct)}` : undefined}
-        />
-        <StatCard
-          label="Saída involuntária"
-          value={pct(curMetrics.involuntaryPct)}
-          meta={prevMetrics ? `Período anterior: ${pct(prevMetrics.involuntaryPct)}` : undefined}
-        />
+      <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <SectionLabel>Resumo executivo</SectionLabel>
+        <div className="fin-report-grid">
+          <HeadlineStat
+            featured
+            label="Saída voluntária"
+            value={fmtPct(cur.voluntaryPct)}
+            {...pctComparison(cur.voluntaryPct, prev?.voluntaryPct)}
+            support="Desligamentos a pedido do colaborador"
+          />
+          <HeadlineStat
+            label="Respostas da pesquisa"
+            value={String(cur.totalResponses)}
+            {...countComparison(cur.totalResponses, prev?.totalResponses)}
+            support={`${cur.totalExits} desligamento(s) no período`}
+          />
+          <HeadlineStat
+            label="Saída involuntária"
+            value={fmtPct(cur.involuntaryPct)}
+            {...pctComparison(cur.involuntaryPct, prev?.involuntaryPct)}
+            support="Desligamentos por decisão da empresa"
+          />
+          <HeadlineStat
+            label="Recomendariam a empresa"
+            value={fmtPct(cur.perception.wouldRecommendPct)}
+            {...pctComparison(cur.perception.wouldRecommendPct, prev?.perception.wouldRecommendPct)}
+            support="Entre quem respondeu a pesquisa"
+          />
+        </div>
+      </section>
+
+      <div className="fin-report-grid fin-report-grid--wide">
+        <ReportCard label="Volume" title="Desligamentos por mês">
+          {cur.monthlyExitCounts.length === 0 ? (
+            <EmptyChart>Nenhum desligamento no período.</EmptyChart>
+          ) : (
+            <MonthlyVolumeChart data={cur.monthlyExitCounts.map((m) => ({ label: monthLabel(m.month), count: m.count }))} />
+          )}
+        </ReportCard>
+
+        {hasPrevious ? (
+          <ReportCard
+            label="Motivos declarados"
+            title="Motivo de saída — atual × anterior"
+            hint="% sobre o total de desligamentos de cada período. Comparação sempre em barras."
+          >
+            {reasonComparison.length === 0 ? <EmptyChart>Nenhum desligamento no período.</EmptyChart> : <ReasonComparisonChart data={reasonComparison} />}
+          </ReportCard>
+        ) : (
+          <CategoryChartCard
+            label="Motivos declarados"
+            title="Motivo de saída"
+            items={cur.reasonBreakdown.map((r) => ({ category: r.label, count: r.count, pct: r.pct }))}
+            pctBase="dos desligamentos"
+            emptyText="Nenhum desligamento no período."
+          />
+        )}
       </div>
 
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <span className="fin-eyebrow">DESLIGAMENTOS POR MÊS</span>
-        {curMetrics.monthlyExitCounts.length === 0 ? (
-          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Nenhum desligamento no período.</p>
-        ) : (
-          <MonthlyVolumeChart data={curMetrics.monthlyExitCounts} />
-        )}
-      </Card>
-
-      <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span className="fin-eyebrow">MOTIVOS DE SAÍDA</span>
-        {curMetrics.reasonBreakdown.length === 0 ? (
-          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Nenhum desligamento no período.</p>
-        ) : (
-          <ReasonComparisonChart current={curMetrics.reasonBreakdown} previous={prevMetrics?.reasonBreakdown} />
-        )}
-      </Card>
-
-      {curMetrics.reasonDetailBreakdown.length > 0 && (
-        <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span className="fin-eyebrow">MOTIVO DETALHADO (DESLIGAMENTOS "OUTRO" IMPORTADOS)</span>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
-            Texto original da planilha, quando o motivo não batia com nenhuma opção do sistema.
-          </p>
-          {curMetrics.reasonDetailBreakdown.slice(0, 8).map((c) => (
-            <div key={c.category} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0", borderTop: "1px solid var(--border)" }}>
-              <span>{c.category}</span>
-              <strong>{pct(c.pct)}</strong>
-            </div>
-          ))}
-        </Card>
+      {cur.reasonDetailBreakdown.length > 0 && (
+        <CategoryChartCard
+          label="Motivo detalhado"
+          title="Motivo original das planilhas importadas"
+          items={cur.reasonDetailBreakdown}
+          pctBase="dos desligamentos"
+        />
       )}
 
-      <Card style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <span className="fin-eyebrow">PERCEPÇÃO (% RESPOSTAS POSITIVAS)</span>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 100px 100px 120px",
-            gap: 12,
-            fontSize: 11,
-            color: "var(--text-muted)",
-            textTransform: "uppercase",
-            paddingBottom: 4,
-          }}
-        >
-          <span>Dimensão</span>
-          <span style={{ textAlign: "right" }}>Atual</span>
-          <span style={{ textAlign: "right" }}>Anterior</span>
-          <span style={{ textAlign: "right" }}>Tendência</span>
+      <ReportCard
+        label="Percepção"
+        title="Clima na saída — % de respostas positivas"
+        hint="Notas 4 e 5 (ou “sim”) sobre o total de quem respondeu cada pergunta."
+      >
+        <div>
+          <PerceptionHead hasPrevious={hasPrevious} />
+          <PerceptionRow label="Ambiente de trabalho" current={cur.perception.environmentPositivePct} previous={prev?.perception.environmentPositivePct} />
+          <PerceptionRow label="Relação com o líder" current={cur.perception.leaderRelationshipPositivePct} previous={prev?.perception.leaderRelationshipPositivePct} />
+          <PerceptionRow label="Crescimento" current={cur.perception.growthPositivePct} previous={prev?.perception.growthPositivePct} />
+          <PerceptionRow label="Benefícios" current={cur.perception.benefitsPositivePct} previous={prev?.perception.benefitsPositivePct} />
+          <PerceptionRow label="Comunicação" current={cur.perception.communicationPositivePct} previous={prev?.perception.communicationPositivePct} />
+          <PerceptionRow label="Recomendaria a empresa" current={cur.perception.wouldRecommendPct} previous={prev?.perception.wouldRecommendPct} />
+          <PerceptionRow label="Voltaria a trabalhar" current={cur.perception.wouldReturnPct} previous={prev?.perception.wouldReturnPct} />
         </div>
-        <PerceptionRow label="Ambiente de trabalho" current={curMetrics.perception.environmentPositivePct} previous={prevMetrics?.perception.environmentPositivePct} />
-        <PerceptionRow label="Relação com o líder" current={curMetrics.perception.leaderRelationshipPositivePct} previous={prevMetrics?.perception.leaderRelationshipPositivePct} />
-        <PerceptionRow label="Crescimento" current={curMetrics.perception.growthPositivePct} previous={prevMetrics?.perception.growthPositivePct} />
-        <PerceptionRow label="Benefícios" current={curMetrics.perception.benefitsPositivePct} previous={prevMetrics?.perception.benefitsPositivePct} />
-        <PerceptionRow label="Comunicação" current={curMetrics.perception.communicationPositivePct} previous={prevMetrics?.perception.communicationPositivePct} />
-        <PerceptionRow label="Recomendaria a empresa" current={curMetrics.perception.wouldRecommendPct} previous={prevMetrics?.perception.wouldRecommendPct} />
-        <PerceptionRow label="Voltaria a trabalhar" current={curMetrics.perception.wouldReturnPct} previous={prevMetrics?.perception.wouldReturnPct} />
-      </Card>
+      </ReportCard>
 
-      <div className="fin-row" style={{ flexWrap: "wrap", alignItems: "stretch" }}>
-        <Card style={{ flex: 1, minWidth: 280, display: "flex", flexDirection: "column", gap: 8 }}>
-          <span className="fin-eyebrow">MAIOR DESAFIO</span>
-          {curMetrics.biggestChallengeBreakdown.slice(0, 8).map((c) => (
-            <div key={c.category} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
-              <span>{c.category}</span>
-              <strong>{pct(c.pct)}</strong>
-            </div>
-          ))}
-          {curMetrics.biggestChallengeBreakdown.length === 0 && (
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Sem respostas com esse campo preenchido.</p>
-          )}
-        </Card>
-        <Card style={{ flex: 1, minWidth: 280, display: "flex", flexDirection: "column", gap: 8 }}>
-          <span className="fin-eyebrow">SUGESTÕES DE MELHORIA</span>
-          {curMetrics.improvementSuggestionBreakdown.slice(0, 8).map((c) => (
-            <div key={c.category} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
-              <span>{c.category}</span>
-              <strong>{pct(c.pct)}</strong>
-            </div>
-          ))}
-          {curMetrics.improvementSuggestionBreakdown.length === 0 && (
-            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Sem respostas com esse campo preenchido.</p>
-          )}
-        </Card>
+      <div className="fin-report-grid fin-report-grid--wide">
+        <CategoryChartCard label="Desafios" title="Maior desafio enfrentado" items={cur.biggestChallengeBreakdown} pctBase="dos respondentes" />
+        <CategoryChartCard label="Sugestões" title="O que a empresa poderia melhorar" items={cur.improvementSuggestionBreakdown} pctBase="dos respondentes" />
       </div>
 
-      <SegmentTable title={`RECORTE POR SETOR (mín. ${minVolume} saídas)`} segments={curMetrics.departmentBreakdown} />
-      <SegmentTable
-        title={`RECORTE POR LÍDER (mín. ${minVolume} respostas)`}
-        segments={curMetrics.leaderBreakdown}
-        showClassification
-      />
+      <ReportCard label="Recorte por setor" title={`Setores com ${minVolume}+ saídas`}>
+        <SegmentTable segments={cur.departmentBreakdown} />
+      </ReportCard>
 
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <span className="fin-eyebrow">ANÁLISE DE TEMA DOS COMENTÁRIOS (IA)</span>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
-          Só analisa comentários de respostas com consentimento ativo para análise por IA. Respostas importadas do
-          histórico nunca entram aqui.
-        </p>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Button type="button" variant={themeRequesting ? "disabled" : "secondary"} onClick={handleRequestTheme} disabled={themeRequesting}>
+      <ReportCard label="Recorte por liderança" title={`Líderes com ${minVolume}+ respostas`}>
+        <LeaderLegend />
+        <SegmentTable segments={cur.leaderBreakdown} showClassification />
+      </ReportCard>
+
+      <ReportCard
+        label="Temas dos comentários"
+        title="Análise de tema por IA"
+        hint="Só comentários de respostas com consentimento ativo. Respostas importadas do histórico nunca entram aqui."
+        action={
+          <Button
+            type="button"
+            className="no-print"
+            variant={themeRequesting ? "disabled" : "secondary"}
+            onClick={handleRequestTheme}
+            disabled={themeRequesting}
+          >
             {themeRequesting ? "Solicitando..." : "Gerar análise de tema"}
           </Button>
-          {report?.themeStatus && report.themeStatus !== "IDLE" && (
+        }
+      >
+        {report?.themeStatus && report.themeStatus !== "IDLE" && (
+          <div>
             <Badge tone={report.themeStatus === "DONE" ? "success" : report.themeStatus === "FAILED" ? "danger" : "primary"}>
-              {report.themeStatus === "PENDING" && "Processando..."}
-              {report.themeStatus === "DONE" && "Concluído"}
-              {report.themeStatus === "FAILED" && "Falhou"}
-              {report.themeStatus === "INSUFFICIENT_DATA" && "Dados insuficientes"}
+              {THEME_STATUS_LABEL[report.themeStatus] ?? report.themeStatus}
             </Badge>
-          )}
-        </div>
-        {themeMessage && <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>{themeMessage}</p>}
+          </div>
+        )}
+        {themeMessage && <EmptyChart>{themeMessage}</EmptyChart>}
         {report?.themeStatus === "DONE" && report.themeResult && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
               Baseado em {report.themeResponsesAnalyzed} comentário(s) com consentimento.
             </span>
             {report.themeResult.themes.map((t) => (
-              <div key={t.theme} style={{ borderTop: "1px solid var(--border)", paddingTop: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
+              <div key={t.theme} style={{ borderTop: "1px solid var(--divider)", paddingTop: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 600 }}>
                   <span>{t.theme}</span>
-                  <span>{t.count}x</span>
+                  <span style={{ color: "var(--accent-deep)" }}>{t.count}×</span>
                 </div>
                 {t.examples.map((ex, i) => (
-                  <p key={i} style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>
-                    "{ex}"
+                  <p key={i} style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 0", fontStyle: "italic" }}>
+                    “{ex}”
                   </p>
                 ))}
               </div>
             ))}
           </div>
         )}
-      </Card>
+      </ReportCard>
 
-      <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <span className="fin-eyebrow">RECOMENDAÇÕES DO RH</span>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
-          Texto livre, escrito por você — o sistema nunca gera recomendações automáticas aqui.
-        </p>
-        <Textarea
-          value={recommendations}
-          onChange={(e) => setRecommendations(e.target.value)}
-          style={{ minHeight: 140 }}
-          placeholder="Ex.: reforçar treinamento de lideranças no setor de Costura, revisar política salarial..."
-        />
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="button" variant={savingRecommendations ? "disabled" : "confirm"} onClick={handleSaveRecommendations} disabled={savingRecommendations}>
-            {savingRecommendations ? "Salvando..." : "Salvar recomendações"}
-          </Button>
+      <ReportCard
+        label="Recomendações do RH"
+        title="Próximos passos"
+        hint="Texto livre, escrito pelo RH — o sistema nunca gera recomendações automáticas aqui."
+      >
+        <div className="no-print" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Textarea
+            value={recommendations}
+            onChange={(e) => setRecommendations(e.target.value)}
+            style={{ minHeight: 140 }}
+            placeholder="Ex.: reforçar treinamento de lideranças no setor de Costura, revisar política salarial..."
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button type="button" variant={savingRecommendations ? "disabled" : "confirm"} onClick={handleSaveRecommendations} disabled={savingRecommendations}>
+              {savingRecommendations ? "Salvando..." : "Salvar recomendações"}
+            </Button>
+          </div>
         </div>
-      </Card>
-    </>
+        {/* No PDF sai o texto corrido, não a caixa de edição (que cortaria
+            o conteúdo longo). */}
+        <p className="print-only" style={{ fontSize: 13, lineHeight: "20px", whiteSpace: "pre-wrap", margin: 0 }}>
+          {recommendations.trim() || "Nenhuma recomendação registrada para este período."}
+        </p>
+      </ReportCard>
+    </div>
   );
 }

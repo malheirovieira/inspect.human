@@ -1761,6 +1761,38 @@ select.fin-input {
   .print-only {
     display: block !important;
   }
+  /* Navegador desliga fundos na impressão por padrão — sem isto, os pills
+     de liderança, o KPI em destaque e as barras de percepção saem em
+     branco no PDF. */
+  .fin-report,
+  .fin-report * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* O recharts mede a largura na TELA; a página impressa é mais estreita.
+     Sem isto o gráfico estoura a borda do card (barras e rótulos cortados).
+     O SVG tem viewBox, então escala proporcionalmente; as legendas são HTML
+     fora do SVG e seguem o fluxo normal. Detalhes que quebram o PDF se
+     mudados: (1) NÃO mexer na altura do .recharts-responsive-container
+     (com height:auto ele mede 0 e o gráfico some); (2) o recharts v3 põe o
+     gráfico numa div interna com width:0 — ela precisa de width:100%;
+     (3) max-width (só encolhe) em vez de width, pra o gráfico não crescer
+     além da altura reservada e invadir o conteúdo de baixo. */
+  .fin-report .recharts-responsive-container > div {
+    width: 100% !important;
+  }
+  .fin-report .recharts-wrapper {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .fin-report .recharts-surface {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  .fin-report-card {
+    break-inside: avoid;
+    box-shadow: none;
+  }
 }
 
 /* Visível só na impressão/exportação em PDF (ex.: cabeçalho de
@@ -1768,4 +1800,458 @@ select.fin-input {
    regra @media print acima que reverte pra display:block. */
 .print-only {
   display: none;
+}
+
+/* ============================================================================
+   Relatório "Análise de Desligamentos" (/desligamentos/analise).
+   Só tons da paleta azul da marca — hierarquia por tom/opacidade, sem cor
+   de destaque nova (decisão do usuário, 2026-10-02). Status (melhorou/
+   piorou, classificação de liderança) reaproveitam verde/vermelho/laranja.
+   ========================================================================= */
+:root {
+  /* Rampa de gráfico, do mais escuro (dado principal) ao mais claro. */
+  --chart-1: #133c55;
+  --chart-2: #386fa4;
+  --chart-3: #59a5d8;
+  --chart-4: #2f5f8f;
+  --chart-5: #8cc0e5;
+  --chart-6: #1f4e6e;
+  --chart-7: #b6d6ee;
+  --chart-8: #6e9cc5;
+}
+
+.fin-section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent-deep) 70%, transparent);
+}
+
+.fin-report {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.fin-report-card {
+  border: 1px solid var(--border);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.fin-report-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.fin-report-card__title {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  color: var(--text-primary);
+}
+.fin-report-card__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+.fin-report-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+}
+.fin-report-grid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+}
+
+/* KPI de resumo executivo: número grande e escuro, apoio pequeno e suave. */
+.fin-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+.fin-headline__value {
+  margin-top: 6px;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 44px;
+  letter-spacing: -0.02em;
+  color: var(--accent-deep);
+  font-variant-numeric: tabular-nums;
+}
+.fin-headline__compare {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.fin-headline__delta {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.fin-headline__support {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+.fin-headline--featured {
+  background: var(--accent-deep);
+  border-color: transparent;
+}
+.fin-headline--featured .fin-section-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+.fin-headline--featured .fin-headline__value {
+  color: var(--white);
+}
+.fin-headline--featured .fin-headline__compare {
+  color: rgba(255, 255, 255, 0.9);
+}
+.fin-headline--featured .fin-headline__delta,
+.fin-headline--featured .fin-headline__support {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Alternador barra / pizza. */
+.fin-chart-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.fin-chart-toggle button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.fin-chart-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.fin-chart-toggle button:hover {
+  background: var(--background-hover);
+}
+.fin-chart-toggle button[aria-pressed="true"] {
+  background: var(--accent-surface);
+  color: var(--accent-deep);
+}
+.fin-chart-toggle button:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.fin-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.fin-chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.fin-chart-legend__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+}
+.fin-chart-legend__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fin-chart-legend__value {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Pizza + legenda lado a lado; empilha quando o card fica estreito. */
+.fin-pie-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+}
+.fin-pie-layout__chart {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.fin-pie-layout .fin-chart-legend {
+  flex: 1 1 220px;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  min-width: 0;
+  margin: 0;
+}
+.fin-pie-layout .fin-chart-legend li {
+  display: flex;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.fin-chart-tooltip {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-8);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+  max-width: 260px;
+}
+.fin-chart-tooltip strong {
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+/* Percepção: linha com barra leve atrás do percentual. */
+.fin-perception-head,
+.fin-perception-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(160px, 2fr) 72px 118px;
+  gap: 16px;
+  align-items: center;
+}
+.fin-perception-head {
+  padding-bottom: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.fin-perception-row {
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+  font-size: 13px;
+}
+.fin-perception-bar {
+  position: relative;
+  height: 28px;
+  border-radius: var(--radius-md);
+  background: var(--background);
+  overflow: hidden;
+}
+.fin-perception-bar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent-surface);
+  border-right: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: width 0.6s var(--ease-out-soft);
+}
+.fin-perception-bar__value {
+  position: relative;
+  padding: 0 10px;
+  line-height: 28px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  font-variant-numeric: tabular-nums;
+}
+.fin-perception-prev {
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-perception-trend {
+  display: flex;
+  justify-content: flex-end;
+}
+.fin-perception-prev__label {
+  display: none;
+}
+
+/* Gráfico de barras de categoria: barras muito longas num card de largura
+   total ficam esticadas e, impressas, encolhem demais o texto. */
+.fin-category-chart {
+  max-width: 860px;
+}
+
+/* Barras de categoria no celular (lista HTML, rótulo inteiro). */
+.fin-hbar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.fin-hbar-list__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.fin-hbar-list__label {
+  color: var(--text-secondary);
+}
+.fin-hbar-list__value {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.fin-hbar-list__track {
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--background);
+  overflow: hidden;
+}
+.fin-hbar-list__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+}
+
+/* Pills de status (tendência e classificação de liderança). */
+.fin-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.fin-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+}
+.fin-pill--danger {
+  background: var(--red-surface);
+  border-color: var(--red-border);
+  color: var(--red-text);
+}
+.fin-pill--attention {
+  background: var(--orange-surface);
+  border-color: var(--orange-border);
+  color: var(--orange-text);
+}
+.fin-pill--neutral {
+  background: var(--accent-surface);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent-deep);
+}
+.fin-pill--success {
+  background: var(--green-surface);
+  border-color: var(--green-border);
+  color: var(--green-text);
+}
+.fin-pill--muted {
+  background: var(--background);
+  border-color: var(--divider);
+  color: var(--text-muted);
+}
+
+.fin-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.fin-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fin-report-table-wrap {
+  overflow-x: auto;
+}
+.fin-report-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.fin-report-table th {
+  padding: 0 8px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: right;
+}
+.fin-report-table th:first-child,
+.fin-report-table td:first-child {
+  text-align: left;
+}
+.fin-report-table td {
+  padding: 12px 8px;
+  border-top: 1px solid var(--divider);
+  text-align: right;
+}
+.fin-report-table td:first-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .fin-report-card {
+    padding: 20px;
+  }
+  .fin-headline__value {
+    font-size: 32px;
+    line-height: 38px;
+  }
+  .fin-perception-head {
+    display: none;
+  }
+  .fin-perception-row {
+    grid-template-columns: 1fr auto;
+    gap: 8px 12px;
+  }
+  .fin-perception-row > :first-child,
+  .fin-perception-row > .fin-perception-bar {
+    grid-column: 1 / -1;
+  }
+  .fin-perception-prev {
+    text-align: left;
+  }
+  .fin-perception-prev__label {
+    display: inline;
+  }
 }

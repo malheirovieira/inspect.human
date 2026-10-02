@@ -185,6 +185,13 @@ export const LEADER_CLASSIFICATION_LABELS: Record<LeaderClassification, string> 
 // - ATENÇÃO: abaixo do ideal sem ser crítico.
 // - ACOMPANHAR: dentro do esperado, nem alerta nem destaque.
 // Ausência de dado (null) nunca penaliza nem beneficia sozinha.
+// Exportados pra legenda da tela citar exatamente os mesmos números.
+export const LEADER_THRESHOLDS = {
+  priority: { relationshipBelow: 40, notRecommendAtLeast: 50, controllableAtLeast: 60 },
+  reference: { relationshipAtLeast: 70, notRecommendAtMost: 20 },
+  attention: { relationshipBelow: 60, notRecommendAtLeast: 30 },
+} as const;
+
 export function classifyLeader(segment: Pick<SegmentBreakdown, "relationshipPositivePct" | "controllableReasonPct" | "notRecommendPct">): LeaderClassification | null {
   const { relationshipPositivePct: rel, controllableReasonPct: ctrl, notRecommendPct: notRec } = segment;
   if (rel === null && ctrl === null && notRec === null) return null;
@@ -192,10 +199,11 @@ export function classifyLeader(segment: Pick<SegmentBreakdown, "relationshipPosi
   const relV = rel ?? 100;
   const ctrlV = ctrl ?? 0;
   const notRecV = notRec ?? 0;
+  const t = LEADER_THRESHOLDS;
 
-  if (relV < 40 || notRecV >= 50 || ctrlV >= 60) return "PRIORIDADE";
-  if (relV >= 70 && notRecV <= 20) return "REFERENCIA";
-  if (relV < 60 || notRecV >= 30) return "ATENCAO";
+  if (relV < t.priority.relationshipBelow || notRecV >= t.priority.notRecommendAtLeast || ctrlV >= t.priority.controllableAtLeast) return "PRIORIDADE";
+  if (relV >= t.reference.relationshipAtLeast && notRecV <= t.reference.notRecommendAtMost) return "REFERENCIA";
+  if (relV < t.attention.relationshipBelow || notRecV >= t.attention.notRecommendAtLeast) return "ATENCAO";
   return "ACOMPANHAR";
 }
 

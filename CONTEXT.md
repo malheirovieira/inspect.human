@@ -596,25 +596,33 @@ o plano só muda direto no banco.
 
 ## Design system — estado atual
 
-Paleta em verde (`--green-700`/`--success` etc. em `app/globals.css`,
-espelhada em `tailwind.config.ts`) — já mudou várias vezes nesta sessão,
-checar visualmente antes de assumir que é a atual. Fonte base **Inter**
-(`--apple-system, BlinkMacSystemFont` na frente do stack — SF Pro real em
-Mac/iOS, Inter de fallback fora do ecossistema Apple, já que a fonte da
-Apple não pode ser hospedada). Playfair Display só na wordmark do logo.
+Estado em 2026-10-02 (a paleta já mudou várias vezes — verde, depois
+Apple HIG, agora Fluent 2; **sempre conferir `app/globals.css` antes de
+mexer em cor**, nunca confiar em hex citado em pedido/documento):
 
-**Cores de botão — regra do sistema inteiro** (pedido do usuário,
-2026-09-24):
-- **Salvar / confirmar / atualizar / criar** → verde `#177f0f`
-  (`--action-confirm`, `<Button variant="confirm">`).
-- **Cancelar / excluir / remover** → vermelho `#fe0401` (`--action-cancel`:
-  `variant="danger"` com texto, `variant="icon-cancel"` pro "X" ao lado de
-  Atualizar, `round-cancel` nos toggles, cor do ícone de lixeira).
-- `primary` (verde-escuro) fica só pra ação que não grava (ex.: alternar
-  Lista/Kanban). Tokens espelhados em `tailwind.config.ts`
-  (`confirm`/`cancel`). Tela nova: seguir a regra desde o início.
-- Fora da regra por não serem salvar/cancelar: "Entrar" (login) e "Enviar
-  link" (recuperar senha) continuam `primary`.
+- **Tokens Fluent 2** (Microsoft `@fluentui/tokens`, tema claro) para
+  neutros, status, raios, sombras e tipografia; espelhados em
+  `tailwind.config.ts` (gray/green/red redirecionados pros mesmos tons).
+- **Paleta da marca "Nuvem limpa azul"**: `--accent-deep` `#133C55`
+  (navegação, avatar, KPI selecionado), `--accent` `#386FA4` (primário,
+  links, foco), `--accent-sky` `#59A5D8` (SÓ decoração/gráficos — 2.7:1,
+  nunca texto), `--accent-surface` `#EAF4FF`, fundo `--background`
+  `#F7F9FB`.
+- Status: `--green`/`--red`/`--orange` Fluent (sucesso/perigo/atenção),
+  cada um com `-text`/`-surface`/`-border`.
+- Bordas: `--separator` `rgba(0,0,0,.08)` (contornos leves e translúcidos,
+  pedido do usuário em 2026-09-30).
+- Fonte: **Segoe UI** (`--font-sans`, com `-apple-system`/Roboto de
+  fallback). Sem Inter, sem Playfair.
+- Gráficos (recharts, desde a Fase 6 de Desligamentos): só tons de azul —
+  período atual/dado principal `--accent-deep`, anterior/secundário
+  `--accent-sky`; nenhuma cor de destaque nova (decisão do usuário
+  2026-10-02).
+
+**Botões** (`components/ui/Button.tsx` + `.fin-btn--*`): `primary`,
+`confirm` e `round-add` preenchidos em `--accent` (salvar é a ação
+primária, padrão Fluent); `danger`/`icon-cancel`/`round-cancel` em
+`--red`; `secondary` branco com borda.
 
 **Cadastro existente abre bloqueado** — padrão único em
 `components/ui/EditLock.tsx` (`useEditLock` + `EditLockActions`), usado no
