@@ -92,6 +92,12 @@ const GROUPS: NavGroup[] = [
 // usuário encontrar (ver injeção em upcomingWithReal, dentro do componente).
 const AVALIACOES_LABEL = "Avaliações";
 const AVALIACOES_HREF = "/avaliacoes";
+// Mesma injeção pontual de Avaliações — Desligamentos já existia como rota
+// real mas nunca tinha entrado na sidebar (só acessível por URL direta).
+const DESLIGAMENTOS_LABEL = "Desligamentos";
+const DESLIGAMENTOS_HREF = "/desligamentos";
+const ANALISE_DESLIGAMENTOS_LABEL = "Análise de Desligamentos";
+const ANALISE_DESLIGAMENTOS_HREF = "/desligamentos/analise";
 
 const OUTROS: (NavItem & { icon: LucideIcon })[] = [
   { href: "/configuracoes", label: "Configurações", icon: Settings },
@@ -391,15 +397,18 @@ export function Sidebar({
   const routeGroup = groupForPath(pathname);
   const [openGroup, setOpenGroup] = useState<string | null>(() => routeGroup);
 
-  // Avaliações (módulo real) entra como primeiro sub-item de "Gestão de
-  // pessoas" (módulo do roadmap) — só essa injeção pontual; os demais
-  // módulos futuros continuam vindo direto da config, sem link nenhum.
+  // Avaliações, Desligamentos e Análise de Desligamentos (módulos reais)
+  // entram como primeiros sub-itens de "Gestão de pessoas" (módulo do
+  // roadmap) — só essa injeção pontual; os demais módulos futuros
+  // continuam vindo direto da config, sem link nenhum.
   const upcomingWithReal = UPCOMING_MODULES.map((module) =>
     module.label === "Gestão de pessoas"
       ? {
           ...module,
           subModules: [
             { label: AVALIACOES_LABEL, description: "Testes comportamentais e de conhecimento", href: AVALIACOES_HREF },
+            { label: DESLIGAMENTOS_LABEL, description: "Registro de desligamentos e pesquisa de saída", href: DESLIGAMENTOS_HREF },
+            { label: ANALISE_DESLIGAMENTOS_LABEL, description: "Relatório de desligamentos", href: ANALISE_DESLIGAMENTOS_HREF },
             ...(module.subModules ?? []),
           ],
         }

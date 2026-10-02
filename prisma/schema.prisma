@@ -85,6 +85,7 @@ model Company {
   quizResponses       QuizResponse[]
   aiConfig            CompanyAiConfig?
   exitSurveyResponses ExitSurveyResponse[]
+  exitAnalysisReports ExitAnalysisReport[]
 
   @@map("companies")
   @@schema("public")
@@ -211,6 +212,7 @@ model User {
   trainingAssignments TrainingAssignment[]
   exit                EmployeeExit?        @relation("ExitUser")
   processedExits      EmployeeExit[]       @relation("ExitCreatedBy")
+  exitAnalysisRecommendations ExitAnalysisReport[] @relation("ExitAnalysisRecommendationsUpdatedBy")
   documents           EmployeeDocument[]
   applicationEvents   ApplicationEvent[]   @relation("ApplicationEventActor")
   uploadedResumes     CandidateResume[]    @relation("ResumeUploadedBy")
@@ -642,6 +644,45 @@ model ExitSurveyResponse {
 
   @@index([companyId])
   @@map("exit_survey_responses")
+  @@schema("public")
+}
+
+// Relatório "Análise de Desligamentos" (Fase 5) — uma linha por período
+// exato selecionado (companyId + periodFrom + periodTo), guardando só o que
+// não dá pra recalcular na hora: a recomendação de texto livre escrita pelo
+// RH (nunca gerada por IA — decisão de negócio humana) e o resultado da
+// análise de tema por IA dos comentários livres (só processa respostas com
+// Consent ativo; respostas importadas, Fase 4, nunca entram aqui).
+model ExitAnalysisReport {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  periodFrom DateTime @map("period_from") @db.Date
+  periodTo   DateTime @map("period_to") @db.Date
+
+  recommendations           String?
+  recommendationsUpdatedAt  DateTime? @map("recommendations_updated_at") @db.Timestamptz(6)
+  recommendationsUpdatedById String?  @map("recommendations_updated_by") @db.Uuid
+
+  // IDLE | PENDING | DONE | FAILED | INSUFFICIENT_DATA
+  themeStatus          String    @default("IDLE") @map("theme_status")
+  themeResult          Json?     @map("theme_result")
+  themeResponsesAnalyzed Int?    @map("theme_responses_analyzed")
+  themeProvider        String?   @map("theme_provider")
+  themeModel           String?   @map("theme_model")
+  themeIsMock          Boolean   @default(false) @map("theme_is_mock")
+  themeErrorCode       String?   @map("theme_error_code")
+  themeRequestedAt     DateTime? @map("theme_requested_at") @db.Timestamptz(6)
+  themeCompletedAt     DateTime? @map("theme_completed_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  company                 Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recommendationsUpdatedBy User?  @relation("ExitAnalysisRecommendationsUpdatedBy", fields: [recommendationsUpdatedById], references: [id], onDelete: SetNull)
+
+  @@unique([companyId, periodFrom, periodTo])
+  @@index([companyId])
+  @@map("exit_analysis_reports")
   @@schema("public")
 }
 

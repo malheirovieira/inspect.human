@@ -72,6 +72,12 @@ const SURVEY_FIELD_IDS: ImportFieldId[] = [
 
 export type MappedExitHistoryRow = Record<ImportFieldId, string>;
 
+// Prefixo usado quando o motivo da planilha não bate com o enum (vira
+// "Outro" + este texto nas observações do desligamento) — exportado pra
+// lib/desligamentos/exitAnalysis.ts conseguir extrair o motivo detalhado de
+// volta na hora de montar o relatório, sem duplicar a string.
+export const REASON_DETAIL_NOTE_PREFIX = "Motivo original da planilha: ";
+
 const MONTH_NAMES: Record<string, number> = {
   janeiro: 1,
   fevereiro: 2,
@@ -284,7 +290,7 @@ export function validateMappedRow(row: MappedExitHistoryRow): ValidateRowResult 
   if (!reasonRaw) return { ok: false, error: "Motivo vazio" };
   const reasonMatch = normalizeReason(reasonRaw);
   const reason = reasonMatch ?? "OUTRO";
-  const reasonNote = reasonMatch ? null : `Motivo original da planilha: ${reasonRaw}`;
+  const reasonNote = reasonMatch ? null : `${REASON_DETAIL_NOTE_PREFIX}${reasonRaw}`;
 
   const admissionDateRaw = row.admissionDate ?? "";
   let admissionDate: Date | null = null;
