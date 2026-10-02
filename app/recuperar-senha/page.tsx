@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { AuthShell } from "@/components/layout/AuthShell";
 
@@ -9,6 +10,20 @@ const BULLETS = [
   "Enviamos um link seguro para o seu e-mail",
   "O link expira sozinho depois de um tempo, por segurança",
 ];
+
+// useSearchParams() exige um limite de Suspense ao redor (senão o build
+// falha: "should be wrapped in a suspense boundary") — só o aviso de "link
+// inválido" depende da query string, então só ele fica dentro do Suspense,
+// o resto da tela nunca pisca em branco esperando isso resolver.
+function LinkInvalidoAviso() {
+  const searchParams = useSearchParams();
+  if (searchParams.get("erro") !== "link_invalido") return null;
+  return (
+    <div style={{ fontSize: 13, color: "var(--danger)" }}>
+      Esse link expirou ou já foi usado. Peça um novo abaixo.
+    </div>
+  );
+}
 
 export default function RecuperarSenhaPage() {
   const [email, setEmail] = useState("");
@@ -19,7 +34,15 @@ export default function RecuperarSenhaPage() {
     e.preventDefault();
     setLoading(true);
     const supabase = createSupabaseBrowserClient();
-    await supabase.auth.resetPasswordForEmail(email);
+    // Sem redirectTo, o Supabase manda o link de volta pra Site URL padrão
+    // do projeto (não necessariamente este app) — e mesmo quando cai aqui,
+    // não existia rota pra trocar o código da URL por sessão (ver
+    // app/auth/callback/route.ts) nem tela de nova senha (ver
+    // app/recuperar-senha/nova-senha/). window.location.origin funciona em
+    // qualquer ambiente (dev/produção) sem precisar de env var nova.
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/recuperar-senha/nova-senha`,
+    });
     setLoading(false);
     // Sempre mostra sucesso, mesmo se o e-mail não existir — evita revelar
     // quais e-mails estão cadastrados.
@@ -46,6 +69,10 @@ export default function RecuperarSenhaPage() {
               Informe seu e-mail e enviaremos um link de redefinição.
             </p>
           </div>
+
+          <Suspense fallback={null}>
+            <LinkInvalidoAviso />
+          </Suspense>
 
           <label className="fin-field-label">
             E-mail
