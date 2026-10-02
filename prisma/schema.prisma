@@ -588,6 +588,9 @@ model EmployeeExit {
   createdById    String?   @map("created_by") @db.Uuid
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  dataSource  String  @default("manual") @map("data_source")
+  externalRef String? @map("external_ref")
+
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user      User?   @relation("ExitUser", fields: [userId], references: [id], onDelete: SetNull)
   createdBy User?   @relation("ExitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
