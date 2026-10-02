@@ -16,5 +16,6 @@ export async function listEmployeeExits(filters: ExitFilters = {}) {
       ...(q ? { userName: { contains: q, mode: "insensitive" } } : {}),
     },
     orderBy: { exitDate: "desc" },
+    include: { surveyResponse: { select: { submittedAt: true } } },
   });
 }

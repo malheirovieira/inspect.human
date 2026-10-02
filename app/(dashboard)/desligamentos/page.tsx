@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DesligamentosToolbar } from "@/components/desligamentos/DesligamentosToolbar";
+import { ExitSurveyLinkButton } from "@/components/desligamentos/ExitSurveyLinkButton";
 import { UserX } from "lucide-react";
 import { listEmployeeExits } from "@/services/employeeExits";
 import { listColaboradores } from "@/services/colaboradores";
@@ -67,11 +68,15 @@ export default async function DesligamentosPage({
                     {exit.department ? ` · ${exit.department}` : ""} · Saiu em {formatDate(exit.exitDate)}
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <Badge tone="primary">{EXIT_REASON_LABELS[exit.reason as keyof typeof EXIT_REASON_LABELS]}</Badge>
                   <Badge tone={exit.exitType === "VOLUNTARIA" ? "success" : "primary"}>
                     {EXIT_TYPE_LABELS[exit.exitType as keyof typeof EXIT_TYPE_LABELS]}
                   </Badge>
+                  <ExitSurveyLinkButton
+                    employeeExitId={exit.id}
+                    alreadySubmitted={Boolean(exit.surveyResponse?.submittedAt)}
+                  />
                 </div>
               </div>
             ))}

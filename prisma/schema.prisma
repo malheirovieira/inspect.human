@@ -84,6 +84,7 @@ model Company {
   quizAssessments     QuizAssessment[]
   quizResponses       QuizResponse[]
   aiConfig            CompanyAiConfig?
+  exitSurveyResponses ExitSurveyResponse[]
 
   @@map("companies")
   @@schema("public")
@@ -457,6 +458,7 @@ model Consent {
   user        User?         @relation("ConsentUser", fields: [userId], references: [id], onDelete: Cascade)
   employeeExit EmployeeExit? @relation(fields: [employeeExitId], references: [id], onDelete: Cascade)
   application Application?  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  exitSurveyResponses ExitSurveyResponse[]
 
   @@index([companyId, candidateId, purpose], map: "idx_consents_company_candidate_purpose")
   @@index([companyId, userId, purpose], map: "idx_consents_company_user_purpose")
@@ -590,9 +592,53 @@ model EmployeeExit {
   user      User?   @relation("ExitUser", fields: [userId], references: [id], onDelete: SetNull)
   createdBy User?   @relation("ExitCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   consents  Consent[]
+  surveyResponse ExitSurveyResponse?
 
   @@index([companyId, exitDate])
   @@map("employee_exits")
+  @@schema("public")
+}
+
+// Pesquisa de desligamento nativa (Fase 3) — 1:1 com EmployeeExit, mesmo
+// mecanismo de token/expiração de DiscResponse/QuizResponse (token único,
+// 7 dias, submittedAt marca resposta única). consentId só é preenchido se
+// o respondente consentir com a análise por IA do comentário livre
+// (EXIT_SURVEY_AI_ANALYSIS_CONSENT_PURPOSE, Fase 2) — sem consentimento,
+// o comentário fica salvo mas nunca entra na análise da Fase 5.
+model ExitSurveyResponse {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  employeeExitId String    @unique @map("employee_exit_id") @db.Uuid
+  token          String    @unique
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  submittedAt    DateTime? @map("submitted_at") @db.Timestamptz(6)
+
+  leaderName               String?  @map("leader_name")
+  environmentScore         Int?     @map("environment_score") @db.SmallInt
+  leaderRelationshipScore  Int?     @map("leader_relationship_score") @db.SmallInt
+  growthScore              Int?     @map("growth_score") @db.SmallInt
+  benefitsScore            Int?     @map("benefits_score") @db.SmallInt
+  communicationScore       Int?     @map("communication_score") @db.SmallInt
+  biggestChallenge         String?  @map("biggest_challenge")
+  improvementSuggestion    String?  @map("improvement_suggestion")
+  wouldReturn              Boolean? @map("would_return")
+  wouldRecommend           Boolean? @map("would_recommend")
+  freeComment              String?  @map("free_comment")
+
+  consentId String? @map("consent_id") @db.Uuid
+
+  // Preparação pra integração futura com ERP — não implementado agora.
+  dataSource  String  @default("manual") @map("data_source")
+  externalRef String? @map("external_ref")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employeeExit EmployeeExit @relation(fields: [employeeExitId], references: [id], onDelete: Cascade)
+  consent     Consent?     @relation(fields: [consentId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@map("exit_survey_responses")
   @@schema("public")
 }
 
